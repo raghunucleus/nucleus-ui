@@ -32,6 +32,21 @@ All colors, radii, and surface treatments live as CSS variables in [src/index.cs
 - Dark-mode variants use the `dark:` prefix (which targets the `.dark` class on `<html>` set by `ThemeProvider`). Never write a separate `@media (prefers-color-scheme: dark)` block — the provider already mirrors system preference.
 - Every new surface must look correct in both themes. If a token doesn't exist for what you need, add it to both `:root` AND `.dark` — never only one.
 
+## Responsive rules
+
+- **Every screen must be responsive**. No fixed-width layouts that break on smaller viewports, no hidden scroll on larger ones.
+- **Primary targets** (design and test against these first):
+  - **Tablet** — ~768px–1024px wide (portrait and landscape). This is the most common use case.
+  - **720p** — 1280×720 (laptop / older monitor).
+  - **1080p** — 1920×1080 (modern desktop).
+- **Also support** (must not break, even if not the primary design target): mobile down to 360px, and ultra-wide ≥ 2560px.
+- **Approach**: design mobile-first, then layer on `sm:` / `md:` / `lg:` / `xl:` / `2xl:` Tailwind breakpoints. Don't write desktop-first CSS that uses `max-w-*` media queries to "fix" small screens.
+- **Use fluid units** where it makes sense: `w-full`, `max-w-*` containers, `min-h-svh` for full-viewport heights (not `100vh` — `svh` handles mobile browser chrome correctly), `clamp()` for fluid type if you need it.
+- **Layout primitives**: prefer `grid` / `flex` with `gap-*` over manual margins. Use `grid-cols-1 md:grid-cols-2 lg:grid-cols-3` patterns over fixed column counts.
+- **Tap targets** ≥ 44×44px on touch (tablet). The shadcn `size="icon"` button (36px) is fine for desktop but use `size="default"` or larger for primary tablet actions.
+- **Test in both orientations** for tablet — portrait (~768×1024) AND landscape (~1024×768). Sidebars and multi-column layouts often break in portrait.
+- **Never** use `overflow-hidden` to hide responsive overflow — fix the layout instead.
+
 ## Component rules
 
 - Reusable UI primitives live in [src/components/ui/](src/components/ui/). These are owned by us (shadcn copies code into the repo) — edit freely, but keep them generic and token-driven.
