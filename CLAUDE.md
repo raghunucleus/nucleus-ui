@@ -10,6 +10,45 @@ These rules apply to every UI change in this repo. Follow them by default; only 
 - **Path alias**: `@/` → `src/`. Always import via the alias, never via long relative paths.
 - **`cn()`** from [src/lib/utils.ts](src/lib/utils.ts) is the only allowed way to merge Tailwind classes conditionally.
 
+## Libraries — what to use for what
+
+These are the approved libraries for each concern. Use them; do **not** introduce a competing library (no react-router, no redux/jotai/recoil, no formik, no yup/joi, no react-hot-toast, no ag-grid, etc.).
+
+### Routing — `@tanstack/react-router`
+- All app routing goes through TanStack Router. Use file-based or code-based route definitions; never import from `react-router-dom`.
+- Use the typed `Link`, `useNavigate`, `useParams`, `useSearch` exports — never `window.location` for navigation.
+
+### Client state — `zustand`
+- For cross-component client state (auth user, UI state, persisted preferences). Define one store per concern in `src/stores/`.
+- Server state (anything fetched from the API) does **not** go in zustand — use TanStack Router loaders or a dedicated fetcher; never mirror server data into a store.
+
+### Forms — `react-hook-form` + `@hookform/resolvers` + `zod`
+- Every form uses `useForm()` from `react-hook-form` with a `zod` schema wired via `zodResolver` from `@hookform/resolvers/zod`.
+- Define the schema once with `zod` and infer the form type via `z.infer<typeof schema>`. Do not duplicate the type by hand.
+- Do **not** manage form state with `useState` for anything more than a single trivial input.
+
+### Validation / schemas — `zod`
+- Use `zod` for all runtime validation: form schemas, API response parsing, env vars, `localStorage` reads. Never write hand-rolled validators or use `JSON.parse` without a `zod` schema for untrusted input.
+
+### Tables — `@tanstack/react-table`
+- All data tables (sortable, paginated, filtered, or just multi-column with consistent styling) use TanStack Table headless APIs rendered through the shadcn table primitives in [src/components/ui/](src/components/ui/).
+- Define columns with `createColumnHelper` for type safety; don't index into rows by string keys at render time.
+
+### Dialogs, dropdowns, slots — `@radix-ui/*`
+- `@radix-ui/react-dialog`, `@radix-ui/react-dropdown-menu`, and `@radix-ui/react-slot` are consumed **through** their shadcn wrappers in [src/components/ui/](src/components/ui/) (`dialog.tsx`, `dropdown-menu.tsx`, etc.). Import from `@/components/ui/...`, not from `@radix-ui/...` directly, unless you are editing the wrapper itself.
+- `@radix-ui/react-slot` is the mechanism behind shadcn's `asChild` prop — use `asChild` to compose, don't reimplement the slot pattern.
+
+### Toasts — `sonner`
+- Mount `<Toaster />` from `sonner` once at the app root. Fire toasts with `toast.success(...)`, `toast.error(...)`, `toast.promise(...)`. Never build a custom toast/snackbar component.
+
+### Google OAuth — `@react-oauth/google`
+- Use `<GoogleOAuthProvider>` at the app root and the library's hooks/components for sign-in flows. Do not hand-roll the OAuth redirect or talk to Google's JS SDK directly.
+
+### Spreadsheets — `exceljs` and `xlsx`
+- **`xlsx` (SheetJS) for reading** user-uploaded spreadsheets — parsing rows from `.xlsx` / `.csv` uploads in bulk-import flows.
+- **`exceljs` for writing** generated exports — when the output needs styling, column widths, multiple sheets, or formulas.
+- If you only need to emit a plain CSV with no styling, `xlsx` is also fine for the write side. Don't add a third spreadsheet library.
+
 ## Single source of truth: design tokens
 
 All colors, radii, and surface treatments live as CSS variables in [src/index.css](src/index.css). This is the **only** file where raw color values, hex codes, or oklch values should appear.
@@ -30,7 +69,13 @@ All colors, radii, and surface treatments live as CSS variables in [src/index.cs
 - The app is wrapped in `<ThemeProvider>` ([src/components/theme-provider.tsx](src/components/theme-provider.tsx)) in [src/main.tsx](src/main.tsx). Default is `system`, persisted to `localStorage` under `nucleus-ui-theme`.
 - Read/set theme via `useTheme()`. Never read `localStorage` or `prefers-color-scheme` directly from a component.
 - Dark-mode variants use the `dark:` prefix (which targets the `.dark` class on `<html>` set by `ThemeProvider`). Never write a separate `@media (prefers-color-scheme: dark)` block — the provider already mirrors system preference.
-- Every new surface must look correct in both themes. If a token doesn't exist for what you need, add it to both `:root` AND `.dark` — never only one.
+
+### Where dark mode applies
+
+- **Dark mode is available ONLY on the student/parent portal** (`app.*` subdomain — `member` variant from [src/lib/subdomain.ts](src/lib/subdomain.ts)).
+- **The employee portal** (`employee.*` subdomain) is **light-only**. Do not render `<ThemeToggle />` on employee screens, and do not rely on `dark:` variants to look correct there — the employee app must be designed for light theme only.
+- For shared components used by both portals, `dark:` variants are still allowed — they simply won't trigger when the component renders inside the employee variant (which forces light).
+- New tokens must still be defined in both `:root` AND `.dark` so the member portal stays correct — never only one.
 
 ## Responsive rules
 
