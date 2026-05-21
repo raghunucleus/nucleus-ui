@@ -21,6 +21,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 import { ApiError } from '@/lib/api'
 import { studentLogout, studentMe, type StudentProfile } from '@/lib/student-auth'
+import { withGlobalLoader } from '@/stores/loader-store'
 
 export default function StudentHome({ onSignOut }: { onSignOut: () => void }) {
   const [profile, setProfile] = useState<StudentProfile | null>(null)
@@ -59,7 +60,7 @@ export default function StudentHome({ onSignOut }: { onSignOut: () => void }) {
     if (signingOut) return
     setSigningOut(true)
     try {
-      await studentLogout()
+      await withGlobalLoader(() => studentLogout(), 'Signing out…')
     } finally {
       onSignOut()
     }

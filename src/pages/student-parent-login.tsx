@@ -20,6 +20,7 @@ import {
   studentResetPassword,
   type LoginResult,
 } from '@/lib/student-auth'
+import { withGlobalLoader } from '@/stores/loader-store'
 
 // Google sign-in is shown only when an OAuth client id is configured.
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_OIDC_CLIENT_ID
@@ -214,7 +215,10 @@ function StudentLoginForm({
     setError(null)
     setSubmitting(true)
     try {
-      const result = await studentLogin(studentId.trim(), password)
+      const result = await withGlobalLoader(
+        () => studentLogin(studentId.trim(), password),
+        'Signing in…',
+      )
       onLoggedIn(result)
     } catch (err) {
       setError(toMessage(err))
@@ -230,8 +234,12 @@ function StudentLoginForm({
     }
     setError(null)
     setSubmitting(true)
+    const idToken = credential.credential
     try {
-      const result = await studentLoginWithGoogle(credential.credential)
+      const result = await withGlobalLoader(
+        () => studentLoginWithGoogle(idToken),
+        'Signing in…',
+      )
       onLoggedIn(result)
     } catch (err) {
       setError(toMessage(err))
@@ -342,10 +350,10 @@ function ChangePasswordForm({
 
     setSubmitting(true)
     try {
-      const tokens = await studentChangePassword(
-        accessToken,
-        currentPassword,
-        newPassword,
+      const tokens = await withGlobalLoader(
+        () =>
+          studentChangePassword(accessToken, currentPassword, newPassword),
+        'Updating password…',
       )
       storeTokens(tokens)
       onChanged()
@@ -432,7 +440,10 @@ function ForgotPasswordForm({
     setError(null)
     setSubmitting(true)
     try {
-      await studentForgotPassword(identifier.trim())
+      await withGlobalLoader(
+        () => studentForgotPassword(identifier.trim()),
+        'Sending reset link…',
+      )
       onSent()
     } catch (err) {
       setError(toMessage(err))
@@ -524,7 +535,10 @@ function ResetPasswordPanel({ token }: { token: string }) {
 
     setSubmitting(true)
     try {
-      await studentResetPassword(token, newPassword)
+      await withGlobalLoader(
+        () => studentResetPassword(token, newPassword),
+        'Updating password…',
+      )
       setDone(true)
     } catch (err) {
       setError(toMessage(err))
