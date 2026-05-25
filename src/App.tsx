@@ -1,36 +1,23 @@
-import { useState } from 'react'
+import { RouterProvider } from '@tanstack/react-router'
+
 import { detectAppVariant } from '@/lib/subdomain'
 import EmployeeLogin from '@/pages/employee-login'
 import StudentParentLogin from '@/pages/student-parent-login'
-import StudentHome from '@/pages/student-home'
-import { clearTokens, hasStoredSession } from '@/lib/student-auth'
+import { router } from '@/router'
+import { useAuthStore } from '@/stores/auth-store'
 
 function App() {
   if (detectAppVariant() === 'employee') return <EmployeeLogin />
   return <StudentPortal />
 }
 
-/** Student/parent portal: the dashboard when signed in, the login flow otherwise. */
+/** Student/parent portal: the routed app when signed in, the login flow otherwise. */
 function StudentPortal() {
-  const [authed, setAuthed] = useState(
-    // A password-reset link must reach the login flow even if tokens linger.
-    () =>
-      hasStoredSession() &&
-      !new URLSearchParams(window.location.search).has('reset-token'),
-  )
+  const authed = useAuthStore((state) => state.authed)
+  const signIn = useAuthStore((state) => state.signIn)
 
-  if (authed) {
-    return (
-      <StudentHome
-        onSignOut={() => {
-          clearTokens()
-          setAuthed(false)
-        }}
-      />
-    )
-  }
-
-  return <StudentParentLogin onAuthenticated={() => setAuthed(true)} />
+  if (authed) return <RouterProvider router={router} />
+  return <StudentParentLogin onAuthenticated={signIn} />
 }
 
 export default App

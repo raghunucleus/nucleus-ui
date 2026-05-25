@@ -5,6 +5,25 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Nucleus</title>
+    <script>
+      // Apply the saved theme before the first paint, so the boot splash and
+      // the app render in the correct theme on refresh (no flash of light).
+      // Mirrors ThemeProvider: storageKey "nucleus-ui-theme", default "system".
+      (function () {
+        try {
+          var t = localStorage.getItem('nucleus-ui-theme');
+          if (
+            t === 'dark' ||
+            ((!t || t === 'system') &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          ) {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {
+          /* localStorage unavailable — fall back to the light splash. */
+        }
+      })();
+    </script>
     <style>
       /* Boot splash — shows immediately on load/refresh until the JS bundle
          downloads and React mounts (the first render replaces #root's
@@ -112,6 +131,22 @@
       @keyframes nucleus-splash-sweep {
         from { transform: translateX(-100%); }
         to { transform: translateX(180%); }
+      }
+
+      /* Dark theme — the inline script above sets `.dark` on <html> before
+         this splash paints. Values mirror the dark brand tokens in
+         src/index.css (--background, --foreground, --muted-foreground). */
+      .dark .nucleus-splash {
+        background: #09090b;
+      }
+      .dark .nucleus-splash__title {
+        color: #fafafa;
+      }
+      .dark .nucleus-splash__hint {
+        color: #a1a1aa;
+      }
+      .dark .nucleus-splash__bar {
+        background: rgba(255, 255, 255, 0.1);
       }
     </style>
   </head>

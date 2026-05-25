@@ -20,7 +20,9 @@
   --radius: 0.625rem;
 
   /* shadcn semantic tokens — light theme */
-  --background: oklch(1 0 0);
+  /* Canvas sits a touch below pure white so elevated surfaces (header,
+     cards, popovers) read as raised against it. */
+  --background: oklch(0.984 0.003 286.3);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.141 0.005 285.823);
@@ -38,6 +40,10 @@
   --muted-foreground: oklch(0.552 0.016 285.938);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
+  --success: oklch(0.55 0.13 152);
+  --success-foreground: oklch(0.985 0 0);
+  --warning: oklch(0.62 0.14 65);
+  --warning-foreground: oklch(0.21 0.006 285.885);
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
   --ring: var(--brand-primary);
@@ -47,6 +53,18 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
+
+  /* Icon accent palette — one hue per module. A deliberately harmonious
+     family: similar lightness & chroma, hues spread around the wheel. */
+  --icon-violet: oklch(0.585 0.2 295);
+  --icon-blue: oklch(0.58 0.16 256);
+  --icon-emerald: oklch(0.62 0.14 162);
+  --icon-amber: oklch(0.72 0.155 72);
+  --icon-rose: oklch(0.62 0.21 12);
+  --icon-cyan: oklch(0.64 0.115 213);
+  --icon-orange: oklch(0.67 0.175 48);
+  /* Near-white foreground for an icon sitting on a vivid color. */
+  --icon-on: oklch(0.99 0 0);
 
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.141 0.005 285.823);
@@ -94,6 +112,10 @@
   --muted-foreground: oklch(0.705 0.015 286.067);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
+  --success: oklch(0.72 0.16 156);
+  --success-foreground: oklch(0.21 0.006 285.885);
+  --warning: oklch(0.8 0.15 78);
+  --warning-foreground: oklch(0.21 0.006 285.885);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: var(--brand-primary);
@@ -103,6 +125,15 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
+
+  /* Icon accent palette — lifted in lightness for legibility on dark surfaces. */
+  --icon-violet: oklch(0.68 0.19 295);
+  --icon-blue: oklch(0.68 0.15 256);
+  --icon-emerald: oklch(0.72 0.145 162);
+  --icon-amber: oklch(0.82 0.15 78);
+  --icon-rose: oklch(0.7 0.19 12);
+  --icon-cyan: oklch(0.74 0.11 213);
+  --icon-orange: oklch(0.75 0.16 48);
 
   --sidebar: oklch(0.21 0.006 285.885);
   --sidebar-foreground: oklch(0.985 0 0);
@@ -133,6 +164,10 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -142,6 +177,15 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  --color-icon-violet: var(--icon-violet);
+  --color-icon-blue: var(--icon-blue);
+  --color-icon-emerald: var(--icon-emerald);
+  --color-icon-amber: var(--icon-amber);
+  --color-icon-rose: var(--icon-rose);
+  --color-icon-cyan: var(--icon-cyan);
+  --color-icon-orange: var(--icon-orange);
+  --color-icon-on: var(--icon-on);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
