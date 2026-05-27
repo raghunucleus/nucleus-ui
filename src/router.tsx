@@ -6,6 +6,7 @@ import {
 
 import { PortalLayout } from '@/components/portal-layout'
 import StudentHome from '@/pages/student-home'
+import NotFound from '@/pages/not-found'
 import Profile from '@/pages/profile'
 import Timetable from '@/pages/timetable'
 import Attendance from '@/pages/attendance'
@@ -60,7 +61,10 @@ const routeTree = rootRoute.addChildren([
   feesRoute,
 ])
 
-export const router = createRouter({ routeTree })
+export const router = createRouter({
+  routeTree,
+  defaultNotFoundComponent: NotFound,
+})
 
 declare module '@tanstack/react-router' {
   interface Register {

@@ -1,18 +1,56 @@
-import { useEffect } from 'react'
-import { ArrowRight, GraduationCap } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ArrowRight, Eye, EyeOff, GraduationCap } from 'lucide-react'
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BrandPanel } from '@/components/auth/brand-panel'
-import { GoogleButton } from '@/components/auth/google-button'
-import { PasswordField } from '@/components/auth/password-field'
+import { cn } from '@/lib/utils'
+import { ApiError } from '@/lib/api'
+import {
+  employeeChangePassword,
+  employeeForgotPassword,
+  employeeLogin,
+  employeeLoginWithGoogle,
+  employeeResetPassword,
+  storeEmployeeTokens,
+  clearEmployeeTokens,
+  type EmployeeLoginResult,
+} from '@/lib/employee-auth'
+import { withGlobalLoader } from '@/stores/loader-store'
 
-export default function EmployeeLogin() {
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_OIDC_CLIENT_ID
+
+export default function EmployeeLogin({
+  onAuthenticated,
+}: {
+  onAuthenticated: () => void
+}) {
+  const [resetToken] = useState(() =>
+    new URLSearchParams(window.location.search).get('reset-token'),
+  )
+
   useEffect(() => {
     document.title = 'Employee sign in — Nucleus'
   }, [])
 
+  if (resetToken) {
+    return (
+      <PageShell>
+        <ResetPasswordPanel token={resetToken} />
+      </PageShell>
+    )
+  }
+
+  return (
+    <PageShell>
+      <EmployeeSection onAuthenticated={onAuthenticated} />
+    </PageShell>
+  )
+}
+
+function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-svh bg-background text-foreground">
       <BrandPanel variant="employee" />
@@ -22,62 +60,589 @@ export default function EmployeeLogin() {
           <div className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground">
             <GraduationCap className="size-5" />
           </div>
-          <span className="text-base font-semibold tracking-tight">Nucleus</span>
+          <span className="text-base font-semibold tracking-tight">
+            Nucleus
+          </span>
         </div>
 
         <div className="flex flex-1 items-center justify-center py-10">
-          <div className="w-full max-w-sm space-y-8">
-            <header className="space-y-2">
-              <p className="text-xs font-medium uppercase tracking-wider text-primary">
-                Faculty &amp; staff
-              </p>
-              <h2 className="text-3xl font-semibold tracking-tight">Welcome back</h2>
-              <p className="text-sm text-muted-foreground">
-                Sign in with your employee credentials to continue.
-              </p>
-            </header>
-
-            <form className="space-y-5" onSubmit={(event) => event.preventDefault()}>
-              <div className="space-y-2">
-                <Label htmlFor="empcode">Employee code</Label>
-                <Input
-                  id="empcode"
-                  name="empcode"
-                  placeholder="e.g. EMP1042"
-                  autoComplete="username"
-                  autoFocus
-                  required
-                />
-              </div>
-
-              <PasswordField forgotHref="#" />
-
-              <Button type="submit" size="lg" className="w-full">
-                Sign in
-                <ArrowRight />
-              </Button>
-            </form>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase tracking-wider">
-                <span className="bg-background px-3 text-muted-foreground">or</span>
-              </div>
-            </div>
-
-            <GoogleButton />
-
-            <p className="text-center text-xs text-muted-foreground">
-              Trouble signing in?{' '}
-              <a href="#" className="font-medium text-foreground hover:underline">
-                Contact IT support
-              </a>
-            </p>
-          </div>
+          <div className="w-full max-w-sm space-y-8">{children}</div>
         </div>
       </main>
     </div>
   )
+}
+
+// ---------------------------------------------------------------------------
+// Sign-in flow (mirrors the student variant, adapted to emp_code)
+// ---------------------------------------------------------------------------
+
+type Mode = 'login' | 'forgot' | 'forgot-sent' | 'change'
+
+function EmployeeSection({ onAuthenticated }: { onAuthenticated: () => void }) {
+  const [mode, setMode] = useState<Mode>('login')
+  const [session, setSession] = useState<EmployeeLoginResult | null>(null)
+
+  if (mode === 'change' && session) {
+    return (
+      <ChangePasswordForm
+        accessToken={session.accessToken}
+        onChanged={onAuthenticated}
+        onCancel={() => {
+          clearEmployeeTokens()
+          setSession(null)
+          setMode('login')
+        }}
+      />
+    )
+  }
+
+  if (mode === 'forgot') {
+    return (
+      <ForgotPasswordForm
+        onSent={() => setMode('forgot-sent')}
+        onBack={() => setMode('login')}
+      />
+    )
+  }
+
+  if (mode === 'forgot-sent') {
+    return <ForgotSentPanel onBack={() => setMode('login')} />
+  }
+
+  return (
+    <EmployeeLoginForm
+      onForgot={() => setMode('forgot')}
+      onLoggedIn={(result) => {
+        storeEmployeeTokens(result)
+        if (result.mustChangePassword) {
+          setSession(result)
+          setMode('change')
+        } else {
+          onAuthenticated()
+        }
+      }}
+    />
+  )
+}
+
+function EmployeeLoginForm({
+  onForgot,
+  onLoggedIn,
+}: {
+  onForgot: () => void
+  onLoggedIn: (result: EmployeeLoginResult) => void
+}) {
+  const [empCode, setEmpCode] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(event: { preventDefault: () => void }) {
+    event.preventDefault()
+    if (submitting) return
+    setError(null)
+    setSubmitting(true)
+    try {
+      const result = await withGlobalLoader(
+        () => employeeLogin(empCode.trim(), password),
+        'Signing in…',
+      )
+      onLoggedIn(result)
+    } catch (err) {
+      setError(toMessage(err))
+      setSubmitting(false)
+    }
+  }
+
+  async function handleGoogleSuccess(credential: CredentialResponse) {
+    if (submitting) return
+    if (!credential.credential) {
+      setError('Google sign-in did not return a credential. Please try again.')
+      return
+    }
+    setError(null)
+    setSubmitting(true)
+    const idToken = credential.credential
+    try {
+      const result = await withGlobalLoader(
+        () => employeeLoginWithGoogle(idToken),
+        'Signing in…',
+      )
+      onLoggedIn(result)
+    } catch (err) {
+      setError(toMessage(err))
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <header className="space-y-2">
+        <p className="text-xs font-medium uppercase tracking-wider text-primary">
+          Faculty &amp; staff
+        </p>
+        <h2 className="text-3xl font-semibold tracking-tight">Welcome back</h2>
+        <p className="text-sm text-muted-foreground">
+          Sign in with your employee credentials to continue.
+        </p>
+      </header>
+
+      <form className="space-y-5" onSubmit={handleSubmit}>
+        {error && <FormError message={error} />}
+
+        <div className="space-y-2">
+          <Label htmlFor="emp-code">Employee code</Label>
+          <Input
+            id="emp-code"
+            name="emp-code"
+            placeholder="e.g. EMP1042"
+            autoComplete="username"
+            autoFocus
+            required
+            value={empCode}
+            onChange={(e) => setEmpCode(e.target.value)}
+          />
+        </div>
+
+        <PasswordInput
+          id="password"
+          label="Password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+          onForgot={onForgot}
+        />
+
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          disabled={submitting}
+        >
+          {submitting ? 'Signing in…' : 'Sign in'}
+          {!submitting && <ArrowRight />}
+        </Button>
+      </form>
+
+      {GOOGLE_CLIENT_ID && (
+        <>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase tracking-wider">
+              <span className="bg-background px-3 text-muted-foreground">
+                or
+              </span>
+            </div>
+          </div>
+
+          <div
+            className="flex justify-center"
+            aria-busy={submitting}
+            aria-disabled={submitting}
+          >
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() =>
+                setError('Google sign-in failed. Please try again.')
+              }
+              useOneTap={false}
+              theme="outline"
+              size="large"
+              text="signin_with"
+              width="320"
+            />
+          </div>
+        </>
+      )}
+
+      <p className="text-center text-xs text-muted-foreground">
+        Trouble signing in?{' '}
+        <a href="#" className="font-medium text-foreground hover:underline">
+          Contact IT support
+        </a>
+      </p>
+    </div>
+  )
+}
+
+function ChangePasswordForm({
+  accessToken,
+  onChanged,
+  onCancel,
+}: {
+  accessToken: string
+  onChanged: () => void
+  onCancel: () => void
+}) {
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(event: { preventDefault: () => void }) {
+    event.preventDefault()
+    if (submitting) return
+    setError(null)
+
+    const policyError = validateNewPassword(newPassword)
+    if (policyError) return setError(policyError)
+    if (newPassword !== confirmPassword) {
+      return setError('The new passwords do not match.')
+    }
+
+    setSubmitting(true)
+    try {
+      const tokens = await withGlobalLoader(
+        () => employeeChangePassword(accessToken, currentPassword, newPassword),
+        'Updating password…',
+      )
+      storeEmployeeTokens(tokens)
+      onChanged()
+    } catch (err) {
+      setError(toMessage(err))
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="space-y-5" onSubmit={handleSubmit}>
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Set a new password
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          You are signed in with a temporary password. Choose a new one to
+          continue.
+        </p>
+      </header>
+
+      {error && <FormError message={error} />}
+
+      <PasswordInput
+        id="current-password"
+        label="Temporary password"
+        value={currentPassword}
+        onChange={setCurrentPassword}
+        autoComplete="current-password"
+        autoFocus
+      />
+      <PasswordInput
+        id="new-password"
+        label="New password"
+        value={newPassword}
+        onChange={setNewPassword}
+        autoComplete="new-password"
+      />
+      <PasswordInput
+        id="confirm-password"
+        label="Confirm new password"
+        value={confirmPassword}
+        onChange={setConfirmPassword}
+        autoComplete="new-password"
+      />
+
+      <PasswordHint />
+
+      <div className="space-y-3">
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          disabled={submitting}
+        >
+          {submitting ? 'Saving…' : 'Save and continue'}
+        </Button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground"
+        >
+          Cancel and sign out
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function ForgotPasswordForm({
+  onSent,
+  onBack,
+}: {
+  onSent: () => void
+  onBack: () => void
+}) {
+  const [identifier, setIdentifier] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(event: { preventDefault: () => void }) {
+    event.preventDefault()
+    if (submitting) return
+    setError(null)
+    setSubmitting(true)
+    try {
+      await withGlobalLoader(
+        () => employeeForgotPassword(identifier.trim()),
+        'Sending reset link…',
+      )
+      onSent()
+    } catch (err) {
+      setError(toMessage(err))
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="space-y-5" onSubmit={handleSubmit}>
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Reset your password
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Enter your employee code or registered email. We&rsquo;ll send a reset
+          link to the email on file.
+        </p>
+      </header>
+
+      {error && <FormError message={error} />}
+
+      <div className="space-y-2">
+        <Label htmlFor="identifier">Employee code or email</Label>
+        <Input
+          id="identifier"
+          name="identifier"
+          placeholder="EMP1042 or you@example.com"
+          autoComplete="username"
+          autoFocus
+          required
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          disabled={submitting}
+        >
+          {submitting ? 'Sending…' : 'Send reset link'}
+        </Button>
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground"
+        >
+          Back to sign in
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function ForgotSentPanel({ onBack }: { onBack: () => void }) {
+  return (
+    <div className="space-y-5 text-center">
+      <h2 className="text-2xl font-semibold tracking-tight">Check your email</h2>
+      <p className="text-sm text-muted-foreground">
+        If an account matches what you entered, a password-reset link is on its
+        way. The link expires shortly, so use it soon.
+      </p>
+      <Button type="button" size="lg" className="w-full" onClick={onBack}>
+        Back to sign in
+      </Button>
+    </div>
+  )
+}
+
+function ResetPasswordPanel({ token }: { token: string }) {
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState(false)
+
+  async function handleSubmit(event: { preventDefault: () => void }) {
+    event.preventDefault()
+    if (submitting) return
+    setError(null)
+
+    const policyError = validateNewPassword(newPassword)
+    if (policyError) return setError(policyError)
+    if (newPassword !== confirmPassword) {
+      return setError('The passwords do not match.')
+    }
+
+    setSubmitting(true)
+    try {
+      await withGlobalLoader(
+        () => employeeResetPassword(token, newPassword),
+        'Updating password…',
+      )
+      setDone(true)
+    } catch (err) {
+      setError(toMessage(err))
+      setSubmitting(false)
+    }
+  }
+
+  if (done) {
+    return (
+      <div className="space-y-5 text-center">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Password updated
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Your password has been changed. You can now sign in with it.
+        </p>
+        <Button
+          type="button"
+          size="lg"
+          className="w-full"
+          onClick={() => {
+            window.location.href = window.location.pathname
+          }}
+        >
+          Go to sign in
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <form className="space-y-5" onSubmit={handleSubmit}>
+      <header className="space-y-2">
+        <h2 className="text-3xl font-semibold tracking-tight">
+          Choose a new password
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Set a new password for your Nucleus employee account.
+        </p>
+      </header>
+
+      {error && <FormError message={error} />}
+
+      <PasswordInput
+        id="reset-new-password"
+        label="New password"
+        value={newPassword}
+        onChange={setNewPassword}
+        autoComplete="new-password"
+        autoFocus
+      />
+      <PasswordInput
+        id="reset-confirm-password"
+        label="Confirm new password"
+        value={confirmPassword}
+        onChange={setConfirmPassword}
+        autoComplete="new-password"
+      />
+
+      <PasswordHint />
+
+      <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+        {submitting ? 'Saving…' : 'Update password'}
+      </Button>
+    </form>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Small shared pieces
+// ---------------------------------------------------------------------------
+
+function PasswordInput({
+  id,
+  label,
+  value,
+  onChange,
+  autoComplete,
+  autoFocus,
+  onForgot,
+}: {
+  id: string
+  label: string
+  value: string
+  onChange: (next: string) => void
+  autoComplete: string
+  autoFocus?: boolean
+  onForgot?: () => void
+}) {
+  const [shown, setShown] = useState(false)
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label htmlFor={id}>{label}</Label>
+        {onForgot && (
+          <button
+            type="button"
+            onClick={onForgot}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            Forgot password?
+          </button>
+        )}
+      </div>
+      <div className="relative">
+        <Input
+          id={id}
+          type={shown ? 'text' : 'password'}
+          autoComplete={autoComplete}
+          autoFocus={autoFocus}
+          required
+          className={cn('pr-11')}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <button
+          type="button"
+          onClick={() => setShown((v) => !v)}
+          className="absolute inset-y-0 right-0 grid w-11 place-items-center text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
+          aria-label={shown ? 'Hide password' : 'Show password'}
+        >
+          {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PasswordHint() {
+  return (
+    <p className="text-xs text-muted-foreground">
+      Use at least 8 characters, including a letter and a number.
+    </p>
+  )
+}
+
+function FormError({ message }: { message: string }) {
+  return (
+    <p
+      role="alert"
+      className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600"
+    >
+      {message}
+    </p>
+  )
+}
+
+function validateNewPassword(password: string): string | null {
+  if (password.length < 8) return 'Password must be at least 8 characters.'
+  if (!/[A-Za-z]/.test(password)) {
+    return 'Password must contain at least one letter.'
+  }
+  if (!/\d/.test(password)) return 'Password must contain at least one number.'
+  return null
+}
+
+function toMessage(err: unknown): string {
+  if (err instanceof ApiError) return err.message
+  if (err instanceof Error && err.message) return err.message
+  return 'Something went wrong. Please try again.'
 }

@@ -12,9 +12,9 @@
    ============================================================================= */
 :root {
   /* Brand — light theme */
-  --brand-primary: #6366f1;     /* indigo-500 */
-  --brand-secondary: #8b5cf6;   /* violet-500 */
-  --brand-accent: #fbbf24;      /* amber-400 */
+  --brand-primary: #2563eb;     /* blue-600 */
+  --brand-secondary: #0ea5e9;   /* sky-500 — gradient partner for primary */
+  --brand-accent: #38bdf8;      /* sky-400 — lighter highlight in same family */
 
   /* Radius scale */
   --radius: 0.625rem;
@@ -75,11 +75,12 @@
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: var(--brand-primary);
 
-  /* Brand hero panel — stays dark in both themes for editorial contrast. */
-  --brand-panel: oklch(0.22 0.05 280);
+  /* Brand hero panel — stays dark in both themes for editorial contrast.
+     Hue shifted to ~245 (blue) to match the blue+white brand. */
+  --brand-panel: oklch(0.22 0.05 245);
   --brand-panel-foreground: oklch(0.99 0 0);
-  --brand-panel-accent: #a78bfa;
-  --brand-panel-glow: #fcd34d;
+  --brand-panel-accent: #60a5fa;   /* blue-400 */
+  --brand-panel-glow: #7dd3fc;     /* sky-300 */
 
   /* Third-party brand colors (exempt from theme switching). */
   --google-blue: #4285f4;
@@ -90,9 +91,9 @@
 
 .dark {
   /* Brand — dark theme (lighter shades for legibility on dark surfaces) */
-  --brand-primary: #818cf8;     /* indigo-400 */
-  --brand-secondary: #a78bfa;   /* violet-400 */
-  --brand-accent: #fcd34d;      /* amber-300 */
+  --brand-primary: #60a5fa;     /* blue-400 */
+  --brand-secondary: #38bdf8;   /* sky-400 */
+  --brand-accent: #7dd3fc;      /* sky-300 */
 
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.985 0 0);
@@ -210,6 +211,38 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Continuous gentle vertical float — used by the 404 digits and any
+     hero element that needs to feel "alive" without being distracting. */
+  --animate-bob: bob 3s ease-in-out infinite;
+}
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Themed, thin scrollbar that follows --border / --muted-foreground in
+   both light and dark mode, instead of falling back to the OS default
+   (which on Windows renders as a stark dark gutter on white cards). */
+@utility scrollbar-themed {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+  }
 }
 
 @layer base {
