@@ -4,6 +4,7 @@ import {
   CalendarDays,
   ClipboardCheck,
   CreditCard,
+  IdCard,
   Megaphone,
   UserRound,
   type LucideIcon,
@@ -11,6 +12,7 @@ import {
 
 /** Routes that have a live page today. */
 export type ModuleRoute =
+  | '/id-card'
   | '/profile'
   | '/timetable'
   | '/attendance'
@@ -72,6 +74,13 @@ export const MODULE_SOFT: Record<ModuleColor, string> = {
  * home-screen launcher grid and the app drawer.
  */
 export const MODULES: Module[] = [
+  {
+    icon: IdCard,
+    title: 'ID Card',
+    description: 'Your digital college ID with a scannable QR code.',
+    color: 'cyan',
+    to: '/id-card',
+  },
   {
     icon: UserRound,
     title: 'Profile',

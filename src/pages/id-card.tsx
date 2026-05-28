@@ -1,0 +1,274 @@
+import { useCallback, useEffect, useState } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
+import {
+  CircleAlert,
+  IdCard as IdCardIcon,
+  RefreshCw,
+  ScanLine,
+} from 'lucide-react'
+
+import { PageHeader } from '@/components/portal-layout'
+import { Button } from '@/components/ui/button'
+import { ApiError } from '@/lib/api'
+import { studentIdCard, type IdCard } from '@/lib/student-id-card'
+import { useAuthStore } from '@/stores/auth-store'
+
+export default function IdCardPage() {
+  const signOut = useAuthStore((state) => state.signOut)
+  const [card, setCard] = useState<IdCard | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    document.title = 'ID Card — Nucleus'
+  }, [])
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      setCard(await studentIdCard())
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        signOut()
+        return
+      }
+      setError(
+        err instanceof Error ? err.message : 'Could not load your ID card.',
+      )
+    } finally {
+      setLoading(false)
+    }
+  }, [signOut])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  return (
+    <>
+      <PageHeader
+        title="ID Card"
+        subtitle="Your digital college identity card."
+        icon={IdCardIcon}
+        accent="violet"
+      />
+      {loading ? (
+        <CardSkeleton />
+      ) : error ? (
+        <ErrorState message={error} onRetry={() => void load()} />
+      ) : card ? (
+        <IdentityCard card={card} />
+      ) : null}
+    </>
+  )
+}
+
+function IdentityCard({ card }: { card: IdCard }) {
+  const { student, institution, programme, department, semester, section } = card
+
+  return (
+    <section className="mx-auto max-w-md overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm">
+      {/* College header band */}
+      <div className="flex items-center gap-3 bg-gradient-to-br from-primary to-secondary p-4 text-primary-foreground">
+        {institution.logo_url ? (
+          <img
+            src={institution.logo_url}
+            alt=""
+            className="size-12 shrink-0 rounded-md bg-white/10 object-contain"
+          />
+        ) : null}
+        <div className="min-w-0">
+          <h2 className="truncate text-base font-bold leading-tight">
+            {institution.name}
+          </h2>
+          {institution.affiliation_code ? (
+            <p className="truncate text-[11px] text-primary-foreground/80">
+              {institution.affiliation_code}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Photo + identity */}
+      <div className="flex gap-4 p-5">
+        <StudentPhoto name={student.display_name} photoUrl={student.photo_url} />
+        <div className="min-w-0 flex-1 space-y-1.5 self-center">
+          <h3 className="text-lg font-semibold leading-tight">
+            {student.display_name}
+          </h3>
+          <span className="inline-block rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-medium text-primary">
+            {student.student_id}
+          </span>
+          {programme ? (
+            <p className="text-sm text-muted-foreground">
+              {programme.name}
+              {department ? ` · ${department.short_name}` : ''}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Detail grid */}
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t px-5 py-5">
+        <Field label="Programme" value={programme?.code} />
+        <Field label="Department" value={department?.short_name} />
+        <Field
+          label="Semester"
+          value={semester ? `Sem ${semester.roman_format}` : null}
+        />
+        <Field label="Section" value={section?.code} />
+        <Field label="Admission" value={card.admission_year?.display_year} />
+        <Field label="Blood group" value={student.blood_group} />
+        <Field label="Date of birth" value={formatDate(student.dob)} />
+        <Field label="Mobile" value={student.mobile_number} />
+      </dl>
+
+      {/* QR */}
+      <div className="flex flex-col items-center gap-2 border-t bg-muted/40 px-5 py-6">
+        <div className="rounded-xl bg-white p-3 shadow-sm">
+          <QRCodeSVG value={card.qr_token} size={150} level="M" />
+        </div>
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <ScanLine className="size-3.5" />
+          Scan to verify · {student.student_id}
+        </p>
+        {card.valid_until ? (
+          <p className="text-xs text-muted-foreground">
+            Valid until {formatValidUntil(card.valid_until)}
+          </p>
+        ) : null}
+      </div>
+
+      {institution.card_footer_note ? (
+        <p className="border-t px-5 py-3 text-center text-xs text-muted-foreground">
+          {institution.card_footer_note}
+        </p>
+      ) : null}
+    </section>
+  )
+}
+
+/**
+ * Photo slot with graceful degradation: render the photo when a URL is present
+ * and loads, but fall back to an initials avatar when there's no photo OR the
+ * image fails to load (e.g. a presigned URL expired / the object is gone). No
+ * broken-image icon ever shows.
+ */
+function StudentPhoto({
+  name,
+  photoUrl,
+}: {
+  name: string
+  photoUrl: string | null
+}) {
+  const [errored, setErrored] = useState(false)
+  const showPhoto = !!photoUrl && !errored
+
+  if (showPhoto) {
+    return (
+      <img
+        src={photoUrl}
+        alt={name}
+        onError={() => setErrored(true)}
+        className="h-28 w-24 shrink-0 rounded-lg border bg-muted object-cover"
+      />
+    )
+  }
+
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .map((part) => part[0] ?? '')
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+
+  return (
+    <div className="grid h-28 w-24 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-secondary text-2xl font-semibold text-primary-foreground shadow-md shadow-primary/30">
+      {initials || '—'}
+    </div>
+  )
+}
+
+function Field({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="mt-0.5 break-words text-sm font-medium">{value || '—'}</dd>
+    </div>
+  )
+}
+
+/** Formats an ISO date (YYYY-MM-DD) without a timezone shift. */
+function formatDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  if (!match) return value || '—'
+  const [, year, month, day] = match
+  return new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+  ).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+function formatValidUntil(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  if (!match) return value
+  const [, year, month, day] = match
+  return new Date(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+  ).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+}
+
+function CardSkeleton() {
+  return (
+    <div className="mx-auto max-w-md overflow-hidden rounded-2xl border bg-card">
+      <div className="h-20 animate-pulse bg-muted" />
+      <div className="flex gap-4 p-5">
+        <div className="h-28 w-24 shrink-0 animate-pulse rounded-lg bg-muted" />
+        <div className="flex-1 space-y-2">
+          <div className="h-5 w-40 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4 border-t p-5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-9 animate-pulse rounded bg-muted" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ErrorState({
+  message,
+  onRetry,
+}: {
+  message: string
+  onRetry: () => void
+}) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
+      <div className="grid size-12 place-items-center rounded-full bg-destructive/10 text-destructive">
+        <CircleAlert className="size-6" />
+      </div>
+      <div className="space-y-1">
+        <h2 className="text-sm font-semibold">Couldn&rsquo;t load your ID card</h2>
+        <p className="max-w-sm text-xs text-muted-foreground">{message}</p>
+      </div>
+      <Button size="sm" onClick={onRetry}>
+        <RefreshCw />
+        Try again
+      </Button>
+    </div>
+  )
+}

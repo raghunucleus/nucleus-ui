@@ -7,6 +7,7 @@ import {
 import { PortalLayout } from '@/components/portal-layout'
 import StudentHome from '@/pages/student-home'
 import NotFound from '@/pages/not-found'
+import IdCard from '@/pages/id-card'
 import Profile from '@/pages/profile'
 import Timetable from '@/pages/timetable'
 import Attendance from '@/pages/attendance'
@@ -21,6 +22,12 @@ const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: StudentHome,
+})
+
+const idCardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/id-card',
+  component: IdCard,
 })
 
 const profileRoute = createRoute({
@@ -61,6 +68,7 @@ const feesRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
+  idCardRoute,
   profileRoute,
   timetableRoute,
   attendanceRoute,
