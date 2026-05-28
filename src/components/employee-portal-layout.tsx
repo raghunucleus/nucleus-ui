@@ -151,6 +151,17 @@ export function EmployeePortalLayout() {
     )
   }, [sidebarCollapsed])
 
+  // Tag <body> while the employee portal is mounted so portal-rendered
+  // chrome (sheet overlays, dropdowns, etc.) can scope employee-only
+  // overrides in CSS without touching the shared primitives. Cleaned up
+  // on unmount so the student app on the same domain keeps defaults.
+  useEffect(() => {
+    document.body.dataset.portal = 'employee'
+    return () => {
+      delete document.body.dataset.portal
+    }
+  }, [])
+
   useEffect(() => {
     let alive = true
     void (async () => {
@@ -297,7 +308,7 @@ export function EmployeePortalLayout() {
             </div>
           </header>
 
-          <main className="min-w-0 flex-1 overflow-auto px-4 py-8 sm:px-6">
+          <main className="scrollbar-themed min-w-0 flex-1 overflow-auto px-4 py-8 sm:px-6">
             <Outlet />
           </main>
         </div>

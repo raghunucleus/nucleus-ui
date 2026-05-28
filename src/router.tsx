@@ -10,6 +10,7 @@ import NotFound from '@/pages/not-found'
 import Profile from '@/pages/profile'
 import Timetable from '@/pages/timetable'
 import Attendance from '@/pages/attendance'
+import AttendanceSubject from '@/pages/attendance-subject'
 import ExamMarks from '@/pages/exam-marks'
 import Fees from '@/pages/fees'
 
@@ -40,6 +41,12 @@ const attendanceRoute = createRoute({
   component: Attendance,
 })
 
+const attendanceSubjectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/attendance/$subjectId',
+  component: AttendanceSubject,
+})
+
 const examMarksRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/exam-marks',
@@ -57,6 +64,7 @@ const routeTree = rootRoute.addChildren([
   profileRoute,
   timetableRoute,
   attendanceRoute,
+  attendanceSubjectRoute,
   examMarksRoute,
   feesRoute,
 ])

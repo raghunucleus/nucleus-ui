@@ -111,6 +111,8 @@ export function PageHeader({
   subtitle,
   icon: Icon,
   accent,
+  backTo = '/',
+  backLabel = 'Back to dashboard',
 }: {
   title: string
   subtitle?: string
@@ -118,15 +120,19 @@ export function PageHeader({
   icon?: LucideIcon
   /** Accent hue for the icon badge — usually the page's module color. */
   accent?: ModuleColor
+  /** Where the back link points. Defaults to the dashboard. */
+  backTo?: string
+  /** Override label for the back link. */
+  backLabel?: string
 }) {
   return (
     <div className="space-y-3">
       <Link
-        to="/"
+        to={backTo}
         className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
-        Back to dashboard
+        {backLabel}
       </Link>
       <div className="flex items-center gap-3.5">
         {Icon && accent ? (

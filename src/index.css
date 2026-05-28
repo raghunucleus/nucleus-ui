@@ -215,11 +215,53 @@
   /* Continuous gentle vertical float — used by the 404 digits and any
      hero element that needs to feel "alive" without being distracting. */
   --animate-bob: bob 3s ease-in-out infinite;
+
+  /* Slower variant for empty-state illustrations — calmer than bob. */
+  --animate-float: bob 4.5s ease-in-out infinite;
+
+  /* Twinkle — opacity + scale pulse for sparkle/sun icons in empty states. */
+  --animate-twinkle: twinkle 2.2s ease-in-out infinite;
+
+  /* Sweeping light band for loading skeletons. The transform on a child
+     pseudo-element animates from -100% to 100% so the gradient moves across
+     the placeholder once every cycle. Pair with the `.shimmer` utility below. */
+  --animate-shimmer: shimmer 1.6s linear infinite;
 }
 
 @keyframes bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
+}
+
+@keyframes twinkle {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.18); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* Drop-in shimmer placeholder. Apply to a block with a defined height/width
+   and a `bg-muted/60` background — the pseudo-element sweeps a soft band
+   across it. Themed for both light and dark via the alpha-tinted gradient. */
+@utility shimmer {
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--foreground) 8%, transparent) 50%,
+      transparent 100%
+    );
+    animation: var(--animate-shimmer);
+  }
 }
 
 /* Themed, thin scrollbar that follows --border / --muted-foreground in
@@ -260,4 +302,27 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+}
+
+/* -----------------------------------------------------------------------------
+   Employee portal — sheet overlay tuning.
+
+   The shared SheetOverlay defaults to `bg-background/80 backdrop-blur-sm`,
+   which in light mode reads as a near-opaque white wash over the page —
+   the dialog feels detached from a "blank" screen instead of floating
+   over context. Inside the employee portal we replace that with a
+   neutral dark scrim + stronger blur so the page stays visibly present
+   (just dimmed), giving the sheet a clear "raised above" feel.
+
+   Scoped to `body[data-portal="employee"]` so the student app on the
+   same domain (and any other portals) keep the shared default. The body
+   attribute is toggled by EmployeePortalLayout's mount/unmount effect.
+   ---------------------------------------------------------------------------- */
+body[data-portal="employee"] [data-slot="sheet-overlay"] {
+  background-color: rgb(15 23 42 / 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.dark body[data-portal="employee"] [data-slot="sheet-overlay"] {
+  background-color: rgb(2 6 23 / 0.55);
 }

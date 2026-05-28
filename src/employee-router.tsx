@@ -6,7 +6,13 @@ import {
 
 import { EmployeePortalLayout } from '@/components/employee-portal-layout'
 import NotFound from '@/pages/not-found'
+import EmployeeAttendanceHistoryPage from '@/pages/employee/attendance-history'
+import EmployeeAttendanceMarkPage from '@/pages/employee/attendance-mark'
+import EmployeeAttendanceMarkSessionPage from '@/pages/employee/attendance-mark-session'
 import EmployeeHome from '@/pages/employee/home'
+import EmployeeInchargeSchedulePage from '@/pages/employee/incharge-schedule'
+import EmployeeInchargeTemplateDetailPage from '@/pages/employee/incharge-template-detail'
+import EmployeeInchargeTemplatesPage from '@/pages/employee/incharge-templates'
 import EmployeeProfilePage, {
   type EmployeeProfileSection,
 } from '@/pages/employee/profile'
@@ -30,10 +36,46 @@ const homeRoute = createRoute({
   component: EmployeeHome,
 })
 
-const academicsTimetableRoute = createRoute({
+const timetableRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/academics/timetable',
+  path: '/timetable',
   component: EmployeeTimetablePage,
+})
+
+const attendanceMarkRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/attendance/mark',
+  component: EmployeeAttendanceMarkPage,
+})
+
+const attendanceMarkSessionRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/attendance/mark/$sessionId',
+  component: EmployeeAttendanceMarkSessionPage,
+})
+
+const attendanceHistoryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/attendance/history',
+  component: EmployeeAttendanceHistoryPage,
+})
+
+const inchargeTemplatesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/timetable/incharge/templates',
+  component: EmployeeInchargeTemplatesPage,
+})
+
+const inchargeTemplateDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/timetable/incharge/templates/$timetableId',
+  component: EmployeeInchargeTemplateDetailPage,
+})
+
+const inchargeScheduleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/timetable/incharge/schedule',
+  component: EmployeeInchargeSchedulePage,
 })
 
 const profileRoute = createRoute({
@@ -50,7 +92,13 @@ const profileRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
-  academicsTimetableRoute,
+  timetableRoute,
+  attendanceMarkRoute,
+  attendanceMarkSessionRoute,
+  attendanceHistoryRoute,
+  inchargeTemplatesRoute,
+  inchargeTemplateDetailRoute,
+  inchargeScheduleRoute,
   profileRoute,
 ])
 

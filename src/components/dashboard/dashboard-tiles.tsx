@@ -12,20 +12,25 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { ModuleTile } from '@/components/module-tile'
 import { Progress } from '@/components/ui/progress'
+import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import {
   FEE_DUES,
   attendanceStanding,
-  attendanceTotals,
   cgpa,
   feeTotals,
   formatDate,
   formatINR,
 } from '@/lib/academics-mock'
+import {
+  fetchStudentAttendanceDashboard,
+  type DashboardResult,
+} from '@/lib/student-academics'
+import { useAuthStore } from '@/stores/auth-store'
 import {
   BIRTHDAYS,
   CAMPUS_EVENTS,
@@ -176,7 +181,35 @@ function PanelTile({
 // --- stat tiles -------------------------------------------------------------
 
 export function AttendanceTile({ className }: { className?: string }) {
-  const { percent } = attendanceTotals()
+  const signOut = useAuthStore((state) => state.signOut)
+  const [data, setData] = useState<DashboardResult | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    fetchStudentAttendanceDashboard()
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (err instanceof ApiError && err.status === 401) {
+          signOut()
+          return
+        }
+        setFailed(true)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [signOut])
+
+  const percent = data?.overall_pct ?? 0
   const standing = attendanceStanding(percent)
   const bar =
     standing === 'good'
@@ -184,12 +217,15 @@ export function AttendanceTile({ className }: { className?: string }) {
       : standing === 'warning'
         ? 'bg-warning'
         : 'bg-destructive'
-  const note =
-    standing === 'good'
-      ? 'Comfortably above the 75% minimum'
-      : standing === 'warning'
-        ? 'Getting close to the 75% line'
-        : 'Below the 75% requirement'
+  const note = failed
+    ? "Couldn't load attendance"
+    : !data || data.overall_held === 0
+      ? 'No classes held yet'
+      : standing === 'good'
+        ? 'Comfortably above the 75% minimum'
+        : standing === 'warning'
+          ? 'Getting close to the 75% line'
+          : 'Below the 75% requirement'
 
   return (
     <StatTile
@@ -200,8 +236,16 @@ export function AttendanceTile({ className }: { className?: string }) {
       className={className}
     >
       <p className="mt-4 text-3xl font-bold tabular-nums">
-        {percent}
-        <span className="text-lg font-semibold text-muted-foreground">%</span>
+        {loading ? (
+          <span className="inline-block h-9 w-16 animate-pulse rounded bg-muted/70 align-middle" />
+        ) : (
+          <>
+            {percent.toFixed(1)}
+            <span className="text-lg font-semibold text-muted-foreground">
+              %
+            </span>
+          </>
+        )}
       </p>
       <Progress value={percent} indicatorClassName={bar} className="mt-3" />
       <p className="mt-2 text-xs text-muted-foreground">{note}</p>

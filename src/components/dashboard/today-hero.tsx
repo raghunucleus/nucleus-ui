@@ -3,52 +3,70 @@ import { Link } from '@tanstack/react-router'
 import { Clock, MapPin, Sparkles } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { TIMETABLE, WEEKDAYS, type ClassSlot } from '@/lib/academics-mock'
+import {
+  addDays,
+  fetchStudentWeek,
+  shortTime,
+  startOfWeek,
+  toIsoDate,
+  type WeekCell,
+  type WeekResult,
+} from '@/lib/student-academics'
+import { ApiError } from '@/lib/api'
+import { useAuthStore } from '@/stores/auth-store'
 
 function toMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
   return h * 60 + m
 }
 
-interface DayState {
-  teaching: ClassSlot[]
-  current: ClassSlot | null
-  currentIndex: number
-  next: ClassSlot | null
-  doneCount: number
-  isSunday: boolean
+/** ISO weekday (1=Mon … 7=Sun), matching the timetable API's `day_of_week`. */
+function isoToday(now: Date): number {
+  const dow = now.getDay()
+  return dow === 0 ? 7 : dow
 }
 
-/** Works out where the student is in their teaching day, right now. */
-function computeDay(now: Date): DayState {
-  const day = now.getDay()
-  if (day === 0) {
+interface DayState {
+  teaching: WeekCell[]
+  current: WeekCell | null
+  currentIndex: number
+  next: WeekCell | null
+  doneCount: number
+}
+
+/**
+ * Works out where the student is in their teaching day, right now. `doneCount`
+ * comes from the server's `status === 'completed'` flag (set when the teacher
+ * marks attendance) — not from wall-clock time.
+ */
+function computeDay(now: Date, week: WeekResult | null): DayState {
+  if (!week) {
     return {
       teaching: [],
       current: null,
       currentIndex: -1,
       next: null,
       doneCount: 0,
-      isSunday: true,
     }
   }
-  const teaching = TIMETABLE[WEEKDAYS[day - 1]].filter(
-    (slot) => slot.kind !== 'break',
-  )
+  const today = isoToday(now)
+  const teaching = week.cells
+    .filter((c) => c.day_of_week === today && c.status !== 'cancelled')
+    .sort((a, b) => toMinutes(a.start_time) - toMinutes(b.start_time))
   const mins = now.getHours() * 60 + now.getMinutes()
-  let current: ClassSlot | null = null
+  let current: WeekCell | null = null
   let currentIndex = -1
-  let next: ClassSlot | null = null
+  let next: WeekCell | null = null
   let doneCount = 0
-  teaching.forEach((slot, index) => {
-    if (mins >= toMinutes(slot.end)) doneCount += 1
-    if (mins >= toMinutes(slot.start) && mins < toMinutes(slot.end)) {
-      current = slot
+  teaching.forEach((cell, index) => {
+    if (cell.status === 'completed') doneCount += 1
+    if (mins >= toMinutes(cell.start_time) && mins < toMinutes(cell.end_time)) {
+      current = cell
       currentIndex = index
     }
-    if (next === null && mins < toMinutes(slot.start)) next = slot
+    if (next === null && mins < toMinutes(cell.start_time)) next = cell
   })
-  return { teaching, current, currentIndex, next, doneCount, isSunday: false }
+  return { teaching, current, currentIndex, next, doneCount }
 }
 
 /**
@@ -56,15 +74,48 @@ function computeDay(now: Date): DayState {
  * every minute so "happening now" stays accurate while the tab is open.
  */
 export function TodayHero({ name }: { name: string }) {
+  const signOut = useAuthStore((state) => state.signOut)
   const [now, setNow] = useState(() => new Date())
+  const [week, setWeek] = useState<WeekResult | null>(null)
+  const [weekLoading, setWeekLoading] = useState(true)
+  const [weekError, setWeekError] = useState<string | null>(null)
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(id)
   }, [])
 
-  const { teaching, current, currentIndex, next, doneCount, isSunday } =
-    computeDay(now)
+  useEffect(() => {
+    let cancelled = false
+    setWeekLoading(true)
+    setWeekError(null)
+    const start = startOfWeek(new Date())
+    fetchStudentWeek(toIsoDate(start), toIsoDate(addDays(start, 6)))
+      .then((result) => {
+        if (!cancelled) setWeek(result)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (err instanceof ApiError && err.status === 401) {
+          signOut()
+          return
+        }
+        setWeekError(
+          err instanceof Error ? err.message : "Couldn't load today's classes.",
+        )
+      })
+      .finally(() => {
+        if (!cancelled) setWeekLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [signOut])
+
+  const { teaching, current, currentIndex, next, doneCount } = computeDay(
+    now,
+    week,
+  )
   const hour = now.getHours()
   const greeting =
     hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
@@ -100,17 +151,33 @@ export function TodayHero({ name }: { name: string }) {
           </h1>
         </div>
 
-        {isSunday ? (
-          <HeroNote>
-            It&rsquo;s Sunday — no classes today. Enjoy the break. 🌤️
-          </HeroNote>
+        {weekLoading ? (
+          <HeroNote>Loading today&rsquo;s classes…</HeroNote>
+        ) : weekError ? (
+          <HeroNote>{weekError}</HeroNote>
+        ) : teaching.length === 0 ? (
+          <HeroNote>No classes today — enjoy the break. 🌤️</HeroNote>
         ) : current ? (
           <div className="grid gap-3 sm:grid-cols-2">
-            <ClassPanel tone="now" label="Happening now" slot={current} />
+            <ClassPanel
+              tone="now"
+              label="Happening now"
+              title={current.subject_name}
+              start={shortTime(current.start_time)}
+              end={shortTime(current.end_time)}
+              room={current.room}
+            />
             {next ? (
-              <ClassPanel tone="next" label="Up next" slot={next} />
+              <ClassPanel
+                tone="next"
+                label="Up next"
+                title={next.subject_name}
+                start={shortTime(next.start_time)}
+                end={shortTime(next.end_time)}
+                room={next.room}
+              />
             ) : (
-              <DoneNote count={teaching.length} />
+              <DoneNote done={doneCount} total={teaching.length} />
             )}
           </div>
         ) : next ? (
@@ -118,7 +185,10 @@ export function TodayHero({ name }: { name: string }) {
             <ClassPanel
               tone="next"
               label={doneCount === 0 ? 'First class' : 'Up next'}
-              slot={next}
+              title={next.subject_name}
+              start={shortTime(next.start_time)}
+              end={shortTime(next.end_time)}
+              room={next.room}
             />
             <HeroNote>
               {doneCount === 0
@@ -127,10 +197,10 @@ export function TodayHero({ name }: { name: string }) {
             </HeroNote>
           </div>
         ) : (
-          <DoneNote count={teaching.length} />
+          <DoneNote done={doneCount} total={teaching.length} />
         )}
 
-        {!isSunday && teaching.length > 0 ? (
+        {!weekLoading && !weekError && teaching.length > 0 ? (
           <DayTimeline
             teaching={teaching}
             doneCount={doneCount}
@@ -154,11 +224,17 @@ function LiveDot() {
 function ClassPanel({
   tone,
   label,
-  slot,
+  title,
+  start,
+  end,
+  room,
 }: {
   tone: 'now' | 'next'
   label: string
-  slot: ClassSlot
+  title: string
+  start: string
+  end: string
+  room: string | null
 }) {
   return (
     <Link
@@ -183,17 +259,17 @@ function ClassPanel({
           </>
         )}
       </div>
-      <p className="mt-2 truncate font-semibold leading-tight">{slot.title}</p>
+      <p className="mt-2 truncate font-semibold leading-tight">{title}</p>
       <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
         <span className="tabular-nums">
-          {slot.start} – {slot.end}
+          {start} – {end}
         </span>
-        {slot.room ? (
+        {room ? (
           <>
             <span aria-hidden>·</span>
             <span className="inline-flex items-center gap-1">
               <MapPin className="size-3" />
-              {slot.room}
+              {room}
             </span>
           </>
         ) : null}
@@ -210,12 +286,12 @@ function HeroNote({ children }: { children: ReactNode }) {
   )
 }
 
-function DoneNote({ count }: { count: number }) {
+function DoneNote({ done, total }: { done: number; total: number }) {
   return (
     <div className="rounded-xl border bg-background p-4">
       <p className="text-sm font-medium">That&rsquo;s a wrap for today 🎉</p>
       <p className="mt-0.5 text-xs text-muted-foreground">
-        All {count} classes done. Rest up — see you tomorrow.
+        {done} of {total} classes done. Rest up — see you tomorrow.
       </p>
     </div>
   )
@@ -226,28 +302,28 @@ function DayTimeline({
   doneCount,
   currentIndex,
 }: {
-  teaching: ClassSlot[]
+  teaching: WeekCell[]
   doneCount: number
   currentIndex: number
 }) {
   const total = teaching.length
   const progressLabel =
     currentIndex >= 0
-      ? `In class ${currentIndex + 1} of ${total} today`
+      ? `In class ${currentIndex + 1} of ${total} · ${doneCount} done so far`
       : `${doneCount} of ${total} classes done today`
 
   return (
     <div className="space-y-2">
       <div className="flex items-center">
-        {teaching.map((slot, index) => {
+        {teaching.map((cell, index) => {
           const state =
             index === currentIndex
               ? 'current'
-              : index < doneCount
+              : cell.status === 'completed'
                 ? 'done'
                 : 'upcoming'
           return (
-            <Fragment key={`${slot.code ?? slot.title}-${slot.start}`}>
+            <Fragment key={cell.session_id}>
               {index > 0 ? (
                 <div
                   className={cn(
@@ -257,7 +333,7 @@ function DayTimeline({
                 />
               ) : null}
               <div
-                title={`${slot.start} · ${slot.title}`}
+                title={`${shortTime(cell.start_time)} · ${cell.subject_name}`}
                 className={cn(
                   'shrink-0 rounded-full transition-all',
                   state === 'current'
