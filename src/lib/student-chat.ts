@@ -35,6 +35,11 @@ export interface ChatMessage {
   created_at: string
   /** Echoed back on the sender's own message so an optimistic row reconciles. */
   client_temp_id?: string | null
+  /**
+   * Sender's display name. Present only on the realtime `message:new` event
+   * (drives the global in-app notification); REST history omits it.
+   */
+  sender_name?: string | null
 }
 
 /** A row in the conversation list. */

@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { ChatNotifier } from '@/components/chat-notifier'
 import { ModulesDrawer } from '@/components/modules-drawer'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { MODULE_GRADIENT, type ModuleColor } from '@/lib/modules'
@@ -46,6 +47,8 @@ export function PortalLayout() {
 
   return (
     <div className="min-h-svh bg-background text-foreground">
+      {/* App-wide incoming-message toasts, available on every signed-in page. */}
+      <ChatNotifier />
       <header className="sticky top-0 z-10 border-b bg-card/80 shadow-sm backdrop-blur">
         <div className="mx-auto grid h-16 max-w-5xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
           <Link to="/" className="flex w-fit items-center gap-2">

@@ -56,6 +56,26 @@ export function hasStoredSession(): boolean {
   return !!getAccessToken() && !!getRefreshToken()
 }
 
+/**
+ * The signed-in student's id, decoded from the access-token JWT (`sub`). Used
+ * by the realtime layer to ignore the student's own messages echoed back to
+ * their other devices. Returns null if there's no token or it can't be parsed
+ * — callers treat that as "unknown", which only loosens a notification filter.
+ */
+export function getStudentId(): number | null {
+  const token = getAccessToken()
+  if (!token) return null
+  try {
+    const [, payload] = token.split('.')
+    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
+    const sub = (JSON.parse(json) as { sub?: unknown }).sub
+    const id = Number(sub)
+    return Number.isFinite(id) ? id : null
+  } catch {
+    return null
+  }
+}
+
 // --- API calls ------------------------------------------------------------
 
 export function studentLogin(

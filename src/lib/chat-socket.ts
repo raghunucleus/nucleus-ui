@@ -94,6 +94,22 @@ if (import.meta.hot) {
   })
 }
 
+// --- active conversation ---------------------------------------------------
+
+// The conversation the student is currently looking at, if any. The global
+// chat notifier reads this to stay quiet for the open thread (whose own
+// listener already renders the message inline). Set by the thread view on
+// mount and cleared when it closes.
+let activeConversationId: number | null = null
+
+export function setActiveChatConversation(id: number | null): void {
+  activeConversationId = id
+}
+
+export function getActiveChatConversation(): number | null {
+  return activeConversationId
+}
+
 // --- emit helpers ----------------------------------------------------------
 
 export function sendChatMessage(

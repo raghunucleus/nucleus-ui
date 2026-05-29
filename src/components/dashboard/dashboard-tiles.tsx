@@ -8,6 +8,7 @@ import {
   CreditCard,
   LayoutGrid,
   MapPin,
+  MessageCircle,
   PartyPopper,
   Users,
   type LucideIcon,
@@ -31,6 +32,8 @@ import {
   fetchStudentAttendanceDashboard,
   type DashboardResult,
 } from '@/lib/student-academics'
+import { fetchChatUnreadCount } from '@/lib/student-chat'
+import { useChatConnection, useChatEvent } from '@/lib/chat-socket'
 import { useAuthStore } from '@/stores/auth-store'
 import {
   CAMPUS_EVENTS,
@@ -326,6 +329,72 @@ export function FeesTile({ className }: { className?: string }) {
         paid of {formatINR(total)} · {paidPct}% complete
       </p>
     </StatTile>
+  )
+}
+
+/**
+ * Dashboard nudge for unread chat messages — a one-tap shortcut into Connect.
+ * Renders nothing when the inbox is clear; the count is live, seeded from the
+ * server then refreshed on socket message/read events (the same `chat-unread`
+ * signal the Connect badge uses).
+ */
+export function MessagesAlert({ className }: { className?: string }) {
+  const signOut = useAuthStore((state) => state.signOut)
+  const navigate = useNavigate()
+  const [unread, setUnread] = useState(0)
+
+  // Keep the socket alive on the dashboard too, so the count updates live.
+  useChatConnection()
+
+  const load = useCallback(() => {
+    fetchChatUnreadCount()
+      .then((r) => setUnread(r.total))
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 401) signOut()
+        // Other errors just leave the nudge hidden — not worth surfacing here.
+      })
+  }, [signOut])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  useChatEvent('message:new', () => load())
+  useChatEvent('message:read', () => load())
+
+  if (unread <= 0) return null
+
+  return (
+    <button
+      type="button"
+      onClick={() => void navigate({ to: '/connect' })}
+      className={cn(
+        TILE_BASE,
+        'group flex w-full items-center gap-3 p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md',
+        className,
+      )}
+    >
+      <div
+        className={cn(
+          'relative grid size-10 shrink-0 place-items-center rounded-lg bg-gradient-to-br text-icon-on shadow-sm',
+          MODULE_GRADIENT.cyan,
+        )}
+      >
+        <MessageCircle className="size-5" />
+        <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border-2 border-card bg-primary px-1 text-[10px] font-semibold text-primary-foreground tabular-nums">
+          {unread > 99 ? '99+' : unread}
+        </span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold">
+          {unread} unread message{unread > 1 ? 's' : ''}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">
+          Tap to open Connect and catch up.
+        </p>
+      </div>
+      <ArrowUpRight className="size-4 text-muted-foreground transition-colors group-hover:text-primary" />
+    </button>
   )
 }
 

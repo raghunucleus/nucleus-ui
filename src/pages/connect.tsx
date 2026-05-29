@@ -38,6 +38,7 @@ import {
 import {
   markChatRead,
   sendChatMessage,
+  setActiveChatConversation,
   setChatTyping,
   useChatConnection,
   useChatEvent,
@@ -103,13 +104,16 @@ export default function ConnectPage() {
     document.title = 'Connect — Nucleus'
   }, [])
 
-  // Deep link (e.g. "send a wish" from the dashboard): open the chat with `to`,
-  // optionally pre-filling a birthday greeting, then strip the params so a
-  // refresh or back-nav doesn't re-open it.
-  const deepLinkHandled = useRef(false)
+  // Deep link to open a specific chat: either the dashboard's "send a wish"
+  // (`?to&name&wish`) or the global new-message toast's "Open". We open the
+  // conversation, then strip the params so a refresh or back-nav doesn't re-open
+  // it. Keyed on `search.to` (a primitive) so a *new* target re-triggers even
+  // while we're already on this page; the in-flight guard prevents the async
+  // open from racing the param strip.
+  const openingDeepLink = useRef(false)
   useEffect(() => {
-    if (deepLinkHandled.current || !search.to) return
-    deepLinkHandled.current = true
+    if (!search.to || openingDeepLink.current) return
+    openingDeepLink.current = true
     const to = search.to
     const name = search.name ?? 'Chat'
     const wantWish = search.wish === true
@@ -128,9 +132,10 @@ export default function ConnectPage() {
         else toast.error('Could not open the chat.')
       } finally {
         void navigate({ to: '/connect', search: {}, replace: true })
+        openingDeepLink.current = false
       }
     })()
-  }, [search, navigate, signOut])
+  }, [search.to, search.name, search.wish, navigate, signOut])
 
   const loadConversations = useCallback(async () => {
     try {
@@ -658,6 +663,14 @@ function ChatThread({
     return () => {
       alive = false
     }
+  }, [conversationId])
+
+  // Mark this thread as the one on screen so the global notifier doesn't toast
+  // its messages (they already render inline here). Cleared when it closes or
+  // switches to another conversation.
+  useEffect(() => {
+    setActiveChatConversation(conversationId)
+    return () => setActiveChatConversation(null)
   }, [conversationId])
 
   // Retention notice text.

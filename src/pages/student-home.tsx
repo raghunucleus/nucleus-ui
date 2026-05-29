@@ -11,6 +11,7 @@ import {
   EventsTile,
   FeesTile,
   HolidaysTile,
+  MessagesAlert,
   ModulesTile,
 } from '@/components/dashboard/dashboard-tiles'
 import { TodayHero } from '@/components/dashboard/today-hero'
@@ -58,6 +59,8 @@ export default function StudentHome() {
   return (
     <>
       <TodayHero name={profile.display_name} />
+
+      <MessagesAlert />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <AttendanceTile />
