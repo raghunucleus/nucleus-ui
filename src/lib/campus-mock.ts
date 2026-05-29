@@ -220,44 +220,8 @@ export const CLASSMATES: Classmate[] = [
   },
 ]
 
-// ---------------------------------------------------------------------------
-// Birthdays — classmates to wish, around today.
-// ---------------------------------------------------------------------------
-
-export interface Birthday {
-  name: string
-  detail: string
-  /** Days from today (0 = today). */
-  offsetDays: number
-  avatarColor: ModuleColor
-}
-
-export const BIRTHDAYS: Birthday[] = [
-  {
-    name: 'Ananya Reddy',
-    detail: 'CSE-A · 6th sem',
-    offsetDays: 0,
-    avatarColor: 'violet',
-  },
-  {
-    name: 'Vivek Sharma',
-    detail: 'CSE-A · 6th sem',
-    offsetDays: 2,
-    avatarColor: 'blue',
-  },
-  {
-    name: 'Karthik Menon',
-    detail: 'CSE-A · 6th sem',
-    offsetDays: 6,
-    avatarColor: 'cyan',
-  },
-  {
-    name: 'Sneha Pillai',
-    detail: 'CSE-A · 6th sem',
-    offsetDays: 11,
-    avatarColor: 'rose',
-  },
-]
+// Birthdays now come from the live /student/birthdays endpoint — see
+// `lib/student-birthdays.ts` and the dynamic `BirthdaysTile`.
 
 // ---------------------------------------------------------------------------
 // Holidays — upcoming days off.

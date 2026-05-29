@@ -1,11 +1,13 @@
 import {
   Award,
   BookOpen,
+  Cake,
   CalendarDays,
   ClipboardCheck,
   CreditCard,
   IdCard,
   Megaphone,
+  MessageCircle,
   UserRound,
   type LucideIcon,
 } from 'lucide-react'
@@ -18,6 +20,8 @@ export type ModuleRoute =
   | '/attendance'
   | '/exam-marks'
   | '/fees'
+  | '/birthdays'
+  | '/connect'
 
 /**
  * The icon accent palette — one hue per module. The actual colors live as
@@ -115,6 +119,20 @@ export const MODULES: Module[] = [
     description: 'Fee structure and pending dues.',
     color: 'rose',
     to: '/fees',
+  },
+  {
+    icon: Cake,
+    title: 'Birthdays',
+    description: "Your classmates' birthdays — today and coming up.",
+    color: 'rose',
+    to: '/birthdays',
+  },
+  {
+    icon: MessageCircle,
+    title: 'Connect',
+    description: 'Chat one-to-one with students in your group.',
+    color: 'cyan',
+    to: '/connect',
   },
   {
     icon: BookOpen,

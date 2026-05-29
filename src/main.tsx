@@ -5,6 +5,7 @@ import './index.css'
 import App from './App.tsx'
 import { ThemeProvider } from '@/components/theme-provider'
 import { GlobalLoader } from '@/components/global-loader'
+import { ThemedToaster } from '@/components/themed-toaster'
 
 const googleClientId = import.meta.env.VITE_GOOGLE_OIDC_CLIENT_ID
 
@@ -13,6 +14,7 @@ const tree = (
     <ThemeProvider defaultTheme="system" storageKey="nucleus-ui-theme">
       <App />
       <GlobalLoader />
+      <ThemedToaster />
     </ThemeProvider>
   </StrictMode>
 )

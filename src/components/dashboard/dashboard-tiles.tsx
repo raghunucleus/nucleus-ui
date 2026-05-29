@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import {
   ArrowUpRight,
   Award,
@@ -12,9 +12,10 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { ModuleTile } from '@/components/module-tile'
+import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -32,7 +33,6 @@ import {
 } from '@/lib/student-academics'
 import { useAuthStore } from '@/stores/auth-store'
 import {
-  BIRTHDAYS,
   CAMPUS_EVENTS,
   CLASSMATES,
   CLASS_CONTEXT,
@@ -43,6 +43,11 @@ import {
   type Classmate,
   type Presence,
 } from '@/lib/campus-mock'
+import {
+  avatarColorFor,
+  studentBirthdays,
+  type BirthdayPerson,
+} from '@/lib/student-birthdays'
 import {
   MODULES,
   MODULE_GRADIENT,
@@ -403,58 +408,147 @@ function PersonRow({ person }: { person: Classmate }) {
   )
 }
 
+/** "12 Jun" — the day/month of an upcoming birthday (no year). */
+function birthdayDateLabel(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+}
+
+/**
+ * Classmate birthdays from the student's own attendance group. Live data —
+ * today's celebrants get a highlighted block, the next few are listed under
+ * "Coming up". The tile trims the upcoming list; the Birthdays page shows all.
+ */
 export function BirthdaysTile({ className }: { className?: string }) {
-  const today = BIRTHDAYS.filter((entry) => entry.offsetDays <= 0)
-  const upcoming = BIRTHDAYS.filter((entry) => entry.offsetDays > 0).sort(
-    (a, b) => a.offsetDays - b.offsetDays,
-  )
+  const signOut = useAuthStore((state) => state.signOut)
+  const navigate = useNavigate()
+  const [people, setPeople] = useState<BirthdayPerson[] | null>(null)
+  const [error, setError] = useState(false)
+
+  const load = useCallback(async () => {
+    setError(false)
+    try {
+      // The tile only shows today + a few upcoming — one small page is plenty.
+      const page = await studentBirthdays({ limit: 8 })
+      setPeople(page.items)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        signOut()
+        return
+      }
+      setError(true)
+    }
+  }, [signOut])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const today = (people ?? []).filter((p) => p.days_until <= 0)
+  const upcoming = (people ?? []).filter((p) => p.days_until > 0).slice(0, 5)
 
   return (
     <PanelTile icon={Cake} title="Birthdays" className={className}>
       <div className="space-y-4 p-5">
-        {today.length > 0 ? (
-          <div className="rounded-xl border border-icon-rose/20 bg-gradient-to-br from-icon-rose/10 to-icon-amber/10 p-4">
-            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-icon-rose">
-              <PartyPopper className="size-3.5" />
-              Today
-            </p>
-            {today.map((entry) => (
-              <div key={entry.name} className="mt-2.5 flex items-center gap-3">
-                <Avatar name={entry.name} color={entry.avatarColor} />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">{entry.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    It&rsquo;s their birthday — send a wish 🎂
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {upcoming.length > 0 ? (
+        {people === null && !error ? (
           <div className="space-y-3">
-            {today.length > 0 ? (
-              <p className="text-xs font-medium text-muted-foreground">
-                Coming up
-              </p>
-            ) : null}
-            {upcoming.map((entry) => (
-              <div key={entry.name} className="flex items-center gap-3">
-                <Avatar name={entry.name} color={entry.avatarColor} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{entry.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {entry.detail}
-                  </p>
-                </div>
-                <span className="shrink-0 text-xs font-medium text-muted-foreground">
-                  {relativeLabel(entry.offsetDays)}
-                </span>
-              </div>
-            ))}
+            <div className="h-12 animate-pulse rounded-xl bg-muted" />
+            <div className="h-10 animate-pulse rounded-lg bg-muted" />
           </div>
-        ) : null}
+        ) : error ? (
+          <p className="text-xs text-muted-foreground">
+            Couldn&rsquo;t load birthdays.{' '}
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="font-medium text-primary hover:underline"
+            >
+              Retry
+            </button>
+          </p>
+        ) : today.length === 0 && upcoming.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            No birthdays in your class over the next few weeks.
+          </p>
+        ) : (
+          <>
+            {today.length > 0 ? (
+              <div className="rounded-xl border border-icon-rose/20 bg-gradient-to-br from-icon-rose/10 to-icon-amber/10 p-4">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-icon-rose">
+                  <PartyPopper className="size-3.5" />
+                  Today
+                </p>
+                {today.map((person) => (
+                  <div key={person.id} className="mt-2.5 flex items-center gap-3">
+                    <Avatar
+                      name={person.display_name}
+                      color={avatarColorFor(person.display_name)}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">
+                        {person.display_name}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        It&rsquo;s their birthday 🎂
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() =>
+                        void navigate({
+                          to: '/connect',
+                          search: {
+                            to: person.id,
+                            name: person.display_name,
+                            wish: true,
+                          },
+                        })
+                      }
+                    >
+                      <PartyPopper />
+                      Wish
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {upcoming.length > 0 ? (
+              <div className="space-y-3">
+                {today.length > 0 ? (
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Coming up
+                  </p>
+                ) : null}
+                {upcoming.map((person) => (
+                  <div key={person.id} className="flex items-center gap-3">
+                    <Avatar
+                      name={person.display_name}
+                      color={avatarColorFor(person.display_name)}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {person.display_name}
+                      </p>
+                      {person.section ? (
+                        <p className="truncate text-xs text-muted-foreground">
+                          {person.section}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                      {person.days_until === 1
+                        ? 'Tomorrow'
+                        : birthdayDateLabel(person.date)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </>
+        )}
       </div>
     </PanelTile>
   )
