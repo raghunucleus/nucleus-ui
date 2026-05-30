@@ -1,0 +1,71 @@
+import type { ModuleRoute } from './modules'
+import type {
+  NotificationModuleKey,
+  NotificationTarget,
+  StudentNotification,
+} from './student-notifications'
+
+/**
+ * The web's notification route registry. The server stores only a stable
+ * `module` key and a semantic `target`; this is the single place those map to
+ * actual TanStack Router destinations. A route rename touches only this file —
+ * never the server or the stored notifications.
+ *
+ * Resolution order (see `resolveNotificationTarget`): specific target → module
+ * home → null. A null result means "no screen to open" (the caller surfaces a
+ * friendly message rather than navigating).
+ */
+
+/** A TanStack-Router navigation target. */
+export interface NavTarget {
+  to: ModuleRoute
+  search?: Record<string, unknown>
+}
+
+interface ModuleResolver {
+  /** Landing route for the module — the fallback when no specific target resolves. */
+  home?: NavTarget
+  /** Resolve a specific entity within the module to a deep-link, or null. */
+  resolve?: (target: NotificationTarget) => NavTarget | null
+}
+
+const REGISTRY: Partial<Record<NotificationModuleKey, ModuleResolver>> = {
+  chat: {
+    home: { to: '/connect' },
+    resolve: (t) => {
+      // Web deep-links chat by the *other* student's id (+ name), carried in
+      // params; the conversation id (t.id) is what mobile uses instead.
+      const otherId = Number(t.params?.otherStudentId)
+      if (!Number.isFinite(otherId)) return null
+      return {
+        to: '/connect',
+        search: { to: otherId, name: t.params?.otherName },
+      }
+    },
+  },
+  attendance: { home: { to: '/attendance' } },
+  'exam-marks': { home: { to: '/exam-marks' } },
+  fees: { home: { to: '/fees' } },
+  timetable: { home: { to: '/timetable' } },
+  birthdays: { home: { to: '/birthdays' } },
+  'id-card': { home: { to: '/id-card' } },
+  profile: { home: { to: '/profile' } },
+  // 'announcements' intentionally absent — no live page yet, so it resolves to
+  // null ("no screen to open") until the module ships.
+}
+
+/**
+ * Resolve a notification to a navigation target, or null if nothing can open it.
+ * Tries the specific entity first, then the module's home screen.
+ */
+export function resolveNotificationTarget(
+  n: Pick<StudentNotification, 'module' | 'target'>,
+): NavTarget | null {
+  const entry = REGISTRY[n.module]
+  if (!entry) return null
+  if (n.target && entry.resolve) {
+    const specific = entry.resolve(n.target)
+    if (specific) return specific
+  }
+  return entry.home ?? null
+}

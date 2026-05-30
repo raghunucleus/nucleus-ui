@@ -16,6 +16,7 @@ import ExamMarks from '@/pages/exam-marks'
 import Fees from '@/pages/fees'
 import Birthdays from '@/pages/birthdays'
 import Connect from '@/pages/connect'
+import Notifications from '@/pages/notifications'
 
 /** The signed-in student/parent portal. `PortalLayout` renders the chrome. */
 const rootRoute = createRootRoute({ component: PortalLayout })
@@ -74,6 +75,12 @@ const birthdaysRoute = createRoute({
   component: Birthdays,
 })
 
+const notificationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/notifications',
+  component: Notifications,
+})
+
 const connectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/connect',
@@ -103,6 +110,7 @@ const routeTree = rootRoute.addChildren([
   examMarksRoute,
   feesRoute,
   birthdaysRoute,
+  notificationsRoute,
   connectRoute,
 ])
 

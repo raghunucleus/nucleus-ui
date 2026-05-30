@@ -1,12 +1,12 @@
 import {
   Award,
+  Bell,
   BookOpen,
   Cake,
   CalendarDays,
   ClipboardCheck,
   CreditCard,
   IdCard,
-  Megaphone,
   MessageCircle,
   UserRound,
   type LucideIcon,
@@ -22,6 +22,7 @@ export type ModuleRoute =
   | '/fees'
   | '/birthdays'
   | '/connect'
+  | '/notifications'
 
 /**
  * The icon accent palette — one hue per module. The actual colors live as
@@ -135,15 +136,16 @@ export const MODULES: Module[] = [
     to: '/connect',
   },
   {
+    icon: Bell,
+    title: 'Notifications',
+    description: 'Your alerts — messages, fees, marks and more.',
+    color: 'violet',
+    to: '/notifications',
+  },
+  {
     icon: BookOpen,
     title: 'Library',
     description: 'Borrowed books and due dates.',
     color: 'cyan',
-  },
-  {
-    icon: Megaphone,
-    title: 'Announcements',
-    description: 'Notices from your department.',
-    color: 'orange',
   },
 ]
