@@ -532,13 +532,16 @@ export function CellEditorSheet({
             ) : null}
           </section>
 
-          {error ? (
-            <p className="flex items-center gap-1.5 text-sm text-destructive">
-              <CircleAlert className="size-4" />
-              {error}
-            </p>
-          ) : null}
         </div>
+
+        {/* Error bar — kept outside the scrollable body so a save/clear error
+            is always visible, not stranded below the fold the user can't see. */}
+        {error ? (
+          <div className="flex items-center gap-1.5 border-t bg-destructive/5 px-5 py-2.5 text-sm text-destructive">
+            <CircleAlert className="size-4 shrink-0" />
+            {error}
+          </div>
+        ) : null}
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 border-t px-5 py-3">

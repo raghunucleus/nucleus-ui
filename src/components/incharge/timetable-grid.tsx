@@ -177,7 +177,7 @@ export function TimetableGrid({
               </tr>
             </thead>
             <tbody>
-              {allPeriods.map((period) => {
+              {allPeriods.map((period, rowIdx) => {
                 // Break period → single full-width banner row.
                 if (period.is_break) {
                   return (
@@ -206,7 +206,6 @@ export function TimetableGrid({
                   )
                 }
 
-                const periodIdx = teachingIndexById.get(period.id) ?? 0
                 return (
                   <tr key={period.id} className="border-b last:border-b-0">
                     <td className="sticky left-0 z-10 border-r bg-card px-3 py-2">
@@ -229,9 +228,19 @@ export function TimetableGrid({
                       }
                       const entry = entryByCell.get(key) ?? null
                       const span = entry?.span ?? 1
-                      const remainingTeaching =
-                        teachingPeriods.length - periodIdx
-                      const maxSpan = Math.min(remainingTeaching, 6) // cap UI choice at 6
+                      // A merged class must stop at the next break (the backend
+                      // rejects a span that covers one), so cap at the run of
+                      // consecutive teaching periods starting here — NOT the
+                      // total teaching periods left, which would jump the break.
+                      let consecutiveTeaching = 0
+                      for (
+                        let i = rowIdx;
+                        i < allPeriods.length && !allPeriods[i].is_break;
+                        i += 1
+                      ) {
+                        consecutiveTeaching += 1
+                      }
+                      const maxSpan = Math.min(consecutiveTeaching, 6) // cap UI choice at 6
                       return (
                         <td
                           key={day}
