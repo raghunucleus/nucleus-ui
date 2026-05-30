@@ -418,6 +418,8 @@ function ConversationList({
 // New-chat picker
 // ---------------------------------------------------------------------------
 
+const CONTACTS_PAGE_SIZE = 30
+
 function NewChatPanel({
   onPick,
   onClose,
@@ -428,18 +430,39 @@ function NewChatPanel({
   onSessionEnd: () => void
 }) {
   const [contacts, setContacts] = useState<ChatContact[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [debounced, setDebounced] = useState('')
+  // Bumped per query so a stale fetch can't overwrite newer results.
+  const reqId = useRef(0)
 
+  // Debounce the search box into the server-side `q`.
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 300)
+    return () => clearTimeout(t)
+  }, [query])
+
+  // (Re)load the first page whenever the debounced search changes.
   useEffect(() => {
     let alive = true
-    fetchChatContacts()
-      .then((rows) => {
-        if (alive) setContacts(rows)
+    const id = (reqId.current += 1)
+    setLoading(true)
+    setError(null)
+    fetchChatContacts({
+      limit: CONTACTS_PAGE_SIZE,
+      offset: 0,
+      q: debounced || undefined,
+    })
+      .then((page) => {
+        if (!alive || id !== reqId.current) return
+        setContacts(page.items)
+        setTotal(page.total)
       })
       .catch((err) => {
-        if (!alive) return
+        if (!alive || id !== reqId.current) return
         if (err instanceof ApiError && err.status === 401) {
           onSessionEnd()
           return
@@ -447,22 +470,43 @@ function NewChatPanel({
         setError(err instanceof Error ? err.message : 'Could not load contacts.')
       })
       .finally(() => {
-        if (alive) setLoading(false)
+        if (alive && id === reqId.current) setLoading(false)
       })
     return () => {
       alive = false
     }
-  }, [onSessionEnd])
+  }, [debounced, onSessionEnd])
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return contacts
-    return contacts.filter(
-      (c) =>
-        c.display_name.toLowerCase().includes(q) ||
-        c.student_id.toLowerCase().includes(q),
-    )
-  }, [contacts, query])
+  const loadMore = useCallback(() => {
+    if (loading || loadingMore || contacts.length >= total) return
+    const id = reqId.current
+    setLoadingMore(true)
+    fetchChatContacts({
+      limit: CONTACTS_PAGE_SIZE,
+      offset: contacts.length,
+      q: debounced || undefined,
+    })
+      .then((page) => {
+        if (id !== reqId.current) return
+        setContacts((prev) => [...prev, ...page.items])
+        setTotal(page.total)
+      })
+      .catch(() => {
+        // Leave what we have; scrolling again retries.
+      })
+      .finally(() => {
+        if (id === reqId.current) setLoadingMore(false)
+      })
+  }, [loading, loadingMore, contacts.length, total, debounced])
+
+  // Infinite scroll: pull the next page as the list nears the bottom.
+  const onScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const el = e.currentTarget
+      if (el.scrollHeight - el.scrollTop - el.clientHeight < 240) loadMore()
+    },
+    [loadMore],
+  )
 
   return (
     <>
@@ -492,7 +536,10 @@ function NewChatPanel({
         </div>
       </div>
 
-      <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto">
+      <div
+        className="scrollbar-themed min-h-0 flex-1 overflow-y-auto"
+        onScroll={onScroll}
+      >
         {loading ? (
           <div className="space-y-2 p-3">
             {[0, 1, 2, 3, 4].map((i) => (
@@ -501,32 +548,39 @@ function NewChatPanel({
           </div>
         ) : error ? (
           <p className="p-8 text-center text-xs text-muted-foreground">{error}</p>
-        ) : filtered.length === 0 ? (
+        ) : contacts.length === 0 ? (
           <p className="p-8 text-center text-xs text-muted-foreground">
-            {query ? 'No matches.' : 'No one else in your group yet.'}
+            {debounced ? 'No matches.' : 'No one else in your group yet.'}
           </p>
         ) : (
-          <ul className="divide-y">
-            {filtered.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  onClick={() => onPick(c)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
-                >
-                  <Avatar name={c.display_name} />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {c.display_name}
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {c.student_id}
-                    </p>
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="divide-y">
+              {contacts.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => onPick(c)}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
+                  >
+                    <Avatar name={c.display_name} />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {c.display_name}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {c.student_id}
+                      </p>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {loadingMore ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : null}
+          </>
         )}
       </div>
     </>

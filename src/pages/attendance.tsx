@@ -241,7 +241,7 @@ function SubjectCard({ subject }: { subject: SubjectAttendanceRow }) {
         to="/attendance/$subjectId"
         params={{ subjectId: String(subject.subject_id) }}
         aria-label={`Open class history for ${subject.subject_name}`}
-        className="block w-full space-y-3 p-5 text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex h-full w-full flex-col gap-3 p-5 text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -266,7 +266,7 @@ function SubjectCard({ subject }: { subject: SubjectAttendanceRow }) {
           </span>
         </div>
 
-        <div className="flex items-center justify-between border-t pt-3 text-[11px] font-medium text-muted-foreground">
+        <div className="mt-auto flex items-center justify-between border-t pt-3 text-[11px] font-medium text-muted-foreground">
           <span>View class history</span>
           <ChevronRight className="size-3.5" />
         </div>

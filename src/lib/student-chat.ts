@@ -60,6 +60,19 @@ export interface ChatMessagesPage {
   has_more: boolean
 }
 
+/** A page of new-chat contacts. `total` ignores limit/offset (drives "has more"). */
+export interface ChatContactsPage {
+  total: number
+  items: ChatContact[]
+}
+
+export interface ChatContactsQuery {
+  limit?: number
+  offset?: number
+  /** Search over display name OR roll number (server-side). */
+  q?: string
+}
+
 // --- calls -----------------------------------------------------------------
 
 export function fetchChatConfig(): Promise<{ retention_days: number }> {
@@ -68,9 +81,17 @@ export function fetchChatConfig(): Promise<{ retention_days: number }> {
   )
 }
 
-export function fetchChatContacts(): Promise<ChatContact[]> {
+/** A page of groupmates for the new-chat picker (name-ordered, searchable). */
+export function fetchChatContacts(
+  params: ChatContactsQuery = {},
+): Promise<ChatContactsPage> {
+  const qs = new URLSearchParams()
+  if (params.limit != null) qs.set('limit', String(params.limit))
+  if (params.offset != null) qs.set('offset', String(params.offset))
+  if (params.q) qs.set('q', params.q)
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
   return withAuth((token) =>
-    apiFetch<ChatContact[]>('/student/chat/contacts', { token }),
+    apiFetch<ChatContactsPage>(`/student/chat/contacts${suffix}`, { token }),
   )
 }
 

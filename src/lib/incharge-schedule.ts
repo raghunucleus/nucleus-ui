@@ -411,6 +411,9 @@ export function fetchInchargeProgrammeSemesters(
 export interface LookupPssFaculty {
   employee_id: number
   attendance_group_id?: number
+  /** Group the allocation belongs to — present on `alternate_faculty` rows so
+   *  the editor can label "borrow from <group>". */
+  attendance_group?: { id: number; name: string; code?: string }
   employee: { id: number; emp_display_name: string; emp_code: string }
 }
 
