@@ -10,13 +10,14 @@ import {
   Loader2,
   MessageCircle,
   Plus,
-  RefreshCw,
   Search,
   Send,
+  Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { PageHeader } from '@/components/portal-layout'
+import { StateView } from '@/components/state-view'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ApiError } from '@/lib/api'
@@ -326,25 +327,21 @@ function ConversationList({
             ))}
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center gap-3 p-8 text-center">
-            <CircleAlert className="size-6 text-destructive" />
-            <p className="text-xs text-muted-foreground">{error}</p>
-            <Button size="sm" variant="outline" onClick={onRetry}>
-              <RefreshCw />
-              Try again
-            </Button>
-          </div>
+          <StateView
+            compact
+            icon={MessageCircle}
+            title="Couldn't load chats"
+            description={error}
+            action={{ label: 'Try again', onClick: onRetry }}
+          />
         ) : conversations.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 p-8 text-center">
-            <p className="text-sm font-medium">No chats yet</p>
-            <p className="max-w-[16rem] text-xs text-muted-foreground">
-              Start a conversation with someone in your group.
-            </p>
-            <Button size="sm" variant="outline" onClick={onNewChat}>
-              <Plus />
-              New chat
-            </Button>
-          </div>
+          <StateView
+            compact
+            icon={MessageCircle}
+            title="No chats yet"
+            description="Start a conversation with someone in your group."
+            action={{ label: 'New chat', icon: Plus, onClick: onNewChat }}
+          />
         ) : filtered.length === 0 ? (
           <p className="p-8 text-center text-xs text-muted-foreground">
             No one matches &ldquo;{query.trim()}&rdquo;.
@@ -547,11 +544,25 @@ function NewChatPanel({
             ))}
           </div>
         ) : error ? (
-          <p className="p-8 text-center text-xs text-muted-foreground">{error}</p>
+          <StateView
+            compact
+            icon={Users}
+            title="Couldn't load your group"
+            description={error}
+          />
         ) : contacts.length === 0 ? (
-          <p className="p-8 text-center text-xs text-muted-foreground">
-            {debounced ? 'No matches.' : 'No one else in your group yet.'}
-          </p>
+          debounced ? (
+            <p className="p-8 text-center text-xs text-muted-foreground">
+              No matches.
+            </p>
+          ) : (
+            <StateView
+              compact
+              icon={Users}
+              title="No one in your group yet"
+              description="When classmates are added to your group, they’ll appear here."
+            />
+          )
         ) : (
           <>
             <ul className="divide-y">

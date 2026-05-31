@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
+  CalendarClock,
   ChevronRight,
   CircleAlert,
   CircleCheck,
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { PageHeader } from '@/components/portal-layout'
+import { StateView } from '@/components/state-view'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -116,15 +118,29 @@ export default function Attendance() {
         accent="emerald"
       />
 
-      {error ? <ErrorBanner message={error} onRetry={load} /> : null}
+      {error && !dashboard && !loading ? (
+        // No data yet AND an error (e.g. "No active programme semester for your
+        // batch yet") — a friendly not-ready state rather than a red banner
+        // floating over an empty page.
+        <StateView
+          icon={CalendarClock}
+          title={error}
+          description="Your attendance will show up here as soon as it's available."
+          action={{ label: 'Retry', onClick: load }}
+        />
+      ) : (
+        <>
+          {error ? <ErrorBanner message={error} onRetry={load} /> : null}
 
-      {loading && !dashboard ? (
-        <LoadingState />
-      ) : dashboard && dashboard.per_subject.length === 0 ? (
-        <EmptyState />
-      ) : dashboard ? (
-        <ContentLoaded data={dashboard} />
-      ) : null}
+          {loading && !dashboard ? (
+            <LoadingState />
+          ) : dashboard && dashboard.per_subject.length === 0 ? (
+            <EmptyState />
+          ) : dashboard ? (
+            <ContentLoaded data={dashboard} />
+          ) : null}
+        </>
+      )}
     </>
   )
 }
@@ -300,9 +316,11 @@ function LoadingState() {
 
 function EmptyState() {
   return (
-    <Card className="px-5 py-10 text-center text-sm text-muted-foreground">
-      No subjects with attendance data yet. Check back once classes start.
-    </Card>
+    <StateView
+      icon={ClipboardCheck}
+      title="No attendance yet"
+      description="No subjects with attendance data yet. Check back once classes start."
+    />
   )
 }
 

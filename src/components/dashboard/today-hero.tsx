@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Clock, MapPin, Sparkles } from 'lucide-react'
+import { Clock, Coffee, MapPin, Sparkles } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import {
@@ -156,7 +156,7 @@ export function TodayHero({ name }: { name: string }) {
         ) : weekError ? (
           <HeroNote>{weekError}</HeroNote>
         ) : teaching.length === 0 ? (
-          <HeroNote>No classes today — enjoy the break. 🌤️</HeroNote>
+          <RestDayNote />
         ) : current ? (
           <div className="grid gap-3 sm:grid-cols-2">
             <ClassPanel
@@ -275,6 +275,27 @@ function ClassPanel({
         ) : null}
       </div>
     </Link>
+  )
+}
+
+/**
+ * The "nothing scheduled today" state — a warm rest-day panel with a gently
+ * breathing coffee cup, rather than a plain grey note. Stands in for the
+ * meaningless "0/0 classes" that an empty teaching day would otherwise read as.
+ */
+function RestDayNote() {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border bg-gradient-to-br from-icon-amber/10 to-primary/5 p-4">
+      <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-icon-amber to-icon-rose text-icon-on shadow-sm">
+        <Coffee className="size-5 animate-pulse motion-reduce:animate-none" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold">No classes today</p>
+        <p className="text-xs text-muted-foreground">
+          Enjoy the break — rest up and recharge. ☕
+        </p>
+      </div>
+    </div>
   )
 }
 

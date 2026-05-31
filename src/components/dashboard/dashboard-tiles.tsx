@@ -115,6 +115,7 @@ function StatTile({
   color,
   title,
   className,
+  pulseIcon,
   children,
 }: {
   to: ModuleRoute
@@ -122,6 +123,8 @@ function StatTile({
   color: ModuleColor
   title: string
   className?: string
+  /** Gently breathe the icon disc — signals a placeholder ("not yet") state. */
+  pulseIcon?: boolean
   children: ReactNode
 }) {
   return (
@@ -138,6 +141,7 @@ function StatTile({
           className={cn(
             'grid size-9 place-items-center rounded-lg bg-gradient-to-br text-icon-on shadow-sm',
             MODULE_GRADIENT[color],
+            pulseIcon && 'animate-pulse motion-reduce:animate-none',
           )}
         >
           <Icon className="size-5" />
@@ -211,6 +215,10 @@ export function AttendanceTile({ className }: { className?: string }) {
     }
   }, [signOut])
 
+  // A real percentage only once classes have actually been held — before then
+  // "0.0%" reads like the student has zero attendance (with an alarming red
+  // bar), when really nothing has been recorded yet. Show "Not yet" instead.
+  const hasData = !!data && data.overall_held > 0
   const percent = data?.overall_pct ?? 0
   const standing = attendanceStanding(percent)
   const bar =
@@ -221,7 +229,7 @@ export function AttendanceTile({ className }: { className?: string }) {
         : 'bg-destructive'
   const note = failed
     ? "Couldn't load attendance"
-    : !data || data.overall_held === 0
+    : !hasData
       ? 'No classes held yet'
       : standing === 'good'
         ? 'Comfortably above the 75% minimum'
@@ -236,10 +244,19 @@ export function AttendanceTile({ className }: { className?: string }) {
       color="emerald"
       title="Attendance"
       className={className}
+      pulseIcon={!loading && !failed && !hasData}
     >
       <p className="mt-4 text-3xl font-bold tabular-nums">
         {loading ? (
           <span className="inline-block h-9 w-16 animate-pulse rounded bg-muted/70 align-middle" />
+        ) : failed ? (
+          <span className="text-2xl font-semibold text-muted-foreground">
+            —
+          </span>
+        ) : !hasData ? (
+          <span className="text-2xl font-semibold text-muted-foreground">
+            Not yet
+          </span>
         ) : (
           <>
             {percent.toFixed(1)}
@@ -249,7 +266,11 @@ export function AttendanceTile({ className }: { className?: string }) {
           </>
         )}
       </p>
-      <Progress value={percent} indicatorClassName={bar} className="mt-3" />
+      <Progress
+        value={hasData ? percent : 0}
+        indicatorClassName={hasData ? bar : 'bg-muted-foreground/30'}
+        className="mt-3"
+      />
       <p className="mt-2 text-xs text-muted-foreground">{note}</p>
     </StatTile>
   )
@@ -285,9 +306,10 @@ export function CgpaTile({ className }: { className?: string }) {
   }, [signOut])
 
   const value = data?.has_results ? data.cgpa : null
+  const hasResults = value !== null
   const note = failed
     ? "Couldn't load results"
-    : !data?.has_results
+    : !hasResults
       ? 'No results published yet'
       : `Cumulative GPA across ${data.semesters_count} semester${data.semesters_count === 1 ? '' : 's'}`
 
@@ -298,13 +320,22 @@ export function CgpaTile({ className }: { className?: string }) {
       color="amber"
       title="Exam results"
       className={className}
+      pulseIcon={!loading && !failed && !hasResults}
     >
       <p className="mt-4 text-3xl font-bold tabular-nums">
         {loading ? (
           <span className="inline-block h-9 w-16 animate-pulse rounded bg-muted/70 align-middle" />
+        ) : failed ? (
+          <span className="text-2xl font-semibold text-muted-foreground">
+            —
+          </span>
+        ) : !hasResults ? (
+          <span className="text-2xl font-semibold text-muted-foreground">
+            Not yet
+          </span>
         ) : (
           <>
-            {value !== null ? value.toFixed(2) : '—'}
+            {value.toFixed(2)}
             <span className="text-lg font-semibold text-muted-foreground">
               {' '}
               / 10
@@ -313,8 +344,8 @@ export function CgpaTile({ className }: { className?: string }) {
         )}
       </p>
       <Progress
-        value={value !== null ? value * 10 : 0}
-        indicatorClassName="bg-icon-amber"
+        value={hasResults ? value * 10 : 0}
+        indicatorClassName={hasResults ? 'bg-icon-amber' : 'bg-muted-foreground/30'}
         className="mt-3"
       />
       <p className="mt-2 text-xs text-muted-foreground">{note}</p>
