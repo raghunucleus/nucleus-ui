@@ -2,11 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from '@tanstack/react-router'
 import {
   ArrowLeft,
+  Bell,
+  Check,
   ChevronDown,
   ChevronRight,
   Download,
   FileSpreadsheet,
   Upload,
+  UploadCloud,
+  X,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { toast } from 'sonner'
@@ -18,6 +22,14 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import {
   Table,
@@ -200,6 +212,9 @@ export default function EmployeeMarksUploadBatchPage() {
     total: 0,
   })
   const [committed, setCommitted] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [notifyStudents, setNotifyStudents] = useState(true)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -353,20 +368,24 @@ export default function EmployeeMarksUploadBatchPage() {
     }
   }
 
-  async function handleCommit() {
+  async function handleCommit(notify: boolean) {
     if (!batch || !session || !preview?.valid) return
+    setConfirmOpen(false)
     setBusy('committing')
     try {
       const result = await commitUpload({
         programme_admission_year_id: batch.id,
         upload_session: session,
+        notify,
       })
       if (result.valid && result.persisted) {
+        const stored = result.summary?.students ?? 0
         invalidateStaged()
         setCommitted(true)
         toast.success(
           `Stored ${result.summary?.results_stored?.toLocaleString() ?? 0} result(s) for ` +
-            `${result.summary?.students ?? 0} student(s)`,
+            `${stored.toLocaleString()} student(s)` +
+            (notify ? ` · ${stored.toLocaleString()} student(s) notified` : ''),
         )
       } else {
         toast.error('Validation changed — please preview again')
@@ -457,38 +476,128 @@ export default function EmployeeMarksUploadBatchPage() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Input
+              <input
                 ref={fileRef}
                 type="file"
                 accept=".xlsx,.csv"
+                className="sr-only"
                 onChange={(e) => {
                   const f = e.target.files?.[0]
                   if (f) void handleFile(f)
+                  // allow re-selecting the same file name
+                  e.target.value = ''
                 }}
               />
-              <p className="text-xs text-muted-foreground">
-                Reads sheet “Sheet4”. Columns:{' '}
-                {COLUMNS.map((c) => c.header).join(', ')}.
-              </p>
-              {fileName && rows.length > 0 && (
-                <p className="text-sm">
-                  <span className="font-medium">
-                    {rows.length.toLocaleString()}
-                  </span>{' '}
-                  row(s) from <span className="font-medium">{fileName}</span>
-                  {totalErrors > 0 && (
-                    <span className="text-destructive">
-                      {' '}
-                      · {totalErrors} issue(s) to fix
-                    </span>
+
+              {!fileName ? (
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    setDragOver(true)
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setDragOver(false)
+                    const f = e.dataTransfer.files?.[0]
+                    if (f) void handleFile(f)
+                  }}
+                  className={cn(
+                    'flex w-full flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors',
+                    dragOver
+                      ? 'border-primary bg-primary/5'
+                      : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/40',
                   )}
-                </p>
+                >
+                  <span className="flex size-12 items-center justify-center rounded-full bg-primary/10">
+                    <UploadCloud className="size-6 text-primary" />
+                  </span>
+                  <span className="space-y-0.5">
+                    <span className="block text-sm font-medium">
+                      <span className="text-primary">Click to upload</span> or
+                      drag and drop
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      XLSX or CSV — reads sheet “Sheet4”
+                    </span>
+                  </span>
+                </button>
+              ) : (
+                <div
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg border px-3 py-3',
+                    totalErrors > 0
+                      ? 'border-destructive/40 bg-destructive/5'
+                      : rows.length > 0
+                        ? 'border-success/30 bg-success/5'
+                        : 'bg-muted/30',
+                  )}
+                >
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-background">
+                    <FileSpreadsheet className="size-5 text-icon-blue" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{fileName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {rows.length > 0
+                        ? `${rows.length.toLocaleString()} row(s) parsed`
+                        : 'No rows parsed'}
+                      {totalErrors > 0 && (
+                        <span className="text-destructive">
+                          {' '}
+                          · {totalErrors} issue(s) to fix
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy !== false}
+                    onClick={() => fileRef.current?.click()}
+                  >
+                    Replace
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Remove file"
+                    disabled={busy !== false}
+                    onClick={resetParsed}
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
               )}
+
+              <p className="text-xs text-muted-foreground">
+                Columns: {COLUMNS.map((c) => c.header).join(', ')}.
+              </p>
+
               {busy === 'uploading' && (
-                <p className="text-sm text-muted-foreground">
-                  Uploading {progress.sent.toLocaleString()} /{' '}
-                  {progress.total.toLocaleString()} rows…
-                </p>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Uploading rows…</span>
+                    <span className="tabular-nums">
+                      {progress.sent.toLocaleString()} /{' '}
+                      {progress.total.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{
+                        width: `${
+                          progress.total > 0
+                            ? Math.round((progress.sent / progress.total) * 100)
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -503,31 +612,49 @@ export default function EmployeeMarksUploadBatchPage() {
           )}
 
           {rows.length > 0 && (
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                onClick={() => void handlePreview()}
-                disabled={rows.length === 0 || busy !== false}
-                variant={preview?.valid ? 'outline' : 'default'}
-              >
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
-                {busy === 'uploading' ? 'Validating…' : 'Preview'}
-              </Button>
-              {preview?.valid && session && (
+            <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card/80 px-4 py-3 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/70">
+              <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+                <FileSpreadsheet className="size-4 shrink-0 text-icon-blue" />
+                <span className="truncate">
+                  <span className="font-medium text-foreground tabular-nums">
+                    {rows.length.toLocaleString()}
+                  </span>{' '}
+                  row(s) →{' '}
+                  <span className="font-medium text-foreground">
+                    {batch.label}
+                  </span>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
                 <Button
-                  onClick={() => void handleCommit()}
-                  disabled={busy !== false || committed}
+                  onClick={() => void handlePreview()}
+                  disabled={rows.length === 0 || busy !== false}
+                  variant={preview?.valid ? 'outline' : 'default'}
                 >
-                  <Upload className="mr-2 h-4 w-4" />
-                  {busy === 'committing'
-                    ? 'Storing…'
-                    : committed
-                      ? 'Stored'
-                      : 'Confirm & store'}
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  {busy === 'uploading'
+                    ? 'Validating…'
+                    : preview?.valid
+                      ? 'Re-preview'
+                      : 'Preview'}
                 </Button>
-              )}
-              <span className="text-xs text-muted-foreground">
-                into <span className="font-medium">{batch.label}</span>
-              </span>
+                {preview?.valid && session && (
+                  <Button
+                    onClick={() => {
+                      setNotifyStudents(true)
+                      setConfirmOpen(true)
+                    }}
+                    disabled={busy !== false || committed}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {busy === 'committing'
+                      ? 'Storing…'
+                      : committed
+                        ? 'Stored'
+                        : 'Confirm & store'}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
 
@@ -545,6 +672,71 @@ export default function EmployeeMarksUploadBatchPage() {
               session={session}
             />
           )}
+
+          <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Confirm & store results</DialogTitle>
+                <DialogDescription>
+                  This stores results for{' '}
+                  <span className="font-medium text-foreground">
+                    {(preview?.students.length ?? 0).toLocaleString()}
+                  </span>{' '}
+                  student(s) in{' '}
+                  <span className="font-medium text-foreground">
+                    {batch.label}
+                  </span>{' '}
+                  and overwrites everything previously stored for this batch.
+                </DialogDescription>
+              </DialogHeader>
+
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={notifyStudents}
+                onClick={() => setNotifyStudents((v) => !v)}
+                className="flex w-full items-start gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/40"
+              >
+                <span
+                  className={cn(
+                    'mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-[5px] border transition-colors',
+                    notifyStudents
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-input',
+                  )}
+                >
+                  {notifyStudents && <Check className="size-3.5" />}
+                </span>
+                <span className="space-y-0.5">
+                  <span className="flex items-center gap-1.5 text-sm font-medium">
+                    <Bell className="size-3.5 text-muted-foreground" />
+                    Notify students
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    Send an in-app & push notification so students know their
+                    results are published.
+                  </span>
+                </span>
+              </button>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={busy === 'committing'}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => void handleCommit(notifyStudents)}
+                  disabled={busy === 'committing'}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {notifyStudents ? 'Store & notify' : 'Store'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </section>

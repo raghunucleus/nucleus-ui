@@ -200,10 +200,15 @@ export function studentUploadDetail(
   )
 }
 
-/** Atomically replace the batch's stored results from the staged session. */
+/**
+ * Atomically replace the batch's stored results from the staged session.
+ * `notify` (default true) pushes a "results published" notification to every
+ * student whose results were stored.
+ */
 export function commitUpload(payload: {
   programme_admission_year_id: number
   upload_session: string
+  notify: boolean
 }): Promise<CommitResult> {
   return withEmployeeAuth((token) =>
     apiFetch<CommitResult>('/employee/exam-marks/uploads/commit', {
