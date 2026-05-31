@@ -17,6 +17,7 @@ import Fees from '@/pages/fees'
 import Birthdays from '@/pages/birthdays'
 import Connect from '@/pages/connect'
 import Notifications from '@/pages/notifications'
+import AcademicHolidays from '@/pages/academic-holidays'
 
 /** The signed-in student/parent portal. `PortalLayout` renders the chrome. */
 const rootRoute = createRootRoute({ component: PortalLayout })
@@ -43,6 +44,11 @@ const timetableRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/timetable',
   component: Timetable,
+  // `?week=YYYY-MM-DD` opens a specific week (used by the "timetable updated"
+  // notification deep-link).
+  validateSearch: (search: Record<string, unknown>): { week?: string } => ({
+    week: typeof search.week === 'string' ? search.week : undefined,
+  }),
 })
 
 const attendanceRoute = createRoute({
@@ -81,6 +87,12 @@ const notificationsRoute = createRoute({
   component: Notifications,
 })
 
+const academicHolidaysRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/academic-holidays',
+  component: AcademicHolidays,
+})
+
 const connectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/connect',
@@ -112,6 +124,7 @@ const routeTree = rootRoute.addChildren([
   birthdaysRoute,
   notificationsRoute,
   connectRoute,
+  academicHolidaysRoute,
 ])
 
 export const router = createRouter({

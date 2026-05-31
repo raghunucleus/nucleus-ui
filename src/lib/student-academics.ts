@@ -1,4 +1,5 @@
 import { ApiError, apiFetch } from './api'
+import type { AcademicHoliday } from './holidays'
 import {
   clearTokens,
   getAccessToken,
@@ -154,6 +155,60 @@ export function fetchStudentSubjectSessions(
       `/student/attendance/subject/${subjectId}/sessions`,
       { token },
     ),
+  )
+}
+
+/**
+ * Holidays that apply to the signed-in student — institution-wide ones plus
+ * any scoped to their programme or attendance group. Scoped server-side from
+ * the JWT; the optional window narrows the result.
+ */
+export function fetchStudentHolidays(range?: {
+  from?: string
+  to?: string
+}): Promise<AcademicHoliday[]> {
+  const qs = new URLSearchParams()
+  if (range?.from) qs.set('from', range.from)
+  if (range?.to) qs.set('to', range.to)
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  return withAuth((token) =>
+    apiFetch<AcademicHoliday[]>(`/student/academic-holidays${suffix}`, { token }),
+  )
+}
+
+/** One page of the student's scoped holiday calendar. Mirrors the server's
+ *  `PaginatedHolidays`. */
+export interface PaginatedHolidays {
+  items: AcademicHoliday[]
+  total: number
+  page: number
+  page_size: number
+  has_more: boolean
+}
+
+/**
+ * Page-windowed variant of {@link fetchStudentHolidays} for the holiday browser
+ * with year/month/range filters. The window (from/to) and page are server-side
+ * scoped to the signed-in student.
+ */
+export function fetchStudentHolidaysPaged(params: {
+  from?: string
+  to?: string
+  scope?: 'upcoming' | 'past'
+  page?: number
+  page_size?: number
+}): Promise<PaginatedHolidays> {
+  const qs = new URLSearchParams()
+  if (params.from) qs.set('from', params.from)
+  if (params.to) qs.set('to', params.to)
+  if (params.scope) qs.set('scope', params.scope)
+  if (params.page) qs.set('page', String(params.page))
+  if (params.page_size) qs.set('page_size', String(params.page_size))
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  return withAuth((token) =>
+    apiFetch<PaginatedHolidays>(`/student/academic-holidays/paged${suffix}`, {
+      token,
+    }),
   )
 }
 

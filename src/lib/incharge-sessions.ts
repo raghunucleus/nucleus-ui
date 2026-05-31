@@ -145,6 +145,8 @@ export function moveInchargeSession(
   body: {
     new_timetable_period_id?: number
     new_session_date?: string
+    allow_conflict?: boolean
+    allow_holiday?: boolean
     reason?: string
   },
 ): Promise<InchargeSession> {
@@ -152,6 +154,105 @@ export function moveInchargeSession(
     apiFetch<InchargeSession>(
       `/employee/attendance-incharge/sessions/${sessionId}/move`,
       { method: 'POST', body, token },
+    ),
+  )
+}
+
+/** Move several sessions to the same destination atomically (all or none) —
+ *  used to reschedule an elective slot's option children together. */
+export function moveInchargeSessionsBatch(
+  sessionIds: number[],
+  body: {
+    new_timetable_period_id?: number
+    new_session_date?: string
+    allow_conflict?: boolean
+    allow_holiday?: boolean
+    reason?: string
+  },
+): Promise<InchargeSession[]> {
+  return withEmployeeAuth((token) =>
+    apiFetch<InchargeSession[]>(
+      `/employee/attendance-incharge/sessions/move-batch`,
+      { method: 'POST', body: { session_ids: sessionIds, ...body }, token },
+    ),
+  )
+}
+
+/** In-place edit of a session's content. Date/period are NOT here — use
+ *  moveInchargeSession for those. Send only the fields that change. */
+export interface EditSessionInput {
+  programme_semester_subject_id?: number
+  programme_semester_subject_option_id?: number | null
+  scheduled_employee_id?: number
+  room?: string | null
+  note?: string | null
+  reason?: string
+}
+
+export function editInchargeSession(
+  sessionId: number,
+  body: EditSessionInput,
+): Promise<InchargeSession> {
+  return withEmployeeAuth((token) =>
+    apiFetch<InchargeSession>(
+      `/employee/attendance-incharge/sessions/${sessionId}`,
+      { method: 'PATCH', body, token },
+    ),
+  )
+}
+
+/** Push a one-off / makeup class for a single day, not tied to a template
+ *  cell. Survives later week-republishes (timetable_entry_id is NULL). */
+export interface CreateAdHocSessionInput {
+  session_date: string
+  programme_semester_id: number
+  attendance_group_id: number
+  timetable_period_id: number
+  programme_semester_subject_id: number
+  programme_semester_subject_option_id?: number | null
+  scheduled_employee_id: number
+  room?: string | null
+  note?: string | null
+  allow_holiday?: boolean
+  reason?: string
+}
+
+export function createInchargeAdHoc(
+  body: CreateAdHocSessionInput,
+): Promise<InchargeSession> {
+  return withEmployeeAuth((token) =>
+    apiFetch<InchargeSession>(
+      `/employee/attendance-incharge/sessions/ad-hoc`,
+      { method: 'POST', body, token },
+    ),
+  )
+}
+
+export interface InchargeHoliday {
+  id: number
+  date: string
+  end_date: string | null
+  name: string
+  scope: 'institution' | 'programme' | 'group'
+  type: 'public' | 'institutional' | 'unplanned' | 'half_day'
+}
+
+/** Declared holidays overlapping [from, to] for a group — used to warn before
+ *  scheduling on a no-class day. */
+export function fetchInchargeHolidays(params: {
+  attendance_group_id: number
+  from: string
+  to: string
+}): Promise<InchargeHoliday[]> {
+  const qs = new URLSearchParams({
+    attendance_group_id: String(params.attendance_group_id),
+    from: params.from,
+    to: params.to,
+  }).toString()
+  return withEmployeeAuth((token) =>
+    apiFetch<InchargeHoliday[]>(
+      `/employee/attendance-incharge/sessions/holidays?${qs}`,
+      { token },
     ),
   )
 }

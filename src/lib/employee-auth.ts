@@ -127,15 +127,33 @@ export async function employeeLogout(): Promise<void> {
 // --- authenticated request helper -----------------------------------------
 
 /**
+ * Fired when an authenticated request finds the session unrecoverable — the
+ * access token is expired/invalid AND a refresh attempt failed (refresh token
+ * also dead). The auth store registers a handler here to flip `authed` to
+ * false so the portal drops back to the login screen (auto-logout). Wired via
+ * a callback rather than importing the store to avoid a lib→store cycle.
+ */
+let onSessionExpired: (() => void) | null = null
+
+export function setEmployeeSessionExpiredHandler(
+  handler: (() => void) | null,
+): void {
+  onSessionExpired = handler
+}
+
+/**
  * Runs an authenticated employee call with the stored access token. On a 401
- * it tries a single refresh-and-retry; if that fails the session is cleared
- * and a 401 ApiError is thrown so callers can route back to the login screen.
+ * it tries a single refresh-and-retry; if that fails the session is cleared,
+ * the session-expired handler fires (auto-logout), and a 401 ApiError is
+ * thrown so callers can route back to the login screen.
  */
 export async function withEmployeeAuth<T>(
   call: (token: string) => Promise<T>,
 ): Promise<T> {
   const token = getEmployeeAccessToken()
   if (!token) {
+    clearEmployeeTokens()
+    onSessionExpired?.()
     throw new ApiError(401, 'Your session has ended. Please sign in again.')
   }
   try {
@@ -145,23 +163,34 @@ export async function withEmployeeAuth<T>(
       const refreshed = await tryRefresh()
       if (refreshed) return call(refreshed)
       clearEmployeeTokens()
+      onSessionExpired?.()
       throw new ApiError(401, 'Your session has expired. Please sign in again.')
     }
     throw err
   }
 }
 
-async function tryRefresh(): Promise<string | null> {
+/** Dedupe concurrent refreshes so a burst of 401s triggers a single /refresh. */
+let refreshInFlight: Promise<string | null> | null = null
+
+function tryRefresh(): Promise<string | null> {
+  // Coalesce parallel callers onto one in-flight refresh. The server rotates
+  // refresh tokens single-use, so two concurrent /refresh calls would make the
+  // second look like a replay and burn the whole session family.
+  if (refreshInFlight) return refreshInFlight
   const refreshToken = getEmployeeRefreshToken()
-  if (!refreshToken) return null
-  try {
-    const tokens = await apiFetch<EmployeeAuthTokens>('/employee/auth/refresh', {
-      method: 'POST',
-      body: { refreshToken },
+  if (!refreshToken) return Promise.resolve(null)
+  refreshInFlight = apiFetch<EmployeeAuthTokens>('/employee/auth/refresh', {
+    method: 'POST',
+    body: { refreshToken },
+  })
+    .then((tokens) => {
+      storeEmployeeTokens(tokens)
+      return tokens.accessToken
     })
-    storeEmployeeTokens(tokens)
-    return tokens.accessToken
-  } catch {
-    return null
-  }
+    .catch(() => null)
+    .finally(() => {
+      refreshInFlight = null
+    })
+  return refreshInFlight
 }

@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import {
   clearEmployeeTokens,
   hasStoredEmployeeSession,
+  setEmployeeSessionExpiredHandler,
 } from '@/lib/employee-auth'
 
 interface EmployeeAuthState {
@@ -37,3 +38,11 @@ export const useEmployeeAuthStore = create<EmployeeAuthState>((set) => ({
     set({ authed: false })
   },
 }))
+
+// Auto-logout: when an authenticated request finds the session unrecoverable
+// (access token expired and refresh failed), drop `authed` so App.tsx falls
+// back to the employee login screen. Tokens are already cleared by the time
+// this fires; we only flip the gate. Registered once at module load.
+setEmployeeSessionExpiredHandler(() => {
+  useEmployeeAuthStore.setState({ authed: false })
+})

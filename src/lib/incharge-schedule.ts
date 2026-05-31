@@ -123,6 +123,24 @@ export interface PreviewSession {
   room: string | null
   /** True when the session already exists — publish will be a no-op for this row. */
   already_exists: boolean
+  /** True when this (date, period) slot already holds a marked (completed)
+   *  class — publish keeps the held one and skips this row. */
+  kept_marked: boolean
+}
+
+/** A completed/cancelled session a (re)publish leaves untouched (history). */
+export interface KeptSession {
+  session_date: string
+  day_of_week: number
+  timetable_period_id: number
+  period_label: string | null
+  start_time: string | null
+  end_time: string | null
+  subject_id: number
+  subject_code: string | null
+  subject_name: string | null
+  teacher_name: string | null
+  status: 'completed' | 'cancelled'
 }
 
 export interface PreviewResult {
@@ -131,6 +149,8 @@ export interface PreviewResult {
   /** Dates inside [from, to] producing zero sessions because of a holiday
    *  covering them entirely. */
   blocked_dates: string[]
+  /** Completed/cancelled sessions in the window publish won't change. */
+  kept_sessions: KeptSession[]
 }
 
 export interface PublishResult {
@@ -140,6 +160,18 @@ export interface PublishResult {
   skipped_holidays: number
   /** Stale scheduled rows from a previous publish replaced before re-seeding. */
   replaced: number
+  /** Rows not seeded because their slot already held a marked class. */
+  kept_marked: number
+  /** Rows not seeded because the caller dropped them in the publish dialog. */
+  excluded: number
+}
+
+/** Identifies a preview seed row the caller chose NOT to publish. */
+export interface PublishExcludeKey {
+  session_date: string
+  timetable_period_id: number
+  programme_semester_subject_id: number
+  programme_semester_subject_option_id: number | null
 }
 
 // --- API calls ----------------------------------------------------------
@@ -205,6 +237,10 @@ export interface InchargeWeekWindow {
   from: string
   to: string
   days_of_week?: number[]
+  /** Preview rows to skip on publish (manual per-row "Don't add"). */
+  exclude?: PublishExcludeKey[]
+  /** Notify the group's students of the change (publish dialog default: true). */
+  notify?: boolean
 }
 
 export function previewInchargeWeek(

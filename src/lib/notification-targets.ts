@@ -46,7 +46,16 @@ const REGISTRY: Partial<Record<NotificationModuleKey, ModuleResolver>> = {
   attendance: { home: { to: '/attendance' } },
   'exam-marks': { home: { to: '/exam-marks' } },
   fees: { home: { to: '/fees' } },
-  timetable: { home: { to: '/timetable' } },
+  timetable: {
+    home: { to: '/timetable' },
+    resolve: (t) => {
+      // A published-week alert carries the week start (YYYY-MM-DD) so we open
+      // the timetable on that exact week.
+      const week = t.params?.week
+      if (week) return { to: '/timetable', search: { week } }
+      return null
+    },
+  },
   birthdays: { home: { to: '/birthdays' } },
   'id-card': { home: { to: '/id-card' } },
   profile: { home: { to: '/profile' } },

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   CalendarRange,
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   ClipboardList,
   DoorOpen,
@@ -18,13 +20,14 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import {
   addDays,
   fetchTeacherHistory,
   formatHumanDate,
   shortTime,
+  startOfWeek,
   toIsoDate,
   type TeacherSessionListItem,
 } from '@/lib/teacher-attendance'
@@ -34,6 +37,15 @@ function defaultRange(): { from: string; to: string } {
   const to = toIsoDate(new Date())
   const from = toIsoDate(addDays(new Date(), -13))
   return { from, to }
+}
+
+function parseIso(iso: string): Date {
+  return new Date(`${iso}T00:00:00`)
+}
+
+/** Inclusive-span length of `[from, to]` in days (0 when same day). */
+function spanDays(from: string, to: string): number {
+  return Math.round((parseIso(to).getTime() - parseIso(from).getTime()) / 86_400_000)
 }
 
 export default function EmployeeAttendanceHistoryPage() {
@@ -64,6 +76,30 @@ export default function EmployeeAttendanceHistoryPage() {
   useEffect(() => {
     void load(from, to)
   }, [from, to, load])
+
+  const today = toIsoDate(new Date())
+  const atToday = to >= today
+
+  // Slide the whole window one full span backward/forward, keeping its width.
+  // Forward stops at today — there are no future sessions to show.
+  const shiftWindow = useCallback(
+    (dir: -1 | 1) => {
+      const span = spanDays(from, to)
+      const step = span + 1
+      let nt = toIsoDate(addDays(parseIso(to), dir * step))
+      if (nt > today) nt = today
+      const nf = toIsoDate(addDays(parseIso(nt), -span))
+      setFrom(nf)
+      setTo(nt)
+    },
+    [from, to, today],
+  )
+
+  // Snap to the current week — Monday through today.
+  const thisWeek = useCallback(() => {
+    setFrom(toIsoDate(startOfWeek(new Date())))
+    setTo(today)
+  }, [today])
 
   // Group by date so the list reads top-down by day.
   const grouped = useMemo(() => {
@@ -96,25 +132,54 @@ export default function EmployeeAttendanceHistoryPage() {
             to amend.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 rounded-md border bg-card px-2 py-1">
-            <CalendarRange className="size-4 text-muted-foreground" />
-            <Input
-              type="date"
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Earlier range"
+            onClick={() => shiftWindow(-1)}
+          >
+            <ChevronLeft />
+          </Button>
+          <div className="flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1.5">
+            <CalendarRange className="size-4 shrink-0 text-muted-foreground" />
+            <DatePicker
               value={from}
-              max={to}
-              onChange={(e) => setFrom(e.target.value || initial.from)}
-              className="h-8 border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
+              hideIcon
+              onChange={(next) => {
+                const start = next || initial.from
+                setFrom(start)
+                // Keep the range valid: a start after the current end drags
+                // the end forward with it.
+                if (start > to) setTo(start)
+              }}
+              aria-label="Range start date"
             />
             <span className="text-xs text-muted-foreground">→</span>
-            <Input
-              type="date"
+            <DatePicker
               value={to}
-              min={from}
-              onChange={(e) => setTo(e.target.value || initial.to)}
-              className="h-8 border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
+              hideIcon
+              onChange={(next) => {
+                const end = next || initial.to
+                setTo(end)
+                // …and an end before the current start drags the start back.
+                if (end < from) setFrom(end)
+              }}
+              aria-label="Range end date"
             />
           </div>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Later range"
+            onClick={() => shiftWindow(1)}
+            disabled={atToday}
+          >
+            <ChevronRight />
+          </Button>
+          <Button variant="outline" size="sm" onClick={thisWeek}>
+            This week
+          </Button>
         </div>
       </header>
 

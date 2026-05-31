@@ -9,7 +9,10 @@ import NotFound from '@/pages/not-found'
 import EmployeeAttendanceHistoryPage from '@/pages/employee/attendance-history'
 import EmployeeAttendanceMarkPage from '@/pages/employee/attendance-mark'
 import EmployeeAttendanceMarkSessionPage from '@/pages/employee/attendance-mark-session'
+import EmployeeAcademicHolidaysPage from '@/pages/employee/academic-holidays'
+import EmployeeBirthdaysPage from '@/pages/employee/birthdays'
 import EmployeeHome from '@/pages/employee/home'
+import EmployeeIdCardPage from '@/pages/employee/id-card'
 import EmployeeInchargeSchedulePage from '@/pages/employee/incharge-schedule'
 import EmployeeInchargeTemplateDetailPage from '@/pages/employee/incharge-template-detail'
 import EmployeeInchargeTemplatesPage from '@/pages/employee/incharge-templates'
@@ -40,6 +43,24 @@ const timetableRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/timetable',
   component: EmployeeTimetablePage,
+})
+
+const academicHolidaysRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/academic-holidays',
+  component: EmployeeAcademicHolidaysPage,
+})
+
+const birthdaysRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/birthdays',
+  component: EmployeeBirthdaysPage,
+})
+
+const idCardRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/id-card',
+  component: EmployeeIdCardPage,
 })
 
 const attendanceMarkRoute = createRoute({
@@ -92,6 +113,9 @@ const profileRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
+  academicHolidaysRoute,
+  birthdaysRoute,
+  idCardRoute,
   timetableRoute,
   attendanceMarkRoute,
   attendanceMarkSessionRoute,

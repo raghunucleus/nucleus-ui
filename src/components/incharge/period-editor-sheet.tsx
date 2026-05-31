@@ -134,7 +134,11 @@ export function PeriodEditorSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="flex w-full max-w-2xl flex-col">
+      {/* `sm:max-w-2xl` (not `max-w-2xl`) — the base Sheet sets `sm:max-w-sm`,
+          and a responsive class wins over a base one, so without the `sm:`
+          prefix the sheet stays clamped to ~24rem and the Label column
+          collapses. */}
+      <SheetContent side="right" className="flex w-full flex-col sm:max-w-2xl">
         <SheetHeader>
           <SheetTitle>Edit bell schedule</SheetTitle>
           <SheetDescription>
@@ -144,7 +148,7 @@ export function PeriodEditorSheet({
         </SheetHeader>
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
-          <div className="grid grid-cols-[2.5rem_minmax(0,1fr)_5rem_5rem_4rem_2rem] items-center gap-2 px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="grid grid-cols-[2rem_minmax(6rem,1fr)_6rem_6rem_4.5rem_2rem] items-center gap-2 px-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             <span>#</span>
             <span>Label</span>
             <span>Start</span>
@@ -165,7 +169,7 @@ export function PeriodEditorSheet({
               <div
                 key={row.key}
                 className={cn(
-                  'grid grid-cols-[2.5rem_minmax(0,1fr)_5rem_5rem_4rem_2rem] items-center gap-2 rounded-md border bg-card p-2',
+                  'grid grid-cols-[2rem_minmax(6rem,1fr)_6rem_6rem_4.5rem_2rem] items-center gap-2 rounded-md border bg-card p-2',
                   issue && 'border-destructive/40 bg-destructive/5',
                 )}
               >

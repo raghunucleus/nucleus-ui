@@ -4,6 +4,7 @@ import {
   BookOpen,
   Cake,
   CalendarDays,
+  CalendarOff,
   ClipboardCheck,
   CreditCard,
   IdCard,
@@ -23,6 +24,7 @@ export type ModuleRoute =
   | '/birthdays'
   | '/connect'
   | '/notifications'
+  | '/academic-holidays'
 
 /**
  * The icon accent palette — one hue per module. The actual colors live as
@@ -127,6 +129,13 @@ export const MODULES: Module[] = [
     description: "Your classmates' birthdays — today and coming up.",
     color: 'rose',
     to: '/birthdays',
+  },
+  {
+    icon: CalendarOff,
+    title: 'Holidays',
+    description: 'College holidays and no-class days.',
+    color: 'blue',
+    to: '/academic-holidays',
   },
   {
     icon: MessageCircle,

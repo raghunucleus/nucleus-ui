@@ -1,5 +1,4 @@
 import {
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
   ChevronRight as ChevronRightSmall,
@@ -22,7 +21,7 @@ import { NoClassesIllustration } from '@/components/no-classes-illustration'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import { ApiError } from '@/lib/api'
 import {
@@ -153,15 +152,12 @@ function DateBar({
       >
         <ChevronLeft />
       </Button>
-      <div className="flex items-center gap-2 rounded-md border bg-card px-2 py-1">
-        <CalendarDays className="size-4 text-muted-foreground" />
-        <Input
-          type="date"
-          value={date}
-          onChange={(e) => onChange(e.target.value || toIsoDate(new Date()))}
-          className="h-8 border-0 bg-transparent p-0 text-sm focus-visible:ring-0"
-        />
-      </div>
+      <DatePicker
+        value={date}
+        onChange={(next) => onChange(next || toIsoDate(new Date()))}
+        disabled={loading}
+        aria-label="Pick a date to mark attendance"
+      />
       <Button variant="outline" size="sm" onClick={onToday}>
         Today
       </Button>

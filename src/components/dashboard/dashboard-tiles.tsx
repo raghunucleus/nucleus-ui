@@ -3,14 +3,11 @@ import {
   ArrowUpRight,
   Award,
   Cake,
-  CalendarClock,
   ClipboardCheck,
   CreditCard,
   LayoutGrid,
-  MapPin,
   MessageCircle,
   PartyPopper,
-  Users,
   type LucideIcon,
 } from 'lucide-react'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
@@ -30,22 +27,18 @@ import {
 } from '@/lib/academics-mock'
 import {
   fetchStudentAttendanceDashboard,
+  fetchStudentHolidays,
   type DashboardResult,
 } from '@/lib/student-academics'
+import {
+  holidayRangeLabel,
+  toIsoDate,
+  type AcademicHoliday,
+  type AcademicHolidayType,
+} from '@/lib/holidays'
 import { fetchChatUnreadCount } from '@/lib/student-chat'
 import { useChatConnection, useChatEvent } from '@/lib/chat-socket'
 import { useAuthStore } from '@/stores/auth-store'
-import {
-  CAMPUS_EVENTS,
-  CLASSMATES,
-  CLASS_CONTEXT,
-  HOLIDAYS,
-  dateFromOffset,
-  relativeLabel,
-  type CampusEvent,
-  type Classmate,
-  type Presence,
-} from '@/lib/campus-mock'
 import {
   avatarColorFor,
   studentBirthdays,
@@ -64,11 +57,11 @@ import { useAppDrawerStore } from '@/stores/app-drawer-store'
 
 const TILE_BASE = 'rounded-2xl border bg-card text-card-foreground shadow-sm'
 
-const PRESENCE_DOT: Record<Presence, string> = {
-  'in-class': 'bg-icon-amber',
-  library: 'bg-icon-violet',
-  online: 'bg-icon-emerald',
-  away: 'bg-muted-foreground',
+/** A friendly countdown label, e.g. "Today", "Tomorrow", "in 5 days". */
+function relativeLabel(offsetDays: number): string {
+  if (offsetDays <= 0) return 'Today'
+  if (offsetDays === 1) return 'Tomorrow'
+  return `in ${offsetDays} days`
 }
 
 function initials(name: string): string {
@@ -440,43 +433,6 @@ function ViewMoreTile({ hidden }: { hidden: number }) {
   )
 }
 
-export function ClassmatesTile({ className }: { className?: string }) {
-  return (
-    <PanelTile
-      icon={Users}
-      title="Your class"
-      meta={`${CLASS_CONTEXT.section} · Sem ${CLASS_CONTEXT.semester}`}
-      className={className}
-    >
-      <ul className="divide-y">
-        {CLASSMATES.map((classmate) => (
-          <PersonRow key={classmate.name} person={classmate} />
-        ))}
-      </ul>
-    </PanelTile>
-  )
-}
-
-function PersonRow({ person }: { person: Classmate }) {
-  return (
-    <li className="flex items-center gap-3 px-5 py-3">
-      <div className="relative shrink-0">
-        <Avatar name={person.name} color={person.avatarColor} />
-        <span
-          className={cn(
-            'absolute -right-0.5 -bottom-0.5 size-3 rounded-full ring-2 ring-card',
-            PRESENCE_DOT[person.presence],
-          )}
-        />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{person.name}</p>
-        <p className="truncate text-xs text-muted-foreground">{person.note}</p>
-      </div>
-    </li>
-  )
-}
-
 /** "12 Jun" — the day/month of an upcoming birthday (no year). */
 function birthdayDateLabel(iso: string): string {
   const d = new Date(`${iso}T00:00:00`)
@@ -623,95 +579,99 @@ export function BirthdaysTile({ className }: { className?: string }) {
   )
 }
 
+/** Holiday badge accent per type — drives the dashboard date chip tint. */
+const HOLIDAY_COLOR: Record<AcademicHolidayType, ModuleColor> = {
+  public: 'emerald',
+  institutional: 'blue',
+  unplanned: 'rose',
+  half_day: 'amber',
+}
+
+/** Whole days from today (local midnight) to an ISO calendar date. */
+function offsetDaysFromIso(iso: string): number {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const d = new Date(`${iso}T00:00:00`)
+  if (Number.isNaN(d.getTime())) return 0
+  return Math.round((d.getTime() - today.getTime()) / (24 * 60 * 60 * 1000))
+}
+
 export function HolidaysTile({ className }: { className?: string }) {
-  return (
-    <PanelTile
-      icon={PartyPopper}
-      title="Upcoming holidays"
-      className={className}
-    >
-      <ul className="divide-y">
-        {HOLIDAYS.map((holiday) => {
-          const date = dateFromOffset(holiday.offsetDays)
-          return (
-            <li
-              key={holiday.name}
-              className="flex items-center gap-3 px-5 py-3"
-            >
-              <DateChip date={date} color={holiday.color} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{holiday.name}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {date.toLocaleDateString('en-IN', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                  })}
-                </p>
-              </div>
-              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                {relativeLabel(holiday.offsetDays)}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-    </PanelTile>
-  )
-}
+  const signOut = useAuthStore((state) => state.signOut)
+  const [holidays, setHolidays] = useState<AcademicHoliday[] | null>(null)
+  const [error, setError] = useState(false)
 
-export function EventsTile({ className }: { className?: string }) {
-  const todayCount = CAMPUS_EVENTS.filter(
-    (event) => event.offsetDays <= 0,
-  ).length
+  const load = useCallback(async () => {
+    setError(false)
+    try {
+      // Only current + upcoming holidays — the endpoint folds in ongoing
+      // multi-day breaks via COALESCE(end_date, date) >= from.
+      const list = await fetchStudentHolidays({ from: toIsoDate(new Date()) })
+      setHolidays(list)
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        signOut()
+        return
+      }
+      setError(true)
+    }
+  }, [signOut])
+
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  const today = toIsoDate(new Date())
+  const upcoming = (holidays ?? []).slice(0, 5)
 
   return (
-    <PanelTile
-      icon={CalendarClock}
-      title="Campus events"
-      meta={todayCount > 0 ? `${todayCount} today` : undefined}
-      className={className}
-    >
-      <ul className="divide-y">
-        {CAMPUS_EVENTS.map((event) => (
-          <EventRow key={event.title} event={event} />
-        ))}
-      </ul>
-    </PanelTile>
-  )
-}
-
-function EventRow({ event }: { event: CampusEvent }) {
-  const isToday = event.offsetDays <= 0
-  const date = dateFromOffset(event.offsetDays)
-
-  return (
-    <li
-      className={cn(
-        'flex items-center gap-3 px-5 py-3',
-        isToday && 'bg-primary/5',
+    <PanelTile icon={PartyPopper} title="Upcoming holidays" className={className}>
+      {holidays === null && !error ? (
+        <div className="space-y-3 p-5">
+          <div className="h-12 animate-pulse rounded-xl bg-muted" />
+          <div className="h-12 animate-pulse rounded-xl bg-muted" />
+        </div>
+      ) : error ? (
+        <p className="px-5 py-4 text-xs text-muted-foreground">
+          Couldn&rsquo;t load holidays.{' '}
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="font-medium text-primary hover:underline"
+          >
+            Retry
+          </button>
+        </p>
+      ) : upcoming.length === 0 ? (
+        <p className="px-5 py-4 text-xs text-muted-foreground">
+          No holidays coming up.
+        </p>
+      ) : (
+        <ul className="divide-y">
+          {upcoming.map((holiday) => {
+            const date = new Date(`${holiday.date}T00:00:00`)
+            const ongoing =
+              holiday.date <= today && (holiday.end_date ?? holiday.date) >= today
+            return (
+              <li
+                key={holiday.id}
+                className="flex items-center gap-3 px-5 py-3"
+              >
+                <DateChip date={date} color={HOLIDAY_COLOR[holiday.type]} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{holiday.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {holidayRangeLabel(holiday)}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  {ongoing ? 'Today' : relativeLabel(offsetDaysFromIso(holiday.date))}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
       )}
-    >
-      <DateChip date={date} color={event.color} />
-      <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 text-sm font-medium leading-snug">
-          {event.title}
-        </p>
-        <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
-          <MapPin className="size-3 shrink-0" />
-          {event.location}
-        </p>
-      </div>
-      <span
-        className={cn(
-          'shrink-0 rounded-full px-2 py-0.5 text-xs font-medium',
-          isToday
-            ? 'bg-primary/10 text-primary'
-            : 'bg-muted text-muted-foreground',
-        )}
-      >
-        {relativeLabel(event.offsetDays)}
-      </span>
-    </li>
+    </PanelTile>
   )
 }

@@ -2,13 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { CircleAlert, RefreshCw } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { CampusFeed } from '@/components/dashboard/campus-feed'
 import {
   AttendanceTile,
   BirthdaysTile,
   CgpaTile,
-  ClassmatesTile,
-  EventsTile,
   FeesTile,
   HolidaysTile,
   MessagesAlert,
@@ -71,13 +68,10 @@ export default function StudentHome() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <ModulesTile />
-          <ClassmatesTile />
-          <CampusFeed />
         </div>
         <aside className="space-y-6">
           <BirthdaysTile />
           <HolidaysTile />
-          <EventsTile />
         </aside>
       </div>
     </>
@@ -96,12 +90,10 @@ function DashboardSkeleton() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <div className="h-56 animate-pulse rounded-2xl bg-muted" />
-          <div className="h-80 animate-pulse rounded-2xl bg-muted" />
         </div>
         <div className="space-y-6">
           <div className="h-64 animate-pulse rounded-2xl bg-muted" />
           <div className="h-52 animate-pulse rounded-2xl bg-muted" />
-          <div className="h-72 animate-pulse rounded-2xl bg-muted" />
         </div>
       </div>
     </div>

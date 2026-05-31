@@ -1,3 +1,4 @@
+import { useSearch } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CalendarDays,
@@ -48,10 +49,21 @@ function isoToday(): number {
 
 const ALL_DAYS = [1, 2, 3, 4, 5, 6, 7] as const
 
+function parseWeekParam(week: string | undefined): Date | null {
+  if (!week || !/^\d{4}-\d{2}-\d{2}$/.test(week)) return null
+  const d = new Date(`${week}T00:00:00`)
+  return Number.isNaN(d.getTime()) ? null : startOfWeek(d)
+}
+
 export default function Timetable() {
   const signOut = useAuthStore((state) => state.signOut)
+  // `?week=YYYY-MM-DD` (from the "timetable updated" notification) opens that
+  // week directly; otherwise default to the current week.
+  const search = useSearch({ strict: false }) as { week?: string }
   const [profile, setProfile] = useState<StudentProfile | null>(null)
-  const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()))
+  const [weekStart, setWeekStart] = useState<Date>(
+    () => parseWeekParam(search.week) ?? startOfWeek(new Date()),
+  )
   const [selectedDay, setSelectedDay] = useState<number>(() => isoToday())
   // Per-day cache keyed by `${weekStart_iso}:${day_of_week}` — survives
   // day-switches inside the same week without refetching, and cleared
@@ -73,6 +85,13 @@ export default function Timetable() {
   useEffect(() => {
     document.title = 'Timetable — Nucleus'
   }, [])
+
+  // Follow the ?week param if it changes (e.g. tapping another timetable
+  // notification while already on this page).
+  useEffect(() => {
+    const w = parseWeekParam(search.week)
+    if (w) setWeekStart((prev) => (toIsoDate(prev) === toIsoDate(w) ? prev : w))
+  }, [search.week])
 
   const weekStartIso = toIsoDate(weekStart)
   const cacheKey = `${weekStartIso}:${selectedDay}`

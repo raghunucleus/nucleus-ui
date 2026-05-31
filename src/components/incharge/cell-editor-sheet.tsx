@@ -270,6 +270,9 @@ export function CellEditorSheet({
             ? err.message
             : "Couldn't save this cell.",
       )
+    } finally {
+      // Always clear the loading state — otherwise, when the editor is reused
+      // for the next cell, the Save button stays disabled with the spinner.
       setSubmitting(false)
     }
   }
@@ -289,6 +292,7 @@ export function CellEditorSheet({
             ? err.message
             : "Couldn't clear this cell.",
       )
+    } finally {
       setClearing(false)
     }
   }
@@ -509,22 +513,23 @@ export function CellEditorSheet({
             {target.maxSpan > 1 ? (
               <div className="mt-3 space-y-1.5">
                 <Label htmlFor="cell-span">Span (periods)</Label>
-                <Input
+                {/* A dropdown, not a number field — typing into a number input
+                    concatenates digits (1 → "12") and then clamps to maxSpan,
+                    so "press 2" looked like it jumped to the cap. */}
+                <select
                   id="cell-span"
-                  type="number"
-                  min={1}
-                  max={target.maxSpan}
                   value={span}
-                  onChange={(e) =>
-                    setSpan(
-                      Math.max(
-                        1,
-                        Math.min(target.maxSpan, Number(e.target.value) || 1),
-                      ),
-                    )
-                  }
-                  className="h-9 w-28"
-                />
+                  onChange={(e) => setSpan(Number(e.target.value))}
+                  className="h-9 w-28 rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  {Array.from({ length: target.maxSpan }, (_, i) => i + 1).map(
+                    (n) => (
+                      <option key={n} value={n}>
+                        {n} period{n === 1 ? '' : 's'}
+                      </option>
+                    ),
+                  )}
+                </select>
                 <p className="text-[11px] text-muted-foreground">
                   Merge up to {target.maxSpan} consecutive periods (e.g. a lab).
                 </p>
