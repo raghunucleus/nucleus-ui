@@ -20,15 +20,16 @@ import { cn } from '@/lib/utils'
 import {
   FEE_DUES,
   attendanceStanding,
-  cgpa,
   feeTotals,
   formatDate,
   formatINR,
 } from '@/lib/academics-mock'
 import {
   fetchStudentAttendanceDashboard,
+  fetchStudentExamResults,
   fetchStudentHolidays,
   type DashboardResult,
+  type ExamResultsView,
 } from '@/lib/student-academics'
 import {
   holidayRangeLabel,
@@ -255,31 +256,68 @@ export function AttendanceTile({ className }: { className?: string }) {
 }
 
 export function CgpaTile({ className }: { className?: string }) {
-  const value = cgpa()
+  const signOut = useAuthStore((state) => state.signOut)
+  const [data, setData] = useState<ExamResultsView | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    fetchStudentExamResults()
+      .then((result) => {
+        if (!cancelled) setData(result)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        if (err instanceof ApiError && err.status === 401) {
+          signOut()
+          return
+        }
+        setFailed(true)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [signOut])
+
+  const value = data?.has_results ? data.cgpa : null
+  const note = failed
+    ? "Couldn't load results"
+    : !data?.has_results
+      ? 'No results published yet'
+      : `Cumulative GPA across ${data.semesters_count} semester${data.semesters_count === 1 ? '' : 's'}`
 
   return (
     <StatTile
       to="/exam-marks"
       icon={Award}
       color="amber"
-      title="Exam marks"
+      title="Exam results"
       className={className}
     >
       <p className="mt-4 text-3xl font-bold tabular-nums">
-        {value ? value.toFixed(2) : '—'}
-        <span className="text-lg font-semibold text-muted-foreground">
-          {' '}
-          / 10
-        </span>
+        {loading ? (
+          <span className="inline-block h-9 w-16 animate-pulse rounded bg-muted/70 align-middle" />
+        ) : (
+          <>
+            {value !== null ? value.toFixed(2) : '—'}
+            <span className="text-lg font-semibold text-muted-foreground">
+              {' '}
+              / 10
+            </span>
+          </>
+        )}
       </p>
       <Progress
-        value={value ? value * 10 : 0}
+        value={value !== null ? value * 10 : 0}
         indicatorClassName="bg-icon-amber"
         className="mt-3"
       />
-      <p className="mt-2 text-xs text-muted-foreground">
-        Cumulative GPA across 5 semesters
-      </p>
+      <p className="mt-2 text-xs text-muted-foreground">{note}</p>
     </StatTile>
   )
 }

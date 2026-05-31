@@ -13,6 +13,8 @@ import EmployeeAcademicHolidaysPage from '@/pages/employee/academic-holidays'
 import EmployeeBirthdaysPage from '@/pages/employee/birthdays'
 import EmployeeHome from '@/pages/employee/home'
 import EmployeeIdCardPage from '@/pages/employee/id-card'
+import EmployeeMarksUploadPage from '@/pages/employee/marks-upload'
+import EmployeeMarksUploadBatchPage from '@/pages/employee/marks-upload-batch'
 import EmployeeInchargeSchedulePage from '@/pages/employee/incharge-schedule'
 import EmployeeInchargeTemplateDetailPage from '@/pages/employee/incharge-template-detail'
 import EmployeeInchargeTemplatesPage from '@/pages/employee/incharge-templates'
@@ -61,6 +63,18 @@ const idCardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/id-card',
   component: EmployeeIdCardPage,
+})
+
+const marksUploadRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/marks/upload',
+  component: EmployeeMarksUploadPage,
+})
+
+const marksUploadBatchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/marks/upload/$batchId',
+  component: EmployeeMarksUploadBatchPage,
 })
 
 const attendanceMarkRoute = createRoute({
@@ -116,6 +130,8 @@ const routeTree = rootRoute.addChildren([
   academicHolidaysRoute,
   birthdaysRoute,
   idCardRoute,
+  marksUploadRoute,
+  marksUploadBatchRoute,
   timetableRoute,
   attendanceMarkRoute,
   attendanceMarkSessionRoute,

@@ -117,6 +117,59 @@ export function fetchStudentAttendanceDashboard(): Promise<DashboardResult> {
   )
 }
 
+// ---- Exam results -------------------------------------------------------
+
+export interface ExamResultAttempt {
+  exam_type: string
+  exam_date: string
+  grade: string
+  grade_points: number
+  grade_meaning: string
+  is_best: boolean
+}
+
+export interface ExamResultSubject {
+  subject_code: string
+  subject_name: string
+  credits: number
+  grade: string
+  grade_points: number
+  grade_meaning: string
+  exam_type: string
+  attempts_count: number
+  attempts: ExamResultAttempt[]
+}
+
+export interface ExamResultSemester {
+  semester: number
+  sgpa: number
+  total_credits: number
+  subjects_count: number
+  passed_count: number
+  backlog_count: number
+  passed: boolean
+  subjects: ExamResultSubject[]
+}
+
+export interface ExamResultsView {
+  has_results: boolean
+  context: { programme: string; admission_year: string }
+  cgpa: number
+  total_credits: number
+  semesters_count: number
+  subjects_count: number
+  passed_count: number
+  backlog_count: number
+  semesters: ExamResultSemester[]
+}
+
+/** The signed-in student's own exam results (CGPA, per-semester SGPA, grades). */
+export function fetchStudentExamResults(): Promise<ExamResultsView> {
+  return withAuth((token) =>
+    apiFetch<ExamResultsView>('/student/exam-results', { token }),
+  )
+}
+
 export interface SubjectSessionRow {
   session_id: number
   date: string
