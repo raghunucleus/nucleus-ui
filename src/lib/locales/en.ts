@@ -1,0 +1,264 @@
+// English — the source of truth for the parent-portal `parent` namespace. `hi`
+// and `te` are typed `typeof en`, so adding a key here without translating it in
+// the other two fails the build. Interpolation uses {{var}}; count-based strings
+// use i18next plural suffixes (`_one` / `_other`).
+//
+// NOT exported as `const` on purpose: leaving the leaves as `string` (rather than
+// string-literal types) lets hi/te satisfy `typeof en` with their own wording.
+export const en = {
+  lang: { label: 'Language' },
+
+  common: {
+    signIn: 'Sign in',
+    signingIn: 'Signing in…',
+    signOut: 'Sign out',
+    signingOut: 'Signing out…',
+    retry: 'Retry',
+    tryAgain: 'Try again',
+    saving: 'Saving…',
+    sending: 'Sending…',
+    backToSignIn: 'Back to sign in',
+    cancel: 'Cancel',
+  },
+
+  nav: {
+    home: 'Home',
+    timetable: 'Timetable',
+    attendance: 'Attendance',
+    examResults: 'Exam results',
+    holidays: 'Holidays',
+    profile: 'Profile',
+  },
+
+  brand: { parentPortal: 'Parent portal' },
+
+  a11y: {
+    expandMenu: 'Expand menu',
+    collapseMenu: 'Collapse menu',
+    openAccount: 'Open account menu',
+    parentHome: 'Parent home',
+    expandSidebar: 'Expand sidebar',
+    collapseSidebar: 'Collapse sidebar',
+    prevWeek: 'Previous week',
+    nextWeek: 'Next week',
+    loading: 'Loading',
+  },
+
+  account: { switchStudent: 'Switch student', switch: 'Switch', collapse: 'Collapse' },
+
+  loginChrome: {
+    eyebrow: 'Welcome to Nucleus',
+    title: 'Sign in',
+    subtitle: 'Choose your account type to continue.',
+    tabStudent: 'Student',
+    tabParent: 'Parent',
+    needHelp: 'Need help?',
+    contact: 'Contact your institution',
+  },
+
+  login: {
+    mobileLabel: 'Registered mobile number',
+    mobilePlaceholder: '10-digit mobile number',
+    password: 'Password',
+    forgot: 'Forgot password?',
+    errMobile: 'Enter your 10-digit mobile number.',
+  },
+
+  pw: {
+    hint: 'Use at least 8 characters, including a letter and a number.',
+    errLen: 'Password must be at least 8 characters.',
+    errLetter: 'Password must contain at least one letter.',
+    errNumber: 'Password must contain at least one number.',
+    mismatch: 'The new passwords do not match.',
+  },
+
+  change: {
+    title: 'Set a new password',
+    desc: 'You are signed in with a temporary password. Choose a new one to continue.',
+    temp: 'Temporary password',
+    newPw: 'New password',
+    confirm: 'Confirm new password',
+    save: 'Save and continue',
+    cancel: 'Cancel and sign out',
+  },
+
+  forgot: {
+    title: 'Reset your password',
+    desc: "Enter your registered mobile number. We'll send a verification code to the contact on file.",
+    send: 'Send code',
+  },
+
+  otp: {
+    title: 'Enter your code',
+    desc: 'We sent a 6-digit code to the contact on file for {{mobile}}. Enter it and choose a new password.',
+    codeLabel: 'Verification code',
+    codePlaceholder: '6-digit code',
+    set: 'Set password',
+    errCode: 'Enter the 6-digit code we sent you.',
+    newPw: 'New password',
+    confirm: 'Confirm new password',
+  },
+
+  done: {
+    title: 'Password updated',
+    desc: 'Your password has been set. You can now sign in with it.',
+  },
+
+  generic: { error: 'Something went wrong. Please try again.' },
+
+  selectChild: {
+    title: 'Select a student to continue',
+    signedInAs: 'Signed in as {{name}}',
+    emptyTitle: 'No linked students',
+    emptyDesc:
+      "Your account isn't linked to any active student yet. Please contact your institution.",
+  },
+
+  home: {
+    greetMorning: 'Good morning',
+    greetAfternoon: 'Good afternoon',
+    greetEvening: 'Good evening',
+    subtitle: "Here's how {{name}} is doing.",
+    statAttendance: 'Attendance',
+    statCgpa: 'CGPA',
+    statClassesToday: 'Classes today',
+    notYet: 'Not yet',
+    freeDay: 'Free day',
+    upcomingHolidays: 'Upcoming holidays',
+  },
+
+  profile: {
+    subtitle: "Your account and the student you're viewing.",
+    viewingStudent: 'Viewing student',
+    noStudent: 'No student selected.',
+    allLinked: 'All linked students',
+  },
+
+  attendance: {
+    title: 'Attendance',
+    semester: 'Semester {{n}}',
+    overall: 'Overall attendance',
+    standingGood: 'On track',
+    standingLow: 'Low',
+    standingShortage: 'Shortage',
+    subjectWise: 'Subject-wise attendance',
+    subjectsReq: '{{n}} subjects · {{threshold}}% required for exam eligibility',
+    summaryNone: '{{a}} of {{h}} classes attended.',
+    summaryLow:
+      '{{a}} of {{h}} classes attended — currently below the minimum requirement.',
+    summaryWarn:
+      '{{a}} of {{h}} classes attended — keep it above 85% for a comfortable margin.',
+    summaryGood:
+      '{{a}} of {{h}} classes attended — comfortably above the requirement.',
+    marginNoHeld: 'No classes held yet',
+    canMiss_one: 'Can miss {{count}} more class',
+    canMiss_other: 'Can miss {{count}} more classes',
+    noBuffer: 'No buffer left — stay regular',
+    need: 'Attend {{n}} in a row to reach {{threshold}}%',
+    classes: '{{a}} / {{h}} classes',
+    viewHistory: 'View class history',
+    noDataTitle: 'No attendance yet',
+    noDataDesc:
+      'No subjects with attendance data yet. Check back once classes start.',
+    notReadyDesc: "Attendance will show up here as soon as it's available.",
+  },
+
+  timetable: {
+    title: 'Timetable',
+    thisWeek: 'This week',
+    classesCount: '{{n}} classes',
+    error: 'Could not load the timetable.',
+    periods: '{{n}} periods',
+    badgeLecture: 'Lecture',
+    badgeLab: 'Lab',
+    badgeElective: 'Elective',
+    badgeCancelled: 'Cancelled',
+    badgeRescheduled: 'Rescheduled',
+    dayLong: {
+      '1': 'Monday',
+      '2': 'Tuesday',
+      '3': 'Wednesday',
+      '4': 'Thursday',
+      '5': 'Friday',
+      '6': 'Saturday',
+      '7': 'Sunday',
+    },
+    dayShort: {
+      '1': 'Mon',
+      '2': 'Tue',
+      '3': 'Wed',
+      '4': 'Thu',
+      '5': 'Fri',
+      '6': 'Sat',
+      '7': 'Sun',
+    },
+  },
+
+  exam: {
+    title: 'Exam results',
+    subtitleFallback: 'Academic results',
+    cgpaLabel: 'Cumulative GPA',
+    summary: '{{n}} semesters · {{credits}} credits · 10-point scale',
+    backlogs_one: '{{count}} active backlog',
+    backlogs_other: '{{count}} active backlogs',
+    backlogNote: 'Subjects awaiting a pass — clearing them lifts the CGPA.',
+    semesterResults: 'Semester results',
+    tapHint: 'Tap a semester to see its subject grades.',
+    search: 'Search a subject…',
+    noMatch: 'No subject matches “{{q}}”.',
+    pass: 'Pass',
+    fail: 'Fail',
+    semMeta: '{{subjects}} subjects · {{credits}} credits',
+    semBacklog: '{{n}} backlog',
+    sgpa: 'SGPA',
+    colCourse: 'Course',
+    colCredits: 'Credits',
+    colGrade: 'Grade',
+    attempts: '{{n}} attempts',
+    allAttempts: 'All attempts (newest → oldest)',
+    best: 'Best',
+    pts: '{{n}} pts',
+    errTitle: "Couldn't load the results",
+    emptyTitle: 'Results not yet published',
+    emptyDesc: 'Results will appear here once your institution publishes them.',
+  },
+
+  holidays: {
+    title: 'Academic holidays',
+    subtitle:
+      'College holidays and no-class days. Upcoming first — switch to Past for earlier ones.',
+    tabUpcoming: 'Upcoming',
+    tabPast: 'Past',
+    emptyUpcoming: 'No upcoming holidays. Check the Past tab for earlier breaks.',
+    emptyPast: 'No past holidays yet.',
+    showing: 'Showing {{start}}–{{end}} of {{total}}',
+    prev: 'Prev',
+    next: 'Next',
+    pageOf: 'Page {{page}} of {{total}}',
+    errTitle: "Couldn't load holidays",
+  },
+
+  subject: {
+    titleFallback: 'Subject attendance',
+    backToAttendance: 'Back to attendance',
+    subtitle: '{{code}} · {{n}} sessions · {{absent}} absent',
+    filterAll: 'All classes',
+    filterAbsent: 'Only absent',
+    showingAbsent: 'Showing {{n}} absent of {{total}} total',
+    showingAll: 'Showing all {{n}} classes · {{absent}} absent',
+    noAbsences: 'No absences recorded — keep it going.',
+    noClassesYet: 'No classes recorded for this subject yet.',
+    reason: 'Reason:',
+    errLoad: "Couldn't load this subject's sessions.",
+    missing: 'Missing subject.',
+    statusPresent: 'Present',
+    statusAbsent: 'Absent',
+    statusLate: 'Late',
+    statusOd: 'OD',
+    statusExempt: 'Exempt',
+    statusCancelled: 'Cancelled',
+    statusUnmarked: 'Not marked',
+    statusUpcoming: 'Upcoming',
+    sub: 'Sub',
+  },
+}

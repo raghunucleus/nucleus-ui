@@ -1,13 +1,15 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { ArrowRight, Eye, EyeOff, GraduationCap } from 'lucide-react'
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { ParentLanguageSwitcher } from '@/components/parent-language-switcher'
 import { BrandPanel } from '@/components/auth/brand-panel'
-import { PasswordField } from '@/components/auth/password-field'
 import { cn } from '@/lib/utils'
 import { ApiError } from '@/lib/api'
 import {
@@ -20,6 +22,14 @@ import {
   studentResetPassword,
   type LoginResult,
 } from '@/lib/student-auth'
+import {
+  parentChangePassword,
+  parentLogin,
+  parentRequestOtp,
+  parentVerifyOtp,
+  type GuardianLoginResult,
+} from '@/lib/parent-auth'
+import { useParentAuthStore } from '@/stores/parent-auth-store'
 import { withGlobalLoader } from '@/stores/loader-store'
 
 // Google sign-in is shown only when an OAuth client id is configured.
@@ -32,6 +42,7 @@ export default function StudentParentLogin({
 }: {
   onAuthenticated: () => void
 }) {
+  const { t } = useTranslation()
   const [role, setRole] = useState<Role>('student')
   // Captured once: a password-reset email links back here with ?reset-token=…
   const [resetToken] = useState(() =>
@@ -51,14 +62,18 @@ export default function StudentParentLogin({
   }
 
   return (
-    <PageShell>
+    // The language switcher is shown only on the Parent tab — i18n covers the
+    // parent experience; the student/employee UIs stay English.
+    <PageShell headerExtra={role === 'parent' ? <ParentLanguageSwitcher /> : null}>
       <header className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-wider text-primary">
-          Welcome to Nucleus
+          {t('loginChrome.eyebrow')}
         </p>
-        <h2 className="text-3xl font-semibold tracking-tight">Sign in</h2>
+        <h2 className="text-3xl font-semibold tracking-tight">
+          {t('loginChrome.title')}
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Choose your account type to continue.
+          {t('loginChrome.subtitle')}
         </p>
       </header>
 
@@ -67,13 +82,13 @@ export default function StudentParentLogin({
       {role === 'student' ? (
         <StudentSection onAuthenticated={onAuthenticated} />
       ) : (
-        <ParentForm />
+        <ParentSection />
       )}
 
       <p className="text-center text-xs text-muted-foreground">
-        Need help?{' '}
+        {t('loginChrome.needHelp')}{' '}
         <a href="#" className="font-medium text-foreground hover:underline">
-          Contact your institution
+          {t('loginChrome.contact')}
         </a>
       </p>
     </PageShell>
@@ -81,7 +96,15 @@ export default function StudentParentLogin({
 }
 
 /** Outer chrome shared by every view on this page. */
-function PageShell({ children }: { children: ReactNode }) {
+function PageShell({
+  children,
+  headerExtra,
+}: {
+  children: ReactNode
+  /** Optional controls rendered to the left of the theme toggle (e.g. the
+   *  parent language switcher, shown only on the Parent tab). */
+  headerExtra?: ReactNode
+}) {
   return (
     <div className="flex min-h-svh bg-background text-foreground">
       <BrandPanel variant="member" />
@@ -96,7 +119,8 @@ function PageShell({ children }: { children: ReactNode }) {
               Nucleus
             </span>
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {headerExtra}
             <ThemeToggle />
           </div>
         </div>
@@ -116,6 +140,7 @@ function RoleTabs({
   role: Role
   onChange: (next: Role) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div
       role="tablist"
@@ -137,7 +162,9 @@ function RoleTabs({
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          {value === 'student' ? 'Student' : 'Parent'}
+          {value === 'student'
+            ? t('loginChrome.tabStudent')
+            : t('loginChrome.tabParent')}
         </button>
       ))}
     </div>
@@ -608,49 +635,458 @@ function ResetPasswordPanel({ token }: { token: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Parent flow — static placeholder, not yet wired to the API.
+// Parent (guardian) authentication flow
 // ---------------------------------------------------------------------------
 
-function ParentForm() {
-  return (
-    <form className="space-y-5" onSubmit={(event) => event.preventDefault()}>
-      <div className="space-y-2">
-        <Label htmlFor="parent-id">Parent ID</Label>
-        <Input
-          id="parent-id"
-          name="parent-id"
-          placeholder="P23BCS001"
-          autoComplete="username"
-          autoFocus
-          required
-        />
-        <p className="text-xs text-muted-foreground">
-          Your parent ID is the letter{' '}
-          <span className="font-medium text-foreground">P</span> followed by
-          your child&rsquo;s student ID.
-        </p>
+type ParentMode = 'login' | 'forgot' | 'forgot-otp' | 'change' | 'reset-done'
+
+const MOBILE_RE = /^[6-9]\d{9}$/
+
+/** Parent password policy with translated messages (mirrors the server). */
+function validateNewPasswordT(t: TFunction, password: string): string | null {
+  if (password.length < 8) return t('pw.errLen')
+  if (!/[A-Za-z]/.test(password)) return t('pw.errLetter')
+  if (!/\d/.test(password)) return t('pw.errNumber')
+  return null
+}
+
+/** Server error message passthrough, with a translated generic fallback. */
+function toMessageT(t: TFunction, err: unknown): string {
+  if (err instanceof ApiError) return err.message
+  if (err instanceof Error && err.message) return err.message
+  return t('generic.error')
+}
+
+function ParentSection() {
+  const { t } = useTranslation()
+  const signIn = useParentAuthStore((state) => state.signIn)
+  const [mode, setMode] = useState<ParentMode>('login')
+  // The login response is held while the guardian sets a new password from an
+  // admin-issued temporary one — we sign in with it (plus fresh tokens) after.
+  const [pendingLogin, setPendingLogin] = useState<GuardianLoginResult | null>(
+    null,
+  )
+  // Remembered across the forgot → OTP steps so the verify call has the number.
+  const [otpMobile, setOtpMobile] = useState('')
+
+  if (mode === 'change' && pendingLogin) {
+    return (
+      <ParentChangePasswordForm
+        accessToken={pendingLogin.accessToken}
+        onChanged={(tokens) => {
+          signIn({
+            ...pendingLogin,
+            accessToken: tokens.accessToken,
+            refreshToken: tokens.refreshToken,
+            mustChangePassword: false,
+          })
+        }}
+        onCancel={() => {
+          setPendingLogin(null)
+          setMode('login')
+        }}
+      />
+    )
+  }
+
+  if (mode === 'forgot') {
+    return (
+      <ParentForgotForm
+        onSent={(mobile) => {
+          setOtpMobile(mobile)
+          setMode('forgot-otp')
+        }}
+        onBack={() => setMode('login')}
+      />
+    )
+  }
+
+  if (mode === 'forgot-otp') {
+    return (
+      <ParentOtpForm
+        mobile={otpMobile}
+        onDone={() => setMode('reset-done')}
+        onBack={() => setMode('login')}
+      />
+    )
+  }
+
+  if (mode === 'reset-done') {
+    return (
+      <div className="space-y-5 text-center">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {t('done.title')}
+        </h2>
+        <p className="text-sm text-muted-foreground">{t('done.desc')}</p>
+        <Button
+          type="button"
+          size="lg"
+          className="w-full"
+          onClick={() => setMode('login')}
+        >
+          {t('common.backToSignIn')}
+        </Button>
       </div>
+    )
+  }
+
+  return (
+    <ParentLoginForm
+      onForgot={() => setMode('forgot')}
+      onLoggedIn={(result) => {
+        if (result.mustChangePassword) {
+          setPendingLogin(result)
+          setMode('change')
+        } else {
+          signIn(result)
+        }
+      }}
+    />
+  )
+}
+
+function ParentLoginForm({
+  onForgot,
+  onLoggedIn,
+}: {
+  onForgot: () => void
+  onLoggedIn: (result: GuardianLoginResult) => void
+}) {
+  const { t } = useTranslation()
+  const [mobile, setMobile] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(event: { preventDefault: () => void }) {
+    event.preventDefault()
+    if (submitting) return
+    setError(null)
+    const trimmed = mobile.trim()
+    if (!MOBILE_RE.test(trimmed)) {
+      setError(t('login.errMobile'))
+      return
+    }
+    setSubmitting(true)
+    try {
+      const result = await withGlobalLoader(
+        () => parentLogin(trimmed, password),
+        t('common.signingIn'),
+      )
+      onLoggedIn(result)
+    } catch (err) {
+      setError(toMessageT(t, err))
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="space-y-5" onSubmit={handleSubmit}>
+      {error && <FormError message={error} />}
 
       <div className="space-y-2">
-        <Label htmlFor="parent-mobile">Registered mobile number</Label>
+        <Label htmlFor="parent-mobile">{t('login.mobileLabel')}</Label>
         <Input
           id="parent-mobile"
           name="parent-mobile"
           type="tel"
           inputMode="numeric"
-          autoComplete="tel"
-          placeholder="10-digit mobile number"
+          autoComplete="username"
+          placeholder={t('login.mobilePlaceholder')}
           maxLength={10}
+          autoFocus
           required
+          value={mobile}
+          onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
         />
       </div>
 
-      <PasswordField forgotHref="#" />
+      <PasswordInput
+        id="parent-password"
+        label={t('login.password')}
+        value={password}
+        onChange={setPassword}
+        autoComplete="current-password"
+        onForgot={onForgot}
+        forgotLabel={t('login.forgot')}
+      />
 
-      <Button type="submit" size="lg" className="w-full">
-        Sign in
-        <ArrowRight />
+      <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+        {submitting ? t('common.signingIn') : t('common.signIn')}
+        {!submitting && <ArrowRight />}
       </Button>
+    </form>
+  )
+}
+
+function ParentChangePasswordForm({
+  accessToken,
+  onChanged,
+  onCancel,
+}: {
+  accessToken: string
+  onChanged: (tokens: { accessToken: string; refreshToken: string }) => void
+  onCancel: () => void
+}) {
+  const { t } = useTranslation()
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(event: { preventDefault: () => void }) {
+    event.preventDefault()
+    if (submitting) return
+    setError(null)
+
+    const policyError = validateNewPasswordT(t, newPassword)
+    if (policyError) return setError(policyError)
+    if (newPassword !== confirmPassword) {
+      return setError(t('pw.mismatch'))
+    }
+
+    setSubmitting(true)
+    try {
+      const tokens = await withGlobalLoader(
+        () => parentChangePassword(accessToken, currentPassword, newPassword),
+        t('common.saving'),
+      )
+      onChanged(tokens)
+    } catch (err) {
+      setError(toMessageT(t, err))
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="space-y-5" onSubmit={handleSubmit}>
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {t('change.title')}
+        </h2>
+        <p className="text-sm text-muted-foreground">{t('change.desc')}</p>
+      </header>
+
+      {error && <FormError message={error} />}
+
+      <PasswordInput
+        id="parent-current-password"
+        label={t('change.temp')}
+        value={currentPassword}
+        onChange={setCurrentPassword}
+        autoComplete="current-password"
+        autoFocus
+      />
+      <PasswordInput
+        id="parent-new-password"
+        label={t('change.newPw')}
+        value={newPassword}
+        onChange={setNewPassword}
+        autoComplete="new-password"
+      />
+      <PasswordInput
+        id="parent-confirm-password"
+        label={t('change.confirm')}
+        value={confirmPassword}
+        onChange={setConfirmPassword}
+        autoComplete="new-password"
+      />
+
+      <p className="text-xs text-muted-foreground">{t('pw.hint')}</p>
+
+      <div className="space-y-3">
+        <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+          {submitting ? t('common.saving') : t('change.save')}
+        </Button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground"
+        >
+          {t('change.cancel')}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function ParentForgotForm({
+  onSent,
+  onBack,
+}: {
+  onSent: (mobile: string) => void
+  onBack: () => void
+}) {
+  const { t } = useTranslation()
+  const [mobile, setMobile] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(event: { preventDefault: () => void }) {
+    event.preventDefault()
+    if (submitting) return
+    setError(null)
+    const trimmed = mobile.trim()
+    if (!MOBILE_RE.test(trimmed)) {
+      setError(t('login.errMobile'))
+      return
+    }
+    setSubmitting(true)
+    try {
+      await withGlobalLoader(() => parentRequestOtp(trimmed), t('common.sending'))
+      onSent(trimmed)
+    } catch (err) {
+      setError(toMessageT(t, err))
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="space-y-5" onSubmit={handleSubmit}>
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {t('forgot.title')}
+        </h2>
+        <p className="text-sm text-muted-foreground">{t('forgot.desc')}</p>
+      </header>
+
+      {error && <FormError message={error} />}
+
+      <div className="space-y-2">
+        <Label htmlFor="parent-forgot-mobile">{t('login.mobileLabel')}</Label>
+        <Input
+          id="parent-forgot-mobile"
+          name="parent-forgot-mobile"
+          type="tel"
+          inputMode="numeric"
+          autoComplete="username"
+          placeholder={t('login.mobilePlaceholder')}
+          maxLength={10}
+          autoFocus
+          required
+          value={mobile}
+          onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
+        />
+      </div>
+
+      <div className="space-y-3">
+        <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+          {submitting ? t('common.sending') : t('forgot.send')}
+        </Button>
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground"
+        >
+          {t('common.backToSignIn')}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function ParentOtpForm({
+  mobile,
+  onDone,
+  onBack,
+}: {
+  mobile: string
+  onDone: () => void
+  onBack: () => void
+}) {
+  const { t } = useTranslation()
+  const [otp, setOtp] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit(event: { preventDefault: () => void }) {
+    event.preventDefault()
+    if (submitting) return
+    setError(null)
+
+    if (!/^\d{6}$/.test(otp.trim())) {
+      return setError(t('otp.errCode'))
+    }
+    const policyError = validateNewPasswordT(t, newPassword)
+    if (policyError) return setError(policyError)
+    if (newPassword !== confirmPassword) {
+      return setError(t('pw.mismatch'))
+    }
+
+    setSubmitting(true)
+    try {
+      await withGlobalLoader(
+        () => parentVerifyOtp(mobile, otp.trim(), newPassword),
+        t('common.saving'),
+      )
+      onDone()
+    } catch (err) {
+      setError(toMessageT(t, err))
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form className="space-y-5" onSubmit={handleSubmit}>
+      <header className="space-y-2">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {t('otp.title')}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {t('otp.desc', { mobile })}
+        </p>
+      </header>
+
+      {error && <FormError message={error} />}
+
+      <div className="space-y-2">
+        <Label htmlFor="parent-otp">{t('otp.codeLabel')}</Label>
+        <Input
+          id="parent-otp"
+          name="parent-otp"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          placeholder={t('otp.codePlaceholder')}
+          maxLength={6}
+          autoFocus
+          required
+          value={otp}
+          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+        />
+      </div>
+
+      <PasswordInput
+        id="parent-otp-new-password"
+        label={t('otp.newPw')}
+        value={newPassword}
+        onChange={setNewPassword}
+        autoComplete="new-password"
+      />
+      <PasswordInput
+        id="parent-otp-confirm-password"
+        label={t('otp.confirm')}
+        value={confirmPassword}
+        onChange={setConfirmPassword}
+        autoComplete="new-password"
+      />
+
+      <p className="text-xs text-muted-foreground">{t('pw.hint')}</p>
+
+      <div className="space-y-3">
+        <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+          {submitting ? t('common.saving') : t('otp.set')}
+        </Button>
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground"
+        >
+          {t('common.backToSignIn')}
+        </button>
+      </div>
     </form>
   )
 }
@@ -667,6 +1103,7 @@ function PasswordInput({
   autoComplete,
   autoFocus,
   onForgot,
+  forgotLabel = 'Forgot password?',
 }: {
   id: string
   label: string
@@ -675,6 +1112,9 @@ function PasswordInput({
   autoComplete: string
   autoFocus?: boolean
   onForgot?: () => void
+  /** Label for the "forgot password" link — translated by parent callers;
+   *  defaults to English so the student flow is unchanged. */
+  forgotLabel?: string
 }) {
   const [shown, setShown] = useState(false)
 
@@ -688,7 +1128,7 @@ function PasswordInput({
             onClick={onForgot}
             className="text-xs font-medium text-primary hover:underline"
           >
-            Forgot password?
+            {forgotLabel}
           </button>
         )}
       </div>

@@ -1,0 +1,260 @@
+import { en } from './en'
+
+// Hindi (हिंदी). Typed `typeof en` so a missing or extra key fails the build.
+export const hi: typeof en = {
+  lang: { label: 'भाषा' },
+
+  common: {
+    signIn: 'साइन इन करें',
+    signingIn: 'साइन इन हो रहा है…',
+    signOut: 'साइन आउट',
+    signingOut: 'साइन आउट हो रहा है…',
+    retry: 'पुनः प्रयास करें',
+    tryAgain: 'पुनः प्रयास करें',
+    saving: 'सहेजा जा रहा है…',
+    sending: 'भेजा जा रहा है…',
+    backToSignIn: 'साइन इन पर वापस जाएँ',
+    cancel: 'रद्द करें',
+  },
+
+  nav: {
+    home: 'होम',
+    timetable: 'समय-सारणी',
+    attendance: 'उपस्थिति',
+    examResults: 'परीक्षा परिणाम',
+    holidays: 'छुट्टियाँ',
+    profile: 'प्रोफ़ाइल',
+  },
+
+  brand: { parentPortal: 'अभिभावक पोर्टल' },
+
+  a11y: {
+    expandMenu: 'मेन्यू बड़ा करें',
+    collapseMenu: 'मेन्यू छोटा करें',
+    openAccount: 'खाता मेन्यू खोलें',
+    parentHome: 'अभिभावक होम',
+    expandSidebar: 'साइडबार बड़ा करें',
+    collapseSidebar: 'साइडबार छोटा करें',
+    prevWeek: 'पिछला सप्ताह',
+    nextWeek: 'अगला सप्ताह',
+    loading: 'लोड हो रहा है',
+  },
+
+  account: { switchStudent: 'छात्र बदलें', switch: 'बदलें', collapse: 'छोटा करें' },
+
+  loginChrome: {
+    eyebrow: 'न्यूक्लियस में आपका स्वागत है',
+    title: 'साइन इन करें',
+    subtitle: 'जारी रखने के लिए अपना खाता प्रकार चुनें।',
+    tabStudent: 'छात्र',
+    tabParent: 'अभिभावक',
+    needHelp: 'मदद चाहिए?',
+    contact: 'अपने संस्थान से संपर्क करें',
+  },
+
+  login: {
+    mobileLabel: 'पंजीकृत मोबाइल नंबर',
+    mobilePlaceholder: '10 अंकों का मोबाइल नंबर',
+    password: 'पासवर्ड',
+    forgot: 'पासवर्ड भूल गए?',
+    errMobile: 'अपना 10 अंकों का मोबाइल नंबर दर्ज करें।',
+  },
+
+  pw: {
+    hint: 'कम से कम 8 अक्षर उपयोग करें, जिनमें एक अक्षर और एक संख्या हो।',
+    errLen: 'पासवर्ड कम से कम 8 अक्षरों का होना चाहिए।',
+    errLetter: 'पासवर्ड में कम से कम एक अक्षर होना चाहिए।',
+    errNumber: 'पासवर्ड में कम से कम एक संख्या होनी चाहिए।',
+    mismatch: 'नए पासवर्ड मेल नहीं खाते।',
+  },
+
+  change: {
+    title: 'नया पासवर्ड सेट करें',
+    desc: 'आप एक अस्थायी पासवर्ड से साइन इन हैं। जारी रखने के लिए नया पासवर्ड चुनें।',
+    temp: 'अस्थायी पासवर्ड',
+    newPw: 'नया पासवर्ड',
+    confirm: 'नया पासवर्ड पुष्टि करें',
+    save: 'सहेजें और जारी रखें',
+    cancel: 'रद्द करें और साइन आउट करें',
+  },
+
+  forgot: {
+    title: 'अपना पासवर्ड रीसेट करें',
+    desc: 'अपना पंजीकृत मोबाइल नंबर दर्ज करें। हम फ़ाइल पर मौजूद संपर्क पर एक सत्यापन कोड भेजेंगे।',
+    send: 'कोड भेजें',
+  },
+
+  otp: {
+    title: 'अपना कोड दर्ज करें',
+    desc: 'हमने {{mobile}} के लिए फ़ाइल पर मौजूद संपर्क पर 6 अंकों का कोड भेजा है। इसे दर्ज करें और नया पासवर्ड चुनें।',
+    codeLabel: 'सत्यापन कोड',
+    codePlaceholder: '6 अंकों का कोड',
+    set: 'पासवर्ड सेट करें',
+    errCode: 'हमने आपको भेजा 6 अंकों का कोड दर्ज करें।',
+    newPw: 'नया पासवर्ड',
+    confirm: 'नया पासवर्ड पुष्टि करें',
+  },
+
+  done: {
+    title: 'पासवर्ड अपडेट हो गया',
+    desc: 'आपका पासवर्ड सेट हो गया है। अब आप इससे साइन इन कर सकते हैं।',
+  },
+
+  generic: { error: 'कुछ गड़बड़ हो गई। कृपया पुनः प्रयास करें।' },
+
+  selectChild: {
+    title: 'जारी रखने के लिए छात्र चुनें',
+    signedInAs: '{{name}} के रूप में साइन इन',
+    emptyTitle: 'कोई संबद्ध छात्र नहीं',
+    emptyDesc:
+      'आपका खाता अभी किसी सक्रिय छात्र से संबद्ध नहीं है। कृपया अपने संस्थान से संपर्क करें।',
+  },
+
+  home: {
+    greetMorning: 'सुप्रभात',
+    greetAfternoon: 'नमस्कार',
+    greetEvening: 'शुभ संध्या',
+    subtitle: '{{name}} की प्रगति यहाँ देखें।',
+    statAttendance: 'उपस्थिति',
+    statCgpa: 'CGPA',
+    statClassesToday: 'आज की कक्षाएँ',
+    notYet: 'अभी नहीं',
+    freeDay: 'अवकाश दिवस',
+    upcomingHolidays: 'आगामी छुट्टियाँ',
+  },
+
+  profile: {
+    subtitle: 'आपका खाता और जिस छात्र को आप देख रहे हैं।',
+    viewingStudent: 'देखा जा रहा छात्र',
+    noStudent: 'कोई छात्र चयनित नहीं।',
+    allLinked: 'सभी संबद्ध छात्र',
+  },
+
+  attendance: {
+    title: 'उपस्थिति',
+    semester: 'सेमेस्टर {{n}}',
+    overall: 'कुल उपस्थिति',
+    standingGood: 'ठीक राह पर',
+    standingLow: 'कम',
+    standingShortage: 'कमी',
+    subjectWise: 'विषयवार उपस्थिति',
+    subjectsReq: '{{n}} विषय · परीक्षा पात्रता हेतु {{threshold}}% आवश्यक',
+    summaryNone: '{{h}} में से {{a}} कक्षाओं में उपस्थित।',
+    summaryLow:
+      '{{h}} में से {{a}} कक्षाओं में उपस्थित — फ़िलहाल न्यूनतम आवश्यकता से कम।',
+    summaryWarn:
+      '{{h}} में से {{a}} कक्षाओं में उपस्थित — सुविधाजनक अंतर के लिए इसे 85% से ऊपर रखें।',
+    summaryGood:
+      '{{h}} में से {{a}} कक्षाओं में उपस्थित — आवश्यकता से सुविधाजनक रूप से ऊपर।',
+    marginNoHeld: 'अभी कोई कक्षा नहीं हुई',
+    canMiss_one: '{{count}} और कक्षा छोड़ सकते हैं',
+    canMiss_other: '{{count}} और कक्षाएँ छोड़ सकते हैं',
+    noBuffer: 'कोई बफ़र नहीं — नियमित रहें',
+    need: '{{threshold}}% तक पहुँचने के लिए लगातार {{n}} कक्षाएँ लें',
+    classes: '{{a}} / {{h}} कक्षाएँ',
+    viewHistory: 'कक्षा इतिहास देखें',
+    noDataTitle: 'अभी कोई उपस्थिति नहीं',
+    noDataDesc:
+      'अभी उपस्थिति डेटा वाले कोई विषय नहीं। कक्षाएँ शुरू होने पर देखें।',
+    notReadyDesc: 'उपलब्ध होते ही उपस्थिति यहाँ दिखेगी।',
+  },
+
+  timetable: {
+    title: 'समय-सारणी',
+    thisWeek: 'इस सप्ताह',
+    classesCount: '{{n}} कक्षाएँ',
+    error: 'समय-सारणी लोड नहीं हो सकी।',
+    periods: '{{n}} पीरियड',
+    badgeLecture: 'व्याख्यान',
+    badgeLab: 'लैब',
+    badgeElective: 'वैकल्पिक',
+    badgeCancelled: 'रद्द',
+    badgeRescheduled: 'पुनर्निर्धारित',
+    dayLong: {
+      '1': 'सोमवार',
+      '2': 'मंगलवार',
+      '3': 'बुधवार',
+      '4': 'गुरुवार',
+      '5': 'शुक्रवार',
+      '6': 'शनिवार',
+      '7': 'रविवार',
+    },
+    dayShort: {
+      '1': 'सोम',
+      '2': 'मंगल',
+      '3': 'बुध',
+      '4': 'गुरु',
+      '5': 'शुक्र',
+      '6': 'शनि',
+      '7': 'रवि',
+    },
+  },
+
+  exam: {
+    title: 'परीक्षा परिणाम',
+    subtitleFallback: 'शैक्षणिक परिणाम',
+    cgpaLabel: 'संचयी GPA',
+    summary: '{{n}} सेमेस्टर · {{credits}} क्रेडिट · 10-अंक स्केल',
+    backlogs_one: '{{count}} सक्रिय बैकलॉग',
+    backlogs_other: '{{count}} सक्रिय बैकलॉग',
+    backlogNote: 'उत्तीर्ण होने की प्रतीक्षा कर रहे विषय — इन्हें पास करने से CGPA बढ़ेगा।',
+    semesterResults: 'सेमेस्टर परिणाम',
+    tapHint: 'विषय ग्रेड देखने के लिए सेमेस्टर पर टैप करें।',
+    search: 'विषय खोजें…',
+    noMatch: '“{{q}}” से मेल खाता कोई विषय नहीं।',
+    pass: 'उत्तीर्ण',
+    fail: 'अनुत्तीर्ण',
+    semMeta: '{{subjects}} विषय · {{credits}} क्रेडिट',
+    semBacklog: '{{n}} बैकलॉग',
+    sgpa: 'SGPA',
+    colCourse: 'पाठ्यक्रम',
+    colCredits: 'क्रेडिट',
+    colGrade: 'ग्रेड',
+    attempts: '{{n}} प्रयास',
+    allAttempts: 'सभी प्रयास (नवीनतम → पुराने)',
+    best: 'सर्वश्रेष्ठ',
+    pts: '{{n}} अंक',
+    errTitle: 'परिणाम लोड नहीं हो सके',
+    emptyTitle: 'परिणाम अभी प्रकाशित नहीं हुए',
+    emptyDesc: 'जैसे ही आपका संस्थान प्रकाशित करेगा, परिणाम यहाँ दिखेंगे।',
+  },
+
+  holidays: {
+    title: 'शैक्षणिक छुट्टियाँ',
+    subtitle:
+      "कॉलेज की छुट्टियाँ और बिना-कक्षा दिन। आगामी पहले — पुराने के लिए 'पिछले' पर जाएँ।",
+    tabUpcoming: 'आगामी',
+    tabPast: 'पिछले',
+    emptyUpcoming: "कोई आगामी छुट्टी नहीं। पहले के अवकाश 'पिछले' टैब में देखें।",
+    emptyPast: 'अभी कोई पिछली छुट्टी नहीं।',
+    showing: '{{total}} में से {{start}}–{{end}} दिखा रहे हैं',
+    prev: 'पिछला',
+    next: 'अगला',
+    pageOf: 'पृष्ठ {{page}} / {{total}}',
+    errTitle: 'छुट्टियाँ लोड नहीं हो सकीं',
+  },
+
+  subject: {
+    titleFallback: 'विषय उपस्थिति',
+    backToAttendance: 'उपस्थिति पर वापस',
+    subtitle: '{{code}} · {{n}} सत्र · {{absent}} अनुपस्थित',
+    filterAll: 'सभी कक्षाएँ',
+    filterAbsent: 'केवल अनुपस्थित',
+    showingAbsent: '{{total}} में से {{n}} अनुपस्थित दिखा रहे हैं',
+    showingAll: 'सभी {{n}} कक्षाएँ दिखा रहे हैं · {{absent}} अनुपस्थित',
+    noAbsences: 'कोई अनुपस्थिति दर्ज नहीं — ऐसे ही बनाए रखें।',
+    noClassesYet: 'इस विषय के लिए अभी कोई कक्षा दर्ज नहीं।',
+    reason: 'कारण:',
+    errLoad: 'इस विषय के सत्र लोड नहीं हो सके।',
+    missing: 'विषय अनुपलब्ध।',
+    statusPresent: 'उपस्थित',
+    statusAbsent: 'अनुपस्थित',
+    statusLate: 'देर से',
+    statusOd: 'OD',
+    statusExempt: 'छूट',
+    statusCancelled: 'रद्द',
+    statusUnmarked: 'अंकित नहीं',
+    statusUpcoming: 'आगामी',
+    sub: 'विकल्प',
+  },
+}
