@@ -211,11 +211,36 @@ function Pagination({
   )
 }
 
+// Mirrors the real month-grouped HolidayList — a date tile, title/reason
+// lines and a type pill per row — so the wait reads as "holidays loading"
+// rather than as featureless blocks. Uses the shared `shimmer` sweep.
 function ListSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="h-48 animate-pulse rounded-2xl bg-muted" />
-      <div className="h-32 animate-pulse rounded-2xl bg-muted" />
+    <div className="space-y-6" aria-hidden>
+      {[3, 2].map((rows, g) => (
+        <section
+          key={g}
+          className="rounded-2xl border bg-card text-card-foreground shadow-sm"
+        >
+          <header className="flex items-center justify-between border-b px-5 py-3.5">
+            <div className="shimmer h-3.5 w-28 rounded bg-muted/60" />
+            <div className="shimmer h-3 w-16 rounded bg-muted/60" />
+          </header>
+          <ul className="divide-y">
+            {Array.from({ length: rows }).map((_, i) => (
+              <li key={i} className="flex items-start gap-3 px-5 py-3.5">
+                <div className="shimmer size-12 shrink-0 rounded-xl bg-muted/60" />
+                <div className="min-w-0 flex-1 space-y-2 py-0.5">
+                  <div className="shimmer h-3.5 w-1/2 rounded bg-muted/60" />
+                  <div className="shimmer h-3 w-2/3 rounded bg-muted/60" />
+                  <div className="shimmer h-5 w-20 rounded-full bg-muted/60" />
+                </div>
+                <div className="shimmer h-3 w-14 shrink-0 rounded bg-muted/60" />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   )
 }

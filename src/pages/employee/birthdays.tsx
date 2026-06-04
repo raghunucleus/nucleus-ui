@@ -326,11 +326,34 @@ function PersonAvatar({ name }: { name: string }) {
   )
 }
 
+// Mirrors the month-grouped roster — an avatar circle with name/code lines
+// and a trailing date per row — so the wait reads as "birthdays loading".
+// Uses the shared `shimmer` sweep rather than a flat pulse.
 function ListSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="h-28 animate-pulse rounded-2xl bg-muted" />
-      <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+    <div className="space-y-6" aria-hidden>
+      {[4, 3].map((rows, g) => (
+        <section
+          key={g}
+          className="rounded-2xl border bg-card text-card-foreground shadow-sm"
+        >
+          <header className="flex items-center justify-between border-b px-5 py-3.5">
+            <div className="shimmer h-3.5 w-32 rounded bg-muted/60" />
+          </header>
+          <ul className="divide-y">
+            {Array.from({ length: rows }).map((_, i) => (
+              <li key={i} className="flex items-center gap-3 px-5 py-3">
+                <div className="shimmer size-10 shrink-0 rounded-full bg-muted/60" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="shimmer h-3.5 w-2/5 rounded bg-muted/60" />
+                  <div className="shimmer h-3 w-3/5 rounded bg-muted/60" />
+                </div>
+                <div className="shimmer h-3 w-14 shrink-0 rounded bg-muted/60" />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   )
 }

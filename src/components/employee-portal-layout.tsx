@@ -309,11 +309,108 @@ export function EmployeePortalLayout() {
           </header>
 
           <main className="scrollbar-themed min-w-0 flex-1 overflow-auto px-4 py-8 sm:px-6">
-            <Outlet />
+            {/* Gate page content until the access payload has resolved.
+                Screens read their permissions from `EmployeeAccessContext`
+                and render a "No access" state when it's null — which is also
+                the value while the fetch is in flight. Without this gate the
+                page flashes "No access" for the duration of that request, even
+                for screens the employee can use. An error still falls through
+                to the page (the sidebar surfaces a retry banner). */}
+            {access || accessError ? <Outlet /> : <AccessLoading />}
           </main>
         </div>
       </div>
     </EmployeeAccessContext.Provider>
+  )
+}
+
+/**
+ * Shown in the content column while the effective-access payload is still
+ * loading on initial portal mount. Prevents screens from briefly rendering
+ * their "No access" empty state before permissions have arrived.
+ */
+function AccessLoading() {
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 text-center">
+      <div className="relative grid place-items-center">
+        {/* Expanding halo — a soft pulse radiating from the badge. */}
+        <span className="absolute size-14 animate-ping rounded-2xl bg-primary/20" />
+        {/* Brand badge — same gradient mark as the sidebar logo. */}
+        <div className="relative grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-lg shadow-primary/30">
+          <Briefcase className="size-6" />
+        </div>
+      </div>
+      <div className="space-y-2.5">
+        <p className="text-sm font-medium text-foreground">
+          Setting up your workspace…
+        </p>
+        {/* Three dots pulsing in sequence (reuses the `twinkle` keyframe). */}
+        <div className="flex items-center justify-center gap-1.5">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="size-2 rounded-full bg-primary/70"
+              style={{
+                animation: 'twinkle 1s ease-in-out infinite',
+                animationDelay: `${i * 0.18}s`,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Loading placeholder for the menu while the access payload is in flight.
+ * Mirrors the real menu's shape — module icon chips with a label and a few
+ * sub-item rows — so the sidebar reads as "loading my menu" rather than
+ * sitting empty. Renders in both the collapsed icon rail and the expanded
+ * view. Uses the shared `shimmer` utility (a sweeping light band) for a
+ * livelier feel than a static pulse.
+ */
+const SKELETON_GROUPS = [
+  { label: 'w-24', items: ['w-28', 'w-20', 'w-24'] },
+  { label: 'w-16', items: ['w-24', 'w-28'] },
+  { label: 'w-20', items: ['w-20', 'w-28', 'w-16'] },
+]
+
+function SidebarMenuSkeleton({ collapsed }: { collapsed: boolean }) {
+  if (collapsed) {
+    return (
+      <div className="space-y-2 py-3" aria-hidden>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div
+            key={i}
+            className="shimmer mx-auto size-8 rounded-md bg-muted/60"
+          />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4 px-1 py-3" aria-hidden>
+      {SKELETON_GROUPS.map((group, g) => (
+        <div key={g} className="space-y-2">
+          <div className="flex items-center gap-2 px-1">
+            <div className="shimmer size-7 shrink-0 rounded-md bg-muted/60" />
+            <div
+              className={cn('shimmer h-2.5 rounded bg-muted/60', group.label)}
+            />
+          </div>
+          <div className="space-y-2 pl-3">
+            {group.items.map((w, s) => (
+              <div key={s} className="flex items-center gap-2.5 px-2">
+                <div className="size-1.5 shrink-0 rounded-full bg-muted/50" />
+                <div className={cn('shimmer h-2 rounded bg-muted/60', w)} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -567,15 +664,8 @@ function EmployeeSidebar({
           </div>
         )}
 
-        {!access && !accessError && !collapsed && (
-          <div className="space-y-2 px-1 py-3">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="h-7 animate-pulse rounded-md bg-muted/60"
-              />
-            ))}
-          </div>
+        {!access && !accessError && (
+          <SidebarMenuSkeleton collapsed={collapsed} />
         )}
 
         {filtered.map(({ mod, screens }) => {

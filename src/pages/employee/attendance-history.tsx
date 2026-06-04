@@ -17,6 +17,7 @@ import {
   NoAccessEmptyState,
   NoScopeEmptyState,
 } from '@/components/employee/empty-states'
+import { NoClassesIllustration } from '@/components/no-classes-illustration'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -188,8 +189,11 @@ export default function EmployeeAttendanceHistoryPage() {
       {loading && !rows ? (
         <Skeleton />
       ) : grouped.length === 0 ? (
-        <Card className="px-6 py-12 text-center text-sm text-muted-foreground">
-          No classes marked in this window.
+        <Card>
+          <NoClassesIllustration
+            title="No classes marked"
+            description="No classes were marked in this window. Try a wider date range or jump to this week."
+          />
         </Card>
       ) : (
         <div className="space-y-6">
