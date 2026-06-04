@@ -143,6 +143,118 @@ export function fetchExamMarksScope(): Promise<ExamMarksScopeItem[]> {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Student marks (read-only view) — branch-wise roster + per-student breakdown.
+// Rides on the marks-upload grant; gated server-side on the derived
+// `examinations.marks.view` screen.
+// ---------------------------------------------------------------------------
+
+/** One student in the branch-wise roster — cached CGPA + backlog summary. */
+export interface BatchResultRow {
+  student_id: number
+  roll_number: string
+  name: string
+  cgpa: number
+  total_credits: number
+  semesters_count: number
+  backlog_count: number
+}
+
+/** One sitting of a subject (with the counted/best attempt flagged). */
+export interface ResultAttempt {
+  exam_type: string
+  exam_date: string
+  grade: string
+  grade_points: number
+  grade_meaning: string
+  is_best: boolean
+}
+
+/** One subject — the counted attempt as headline + its full sitting history. */
+export interface ResultSubject {
+  subject_code: string
+  subject_name: string
+  credits: number
+  grade: string
+  grade_points: number
+  grade_meaning: string
+  exam_type: string
+  attempts_count: number
+  attempts: ResultAttempt[]
+}
+
+export interface ResultSemester {
+  semester: number
+  sgpa: number
+  total_credits: number
+  subjects_count: number
+  passed_count: number
+  backlog_count: number
+  passed: boolean
+  subjects: ResultSubject[]
+}
+
+/**
+ * One student's full stored results — the same shape the student sees on their
+ * own results page (per-semester SGPA + subjects with attempt history).
+ */
+export interface StudentResultsDetail {
+  student: { student_id: number; roll_number: string; name: string }
+  cgpa: number
+  total_credits: number
+  semesters_count: number
+  subjects_count: number
+  passed_count: number
+  backlog_count: number
+  semesters: ResultSemester[]
+}
+
+/** Batches the signed-in employee may VIEW marks for (drives the picker). */
+export function fetchStudentMarksScope(): Promise<ExamMarksScopeItem[]> {
+  return withEmployeeAuth((token) =>
+    apiFetch<ExamMarksScopeItem[]>('/employee/exam-marks/view/scope', { token }),
+  )
+}
+
+/** Branch-wise roster of a batch with cached CGPA + backlog counts. */
+export function fetchBatchResults(
+  programme_admission_year_id: number,
+): Promise<BatchResultRow[]> {
+  const query = qs({ programme_admission_year_id })
+  return withEmployeeAuth((token) =>
+    apiFetch<BatchResultRow[]>(`/employee/exam-marks/view/results?${query}`, {
+      token,
+    }),
+  )
+}
+
+/** One student's stored results — same shape as the student's own results page. */
+export function fetchStudentResults(
+  programme_admission_year_id: number,
+  student_id: number,
+): Promise<StudentResultsDetail> {
+  const query = qs({ programme_admission_year_id })
+  return withEmployeeAuth((token) =>
+    apiFetch<StudentResultsDetail>(
+      `/employee/exam-marks/view/students/${student_id}/results?${query}`,
+      { token },
+    ),
+  )
+}
+
+/** Look up one student's results by HT number, across the employee's batches. */
+export function fetchStudentByRoll(
+  roll_number: string,
+): Promise<StudentResultsDetail> {
+  const query = qs({ roll_number })
+  return withEmployeeAuth((token) =>
+    apiFetch<StudentResultsDetail>(
+      `/employee/exam-marks/view/student?${query}`,
+      { token },
+    ),
+  )
+}
+
 /** Open a chunked upload session for a batch. */
 export function startUpload(
   programme_admission_year_id: number,
