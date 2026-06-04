@@ -1053,7 +1053,12 @@ function SubjectRow({ sub }: { sub: PreviewSubject }) {
                 </TableHeader>
                 <TableBody>
                   {sub.attempts_detail.map((a, i) => (
-                    <TableRow key={i} className={cn(a.is_best && 'bg-success/5')}>
+                    <TableRow
+                      key={i}
+                      className={cn(
+                        a.is_best && a.grade !== 'F' && 'bg-success/5',
+                      )}
+                    >
                       <TableCell className="text-xs">
                         {formatMonthYear(a.exam_date)}
                       </TableCell>
@@ -1075,7 +1080,7 @@ function SubjectRow({ sub }: { sub: PreviewSubject }) {
                         {a.grade_points}
                       </TableCell>
                       <TableCell>
-                        {a.is_best ? (
+                        {a.is_best && a.grade !== 'F' ? (
                           <Badge variant="success">Best</Badge>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>

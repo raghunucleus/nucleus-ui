@@ -920,7 +920,9 @@ function SubjectRow({ subject }: { subject: ResultSubject }) {
                         meaning={a.grade_meaning}
                       />
                     </div>
-                    {a.is_best && <Badge variant="success">Best</Badge>}
+                    {a.is_best && a.grade !== 'F' && (
+                      <Badge variant="success">Best</Badge>
+                    )}
                   </div>
                 ))}
             </div>
