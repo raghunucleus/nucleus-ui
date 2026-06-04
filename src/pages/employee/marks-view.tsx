@@ -152,7 +152,7 @@ export default function EmployeeMarksViewPage() {
   const access = useScreenAccess(SCREEN_KEY)
   const canView = !!access?.actions.includes('view')
 
-  const [mode, setMode] = useState<ViewMode>('programme')
+  const [mode, setMode] = useState<ViewMode>('student')
   const [batches, setBatches] = useState<ExamMarksScopeItem[] | null>(null)
   const [programmeId, setProgrammeId] = useState<number | null>(null)
   const [batchId, setBatchId] = useState<number | null>(null)
@@ -281,8 +281,8 @@ export default function EmployeeMarksViewPage() {
       >
         {(
           [
-            ['programme', 'Programme-wise'],
-            ['student', 'By student ID'],
+            ['student', 'Student ID'],
+            ['programme', 'Programme'],
           ] as const
         ).map(([value, label]) => {
           const selected = mode === value
@@ -434,10 +434,6 @@ function IndividualLookup() {
     })()
   }
 
-  const latest = detail?.semesters.length
-    ? detail.semesters[detail.semesters.length - 1].semester
-    : null
-
   return (
     <div className="space-y-4">
       <Card>
@@ -507,11 +503,7 @@ function IndividualLookup() {
               )}
             </div>
             {detail.semesters.map((sem) => (
-              <SemesterCard
-                key={sem.semester}
-                semester={sem}
-                defaultOpen={sem.semester === latest}
-              />
+              <SemesterCard key={sem.semester} semester={sem} />
             ))}
             {detail.semesters.length === 0 && (
               <p className="text-sm text-muted-foreground">
@@ -696,11 +688,6 @@ function StudentRow({
     }
   }
 
-  // Latest semester open by default; the rest collapse (matches the student view).
-  const latest = detail?.semesters.length
-    ? detail.semesters[detail.semesters.length - 1].semester
-    : null
-
   return (
     <div className="rounded-md border">
       <button
@@ -729,11 +716,7 @@ function StudentRow({
           {loading && <SemesterMarksSkeleton />}
           {!loading &&
             detail?.semesters.map((sem) => (
-              <SemesterCard
-                key={sem.semester}
-                semester={sem}
-                defaultOpen={sem.semester === latest}
-              />
+              <SemesterCard key={sem.semester} semester={sem} />
             ))}
           {!loading && detail && detail.semesters.length === 0 && (
             <p className="text-sm text-muted-foreground">No subjects recorded.</p>
@@ -813,15 +796,9 @@ function GradePoints({
   )
 }
 
-/** One semester, collapsible — header (Pass/Fail + SGPA) toggles the subjects. */
-function SemesterCard({
-  semester,
-  defaultOpen,
-}: {
-  semester: ResultSemester
-  defaultOpen: boolean
-}) {
-  const [open, setOpen] = useState(defaultOpen)
+/** One semester, collapsible (closed by default) — header toggles the subjects. */
+function SemesterCard({ semester }: { semester: ResultSemester }) {
+  const [open, setOpen] = useState(false)
   return (
     <div className="overflow-hidden rounded-md border bg-background">
       <button
