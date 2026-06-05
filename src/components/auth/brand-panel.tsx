@@ -1,20 +1,27 @@
 import { GraduationCap } from 'lucide-react'
 
-type Props = { variant: 'employee' | 'member' }
+type Props = { variant: 'employee' | 'parent' | 'member' }
 
 const COPY = {
   employee: {
     headline: 'Run your campus,\nall in one place.',
     sub: 'Tools for faculty, staff, and administrators — built for the modern institution.',
+    footer: 'Faculty & staff portal',
+  },
+  parent: {
+    headline: "Stay close to your\nchild's progress.",
+    sub: 'Timetable, attendance, exam results, and holidays — everything in one place.',
+    footer: 'Parent portal',
   },
   member: {
     headline: 'Your learning,\nsimplified.',
     sub: 'Classes, attendance, fees, and announcements — all in one home.',
+    footer: 'Student portal',
   },
 } as const
 
 export function BrandPanel({ variant }: Props) {
-  const { headline, sub } = COPY[variant]
+  const { headline, sub, footer } = COPY[variant]
 
   return (
     <aside className="relative hidden overflow-hidden bg-brand-panel text-brand-panel-foreground lg:flex lg:flex-1 lg:flex-col lg:justify-between lg:p-12 xl:p-16 2xl:p-20">
@@ -44,9 +51,7 @@ export function BrandPanel({ variant }: Props) {
 
       <div className="relative flex items-center justify-between text-xs text-brand-panel-foreground/60">
         <span>&copy; {new Date().getFullYear()} Nucleus</span>
-        <span className="hidden sm:inline">
-          {variant === 'employee' ? 'Faculty & staff portal' : 'Student & parent portal'}
-        </span>
+        <span className="hidden sm:inline">{footer}</span>
       </div>
     </aside>
   )

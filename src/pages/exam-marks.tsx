@@ -5,8 +5,6 @@ import {
   ChevronRight,
   CircleAlert,
   RefreshCw,
-  Search,
-  TrendingUp,
 } from 'lucide-react'
 
 import { PageHeader } from '@/components/portal-layout'
@@ -14,7 +12,6 @@ import { ResultsEmpty } from '@/components/results-empty'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import {
   Table,
   TableBody,
@@ -30,6 +27,7 @@ import {
   type ExamResultSubject,
   type ExamResultsView,
 } from '@/lib/student-academics'
+import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
 type GradeVariant = 'success' | 'default' | 'warning' | 'destructive' | 'muted'
@@ -47,7 +45,9 @@ export default function ExamMarks() {
   const [data, setData] = useState<ExamResultsView | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [query, setQuery] = useState('')
+  // Which semester's detail is shown. `null` means "fall back to the latest",
+  // so the student lands on their most recent results without picking anything.
+  const [selected, setSelected] = useState<number | null>(null)
 
   useEffect(() => {
     document.title = 'Exam results — Nucleus'
@@ -82,22 +82,6 @@ export default function ExamMarks() {
   if (!data) return null
 
   const hasResults = data.has_results && data.semesters.length > 0
-  // Latest semester is open by default; the rest collapse.
-  const latest = hasResults ? data.semesters[data.semesters.length - 1].semester : null
-
-  const q = query.trim().toLowerCase()
-  const filtered = data.semesters
-    .map((sem) => ({
-      sem,
-      subjects: q
-        ? sem.subjects.filter(
-            (s) =>
-              s.subject_name.toLowerCase().includes(q) ||
-              s.subject_code.toLowerCase().includes(q),
-          )
-        : sem.subjects,
-    }))
-    .filter((x) => !q || x.subjects.length > 0)
 
   return (
     <>
@@ -111,120 +95,129 @@ export default function ExamMarks() {
       {!hasResults ? (
         <ResultsEmpty />
       ) : (
-        <>
-          <CgpaHero data={data} />
-
-          <section className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold text-muted-foreground">
-                  Semester results
-                </h2>
-                <p className="text-xs text-muted-foreground">
-                  Tap a semester to see its subject grades.
-                </p>
-              </div>
-            </div>
-
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search a subject…"
-                className="pl-9"
-                aria-label="Search subjects"
-              />
-            </div>
-
-            {filtered.length === 0 ? (
-              <div className="rounded-xl border border-dashed bg-muted/20 px-6 py-10 text-center text-sm text-muted-foreground">
-                No subject matches “{query}”.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {filtered.map(({ sem, subjects }) => (
-                  <SemesterCard
-                    key={sem.semester}
-                    semester={sem}
-                    subjects={subjects}
-                    forceOpen={!!q}
-                    defaultOpen={sem.semester === latest}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        </>
+        <Results data={data} selected={selected} onSelect={setSelected} />
       )}
     </>
   )
 }
 
-function CgpaHero({ data }: { data: ExamResultsView }) {
+function Results({
+  data,
+  selected,
+  onSelect,
+}: {
+  data: ExamResultsView
+  selected: number | null
+  onSelect: (semester: number) => void
+}) {
+  const semesters = data.semesters
+  const latest = semesters[semesters.length - 1].semester
+  const active =
+    semesters.find((s) => s.semester === (selected ?? latest)) ??
+    semesters[semesters.length - 1]
+
   return (
-    <Card className="p-5 sm:p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Cumulative GPA
-          </p>
-          <p className="text-5xl font-bold tracking-tight tabular-nums">
-            {data.cgpa.toFixed(2)}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Across {data.semesters_count} semester
-            {data.semesters_count === 1 ? '' : 's'} · {data.total_credits}{' '}
-            credits · 10-point scale
-          </p>
+    // Two columns on wider screens: a narrow semester rail + the detail. On a
+    // short (720p) landscape screen this uses the spare width instead of
+    // stacking everything vertically, so the whole thing fits without scroll.
+    <div className="grid gap-4 md:grid-cols-[15rem_1fr] md:items-start">
+      <aside className="space-y-3">
+        <CgpaSummary data={data} />
+        <div className="space-y-1.5">
+          {semesters.map((sem) => (
+            <SemesterRow
+              key={sem.semester}
+              semester={sem}
+              active={sem.semester === active.semester}
+              onSelect={() => onSelect(sem.semester)}
+            />
+          ))}
         </div>
-        <div className="grid size-12 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-          <TrendingUp className="size-6" />
-        </div>
-      </div>
+      </aside>
+
+      <SemesterDetail semester={active} />
+    </div>
+  )
+}
+
+function CgpaSummary({ data }: { data: ExamResultsView }) {
+  return (
+    <Card className="p-4">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        Cumulative GPA
+      </p>
+      <p className="text-3xl font-bold tracking-tight tabular-nums">
+        {data.cgpa.toFixed(2)}
+        <span className="ml-1 text-base font-medium text-muted-foreground">
+          /10
+        </span>
+      </p>
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        {data.semesters_count} semester
+        {data.semesters_count === 1 ? '' : 's'} · {data.total_credits} credits
+      </p>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">
+        Graded on a 10-point scale
+      </p>
       {data.backlog_count > 0 && (
-        <div className="mt-4 flex items-center gap-2 border-t pt-4">
-          <Badge variant="destructive">
-            {data.backlog_count} active backlog
-            {data.backlog_count === 1 ? '' : 's'}
-          </Badge>
-          <span className="text-xs text-muted-foreground">
-            Subjects awaiting a pass — clear them to lift your CGPA.
-          </span>
-        </div>
+        <Badge variant="destructive" className="mt-2">
+          {data.backlog_count} active backlog
+          {data.backlog_count === 1 ? '' : 's'}
+        </Badge>
       )}
     </Card>
   )
 }
 
-function SemesterCard({
+function SemesterRow({
   semester,
-  subjects,
-  defaultOpen,
-  forceOpen,
+  active,
+  onSelect,
 }: {
   semester: ExamResultSemester
-  subjects: ExamResultSubject[]
-  defaultOpen: boolean
-  forceOpen?: boolean
+  active: boolean
+  onSelect: () => void
 }) {
-  const [internalOpen, setInternalOpen] = useState(defaultOpen)
-  const open = forceOpen || internalOpen
-  const setOpen = setInternalOpen
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
+      className={cn(
+        'flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition-colors',
+        'focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/30',
+        active
+          ? 'border-primary bg-primary/10 ring-1 ring-primary'
+          : 'border-border bg-card hover:bg-muted/40',
+      )}
+    >
+      <span className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className={cn(
+            'size-2 shrink-0 rounded-full',
+            semester.passed ? 'bg-icon-emerald' : 'bg-destructive',
+          )}
+        />
+        <span className="text-sm font-medium">
+          Semester {semester.semester}
+        </span>
+      </span>
+      <span className="flex items-baseline gap-1">
+        <span className="text-sm font-bold tabular-nums text-primary">
+          {semester.sgpa.toFixed(2)}
+        </span>
+        <span className="text-[10px] uppercase text-muted-foreground">SGPA</span>
+      </span>
+    </button>
+  )
+}
+
+function SemesterDetail({ semester }: { semester: ExamResultSemester }) {
   return (
     <Card className="overflow-hidden">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/40"
-      >
-        {open ? (
-          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-        )}
-        <div className="flex-1">
+      <div className="flex items-center justify-between gap-3 border-b px-5 py-4">
+        <div>
           <div className="flex items-center gap-2">
             <span className="font-semibold">Semester {semester.semester}</span>
             <Badge variant={semester.passed ? 'success' : 'destructive'}>
@@ -233,35 +226,35 @@ function SemesterCard({
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {semester.subjects_count} subjects · {semester.total_credits} credits
-            {semester.backlog_count > 0 && ` · ${semester.backlog_count} backlog`}
+            {semester.backlog_count > 0 &&
+              ` · ${semester.backlog_count} backlog`}
           </p>
         </div>
         <div className="text-right">
           <p className="text-xl font-bold tabular-nums text-primary">
             {semester.sgpa.toFixed(2)}
+            <span className="ml-0.5 text-xs font-medium text-muted-foreground">
+              /10
+            </span>
           </p>
           <p className="text-[11px] text-muted-foreground">SGPA</p>
         </div>
-      </button>
+      </div>
 
-      {open && (
-        <div className="border-t">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Course</TableHead>
-                <TableHead className="text-right">Credits</TableHead>
-                <TableHead className="text-right">Grade</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {subjects.map((sub) => (
-                <SubjectRow key={sub.subject_code} subject={sub} />
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Course</TableHead>
+            <TableHead className="text-right">Credits</TableHead>
+            <TableHead className="text-right">Grade</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {semester.subjects.map((sub) => (
+            <SubjectRow key={sub.subject_code} subject={sub} />
+          ))}
+        </TableBody>
+      </Table>
     </Card>
   )
 }
@@ -275,8 +268,7 @@ function formatMonthYear(iso: string): string {
   return `${MONTHS[Number(m[2]) - 1] ?? ''} ${m[1]}`.trim()
 }
 
-/** A compact, fixed-width grade pill + its points — handles 1- and 2-digit
- *  points (e.g. 10) without shifting alignment. */
+/** A compact grade pill + its points. */
 function GradePoints({
   grade,
   points,
@@ -288,14 +280,11 @@ function GradePoints({
 }) {
   return (
     <span className="inline-flex items-center gap-2" title={meaning}>
-      <Badge
-        variant={gradeVariant(grade)}
-        className="min-w-9 justify-center"
-      >
+      <Badge variant={gradeVariant(grade)} className="min-w-9 justify-center">
         {grade}
       </Badge>
-      <span className="w-10 text-right tabular-nums text-xs text-muted-foreground">
-        {points} pt{points === 1 ? '' : 's'}
+      <span className="whitespace-nowrap tabular-nums text-xs text-muted-foreground">
+        {points} pts
       </span>
     </span>
   )
@@ -327,8 +316,6 @@ function SubjectRow({ subject }: { subject: ExamResultSubject }) {
           {subject.credits}
         </TableCell>
         <TableCell className="text-right">
-          {/* GradePoints (fixed width) + a fixed disclosure slot so every row,
-              with history or not, keeps the same column alignment. */}
           <div className="flex items-center justify-end gap-2">
             <GradePoints
               grade={subject.grade}
@@ -386,14 +373,16 @@ function SubjectRow({ subject }: { subject: ExamResultSubject }) {
 
 function ResultsSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="h-16 animate-pulse rounded-2xl bg-muted" />
-      <div className="h-36 animate-pulse rounded-2xl bg-muted" />
+    <div className="grid gap-4 md:grid-cols-[15rem_1fr]">
       <div className="space-y-3">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-20 animate-pulse rounded-2xl bg-muted" />
-        ))}
+        <div className="h-28 animate-pulse rounded-2xl bg-muted" />
+        <div className="space-y-1.5">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-10 animate-pulse rounded-lg bg-muted" />
+          ))}
+        </div>
       </div>
+      <div className="h-80 animate-pulse rounded-2xl bg-muted" />
     </div>
   )
 }

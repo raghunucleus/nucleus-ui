@@ -1,9 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useLayoutEffect } from 'react'
 import { RouterProvider } from '@tanstack/react-router'
 
+import i18n, { getStoredParentLang } from '@/lib/i18n'
 import { detectAppVariant } from '@/lib/subdomain'
 import EmployeeLogin from '@/pages/employee-login'
-import StudentParentLogin from '@/pages/student-parent-login'
+import ParentLogin from '@/pages/parent-login'
+import StudentLogin from '@/pages/student-login'
 import SelectChild from '@/pages/parent/select-child'
 import { employeeRouter } from '@/employee-router'
 import { parentRouter } from '@/parent-router'
@@ -12,9 +14,21 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useEmployeeAuthStore } from '@/stores/employee-auth-store'
 import { useParentAuthStore } from '@/stores/parent-auth-store'
 
+/**
+ * One subdomain → one audience → one portal, each with its own auth store and
+ * localStorage namespace (see lib/subdomain.ts): `employee.*` → employee,
+ * `parent.*` → parent/guardian, `app.*` → student. The three sessions never
+ * overlap, so there is no cross-audience precedence to juggle here.
+ */
 function App() {
-  if (detectAppVariant() === 'employee') return <EmployeePortal />
-  return <MemberPortal />
+  switch (detectAppVariant()) {
+    case 'employee':
+      return <EmployeePortal />
+    case 'parent':
+      return <ParentPortal />
+    default:
+      return <StudentPortal />
+  }
 }
 
 /** Employee portal: routed app once signed in, login flow otherwise. */
@@ -27,37 +41,43 @@ function EmployeePortal() {
 }
 
 /**
- * Member portal (app.* subdomain) — serves both students and parents from one
- * login. A student session takes precedence; a parent session falls through to
- * the Select-Child gate (until a child is picked) and then the parent portal.
+ * Parent/guardian portal (parent.* subdomain). After login a guardian picks one
+ * of their linked children at the Select-Child gate (skipped when only one is
+ * linked) and then sees the parent router. i18n (en/hi/te) is a parent-only
+ * feature, so the saved language is applied across the whole portal here.
  */
-function MemberPortal() {
-  const studentAuthed = useAuthStore((state) => state.authed)
-  const studentSignIn = useAuthStore((state) => state.signIn)
+function ParentPortal() {
+  const authed = useParentAuthStore((state) => state.authed)
+  const guardian = useParentAuthStore((state) => state.guardian)
+  const hydrating = useParentAuthStore((state) => state.hydrating)
+  const selected = useParentAuthStore((state) => state.selectedStudentId)
+  const hydrate = useParentAuthStore((state) => state.hydrate)
 
-  const parentAuthed = useParentAuthStore((state) => state.authed)
-  const parentGuardian = useParentAuthStore((state) => state.guardian)
-  const parentHydrating = useParentAuthStore((state) => state.hydrating)
-  const parentSelected = useParentAuthStore((state) => state.selectedStudentId)
-  const parentHydrate = useParentAuthStore((state) => state.hydrate)
+  // Apply the parent's saved language before first paint (no English flash).
+  // The in-portal switcher updates it live afterwards.
+  useLayoutEffect(() => {
+    void i18n.changeLanguage(getStoredParentLang())
+  }, [])
 
   // Cold reload: tokens linger in localStorage (so `authed` is true) but the
   // guardian/children aren't in memory yet — refill them from /guardian/auth/me.
   useEffect(() => {
-    if (parentAuthed && !studentAuthed && !parentGuardian && !parentHydrating) {
-      void parentHydrate()
-    }
-  }, [parentAuthed, studentAuthed, parentGuardian, parentHydrating, parentHydrate])
+    if (authed && !guardian && !hydrating) void hydrate()
+  }, [authed, guardian, hydrating, hydrate])
 
-  if (studentAuthed) return <RouterProvider router={router} />
+  if (!authed) return <ParentLogin />
+  if (!guardian) return <PortalBootSplash />
+  if (selected == null) return <SelectChild />
+  return <RouterProvider router={parentRouter} />
+}
 
-  if (parentAuthed) {
-    if (!parentGuardian) return <PortalBootSplash />
-    if (parentSelected == null) return <SelectChild />
-    return <RouterProvider router={parentRouter} />
-  }
+/** Student portal (app.* subdomain): routed app once signed in, login otherwise. */
+function StudentPortal() {
+  const authed = useAuthStore((state) => state.authed)
+  const signIn = useAuthStore((state) => state.signIn)
 
-  return <StudentParentLogin onAuthenticated={studentSignIn} />
+  if (authed) return <RouterProvider router={router} />
+  return <StudentLogin onAuthenticated={signIn} />
 }
 
 /** Brief full-screen splash while a persisted parent session re-hydrates. */

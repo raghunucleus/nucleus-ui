@@ -302,6 +302,41 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* ---------------------------------------------------------------------------
+     Responsive density via root font-size.
+
+     The whole app is rem-based, so the root font-size is a single density
+     knob: shrink it and every rem-sized text/padding/gap/width shrinks
+     proportionally, letting the same data fit on small laptops without the
+     user having to zoom the browser out.
+
+     Tailwind v4 breakpoints (sm/md/lg/xl/2xl) are defined in PX, not rem, so
+     changing this does NOT shift layout breakpoints — grids keep the same
+     column counts; only the content inside each track gets denser.
+
+     The compact tier is intentionally bounded to the laptop range (768px+):
+     phones keep the full 16px so the student/parent app.* portal stays
+     readable on mobile, where layouts already stack vertically and shrinking
+     text would only hurt.
+
+       • 1080p @150% scaling  ≈ 1280px CSS width → 13px  (the reported case)
+       • 1080p @125% scaling  ≈ 1536px CSS width → 14.5px
+       • larger desktops      ≥ 1537px           → 16px
+     ------------------------------------------------------------------------- */
+  html {
+    font-size: 16px;
+  }
+  @media (min-width: 768px) and (max-width: 1366px) {
+    html {
+      font-size: 13px;
+    }
+  }
+  @media (min-width: 1367px) and (max-width: 1536px) {
+    html {
+      font-size: 14.5px;
+    }
+  }
 }
 
 /* -----------------------------------------------------------------------------

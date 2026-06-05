@@ -121,10 +121,27 @@ export const en = {
     subtitle: "Here's how {{name}} is doing.",
     statAttendance: 'Attendance',
     statCgpa: 'CGPA',
-    statClassesToday: 'Classes today',
+    statBacklogs: 'Backlogs',
     notYet: 'Not yet',
-    freeDay: 'Free day',
     upcomingHolidays: 'Upcoming holidays',
+    // Identity strip
+    identitySem: 'Semester {{n}}',
+    batch: 'Batch {{year}}',
+    // Stat-tile hints
+    creditsHint: '{{credits}} credits earned',
+    backlogsClear: 'All clear',
+    subjectsPassed: '{{passed}}/{{total}} subjects passed',
+    // Attendance focus
+    attnFocus: 'Attendance focus',
+    attnOverall: 'Overall attendance',
+    attnAllSubjects: 'All subjects',
+    // Academic performance
+    academicTitle: 'Academic performance',
+    academicCredits: 'Credits',
+    academicBacklogs: 'Backlogs',
+    academicTrend: 'SGPA by semester',
+    academicPending: 'Results have not been published yet.',
+    semShort: 'Sem {{n}}',
   },
 
   profile: {
@@ -198,7 +215,7 @@ export const en = {
     title: 'Exam results',
     subtitleFallback: 'Academic results',
     cgpaLabel: 'Cumulative GPA',
-    summary: '{{n}} semesters · {{credits}} credits · 10-point scale',
+    summary: '{{n}} semesters · {{credits}} credits',
     backlogs_one: '{{count}} active backlog',
     backlogs_other: '{{count}} active backlogs',
     backlogNote: 'Subjects awaiting a pass — clearing them lifts the CGPA.',
@@ -211,6 +228,7 @@ export const en = {
     semMeta: '{{subjects}} subjects · {{credits}} credits',
     semBacklog: '{{n}} backlog',
     sgpa: 'SGPA',
+    scaleNote: 'Graded on a 10-point scale',
     colCourse: 'Course',
     colCredits: 'Credits',
     colGrade: 'Grade',
