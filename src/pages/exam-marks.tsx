@@ -336,7 +336,7 @@ function SubjectRow({ subject }: { subject: ExamResultSubject }) {
       {hasHistory && open && (
         <TableRow>
           <TableCell colSpan={3} className="bg-muted/30">
-            <p className="mb-1.5 text-[11px] font-medium uppercase text-muted-foreground">
+            <p className="mb-1.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
               All attempts (newest → oldest)
             </p>
             <div className="space-y-1.5">
