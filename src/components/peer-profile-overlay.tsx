@@ -4,6 +4,7 @@ import {
   Droplet,
   GraduationCap,
   Loader2,
+  Lock,
   Mail,
   Phone,
   User,
@@ -189,51 +190,88 @@ export function PeerProfileOverlay({
               {error ?? "Couldn't load this profile."}
             </p>
           ) : (
-            <div className="flex flex-col gap-1">
-              {profile.programme ? (
-                <InfoRow icon={GraduationCap} label="Programme">
-                  <p>{profile.programme.name}</p>
-                  {profile.admission_year ? (
-                    <p className="text-xs text-muted-foreground">
-                      Batch {profile.admission_year.display_year}
-                    </p>
+            (() => {
+              // Keys the owner hid — rendered as locked "Hidden" rows.
+              const hidden = new Set(profile.hidden_fields)
+              return (
+                <div className="flex flex-col gap-1">
+                  {profile.programme ? (
+                    <InfoRow icon={GraduationCap} label="Programme">
+                      <p>{profile.programme.name}</p>
+                      {profile.admission_year ? (
+                        <p className="text-xs text-muted-foreground">
+                          Batch {profile.admission_year.display_year}
+                        </p>
+                      ) : null}
+                    </InfoRow>
                   ) : null}
-                </InfoRow>
-              ) : null}
 
-              <ContactRow
-                icon={Phone}
-                label="Mobile"
-                value={profile.mobile_number}
-                href={`tel:${profile.mobile_number}`}
-              />
-              <ContactRow
-                icon={Mail}
-                label="Email"
-                value={profile.email}
-                href={`mailto:${profile.email}`}
-              />
+                  {hidden.has('mobile') ? (
+                    <LockedRow icon={Phone} label="Mobile" />
+                  ) : profile.mobile_number ? (
+                    <ContactRow
+                      icon={Phone}
+                      label="Mobile"
+                      value={profile.mobile_number}
+                      href={`tel:${profile.mobile_number}`}
+                    />
+                  ) : null}
 
-              {formatBirthday(profile.birthday) ? (
-                <InfoRow icon={Cake} label="Birthday">
-                  <p>{formatBirthday(profile.birthday)}</p>
-                </InfoRow>
-              ) : null}
+                  {hidden.has('email') ? (
+                    <LockedRow icon={Mail} label="Email" />
+                  ) : profile.email ? (
+                    <ContactRow
+                      icon={Mail}
+                      label="Email"
+                      value={profile.email}
+                      href={`mailto:${profile.email}`}
+                    />
+                  ) : null}
 
-              {profile.blood_group ? (
-                <InfoRow icon={Droplet} label="Blood group">
-                  <p>{profile.blood_group}</p>
-                </InfoRow>
-              ) : null}
+                  {hidden.has('birthday') ? (
+                    <LockedRow icon={Cake} label="Birthday" />
+                  ) : formatBirthday(profile.birthday) ? (
+                    <InfoRow icon={Cake} label="Birthday">
+                      <p>{formatBirthday(profile.birthday)}</p>
+                    </InfoRow>
+                  ) : null}
 
-              {profile.gender ? (
-                <InfoRow icon={User} label="Gender">
-                  <p>{capitalize(profile.gender)}</p>
-                </InfoRow>
-              ) : null}
-            </div>
+                  {hidden.has('blood_group') ? (
+                    <LockedRow icon={Droplet} label="Blood group" />
+                  ) : profile.blood_group ? (
+                    <InfoRow icon={Droplet} label="Blood group">
+                      <p>{profile.blood_group}</p>
+                    </InfoRow>
+                  ) : null}
+
+                  {hidden.has('gender') ? (
+                    <LockedRow icon={User} label="Gender" />
+                  ) : profile.gender ? (
+                    <InfoRow icon={User} label="Gender">
+                      <p>{capitalize(profile.gender)}</p>
+                    </InfoRow>
+                  ) : null}
+                </div>
+              )
+            })()
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+/** A row for a field the owner has hidden from peers. */
+function LockedRow({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <div className="flex items-start gap-3 py-2">
+      <Icon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+      <div className="min-w-0 flex-1 text-sm">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="flex items-center gap-1 text-muted-foreground">
+          <Lock className="size-3" />
+          Hidden
+        </p>
       </div>
     </div>
   )

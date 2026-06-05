@@ -9,6 +9,7 @@ import StudentHome from '@/pages/student-home'
 import NotFound from '@/pages/not-found'
 import IdCard from '@/pages/id-card'
 import Profile from '@/pages/profile'
+import PrivacySettings from '@/pages/privacy-settings'
 import Timetable from '@/pages/timetable'
 import Attendance from '@/pages/attendance'
 import AttendanceSubject from '@/pages/attendance-subject'
@@ -38,6 +39,12 @@ const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/profile',
   component: Profile,
+})
+
+const privacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/privacy',
+  component: PrivacySettings,
 })
 
 const timetableRoute = createRoute({
@@ -116,6 +123,7 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   idCardRoute,
   profileRoute,
+  privacyRoute,
   timetableRoute,
   attendanceRoute,
   attendanceSubjectRoute,

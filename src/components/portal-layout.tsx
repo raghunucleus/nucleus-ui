@@ -2,6 +2,7 @@ import { Link, Outlet } from '@tanstack/react-router'
 import {
   ArrowLeft,
   GraduationCap,
+  Lock,
   LogOut,
   UserRound,
   type LucideIcon,
@@ -87,6 +88,12 @@ export function PortalLayout() {
                   <Link to="/profile">
                     <UserRound />
                     Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/privacy">
+                    <Lock />
+                    Privacy
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

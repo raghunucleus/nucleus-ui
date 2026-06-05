@@ -18,19 +18,23 @@ export interface PeerProfile {
   /** Roll number. */
   student_id: string
   display_name: string
-  gender: string
+  // Personal fields are null when the owner hid them (see `hidden_fields`) OR
+  // when simply unset — `hidden_fields` distinguishes the two.
+  gender: string | null
   /** Day + month of birth only — the year is never exposed to a peer. */
   birthday: { day: number; month: number } | null
   blood_group: string | null
-  mobile_number: string
-  email: string
-  /** Short-lived presigned URL, or null when there's no photo / it's missing. */
+  mobile_number: string | null
+  email: string | null
+  /** Short-lived presigned URL, or null when there's no photo / it's missing / hidden. */
   photo_url: string | null
   programme: { name: string; code: string } | null
   department: { short_name: string } | null
   admission_year: { display_year: string } | null
   semester: { roman_format: string; sem_number: number } | null
   section: { code: string } | null
+  /** Personal field keys the owner hid — render these as locked "Hidden" rows. */
+  hidden_fields: string[]
 }
 
 /** A classmate's limited profile (groupmates only; 403/404 otherwise). */
