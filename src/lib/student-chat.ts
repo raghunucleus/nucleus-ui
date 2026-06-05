@@ -52,6 +52,33 @@ export interface ChatConversationSummary {
   /** Newest message id the other participant has read — drives our ticks. */
   other_last_read_message_id: number | null
   unread: number
+  /** Consent state. `pending` here only ever means an invite *I* sent (outgoing). */
+  status: 'pending' | 'accepted'
+  /** Did I send the invite? While `pending`, always true in this list. */
+  is_initiator: boolean
+  /** Have I muted this conversation? */
+  muted: boolean
+  /** Have I blocked the other participant? */
+  blocked_by_me: boolean
+}
+
+/** An incoming pending request in the Requests inbox. */
+export interface ChatRequestSummary {
+  id: number
+  other: ChatContact
+  invite_preview: string | null
+  invite_at: string | null
+  initiated_by_id: number
+}
+
+/** Per-conversation consent/block/mute state — drives the thread composer. */
+export interface ChatConversationMeta {
+  id: number
+  other: ChatContact
+  status: 'pending' | 'accepted'
+  is_initiator: boolean
+  muted: boolean
+  blocked_by_me: boolean
 }
 
 export interface ChatMessagesPage {
@@ -103,9 +130,102 @@ export function fetchChatConversations(): Promise<ChatConversationSummary[]> {
   )
 }
 
-export function fetchChatUnreadCount(): Promise<{ total: number }> {
+export function fetchChatUnreadCount(): Promise<{
+  total: number
+  pending_requests: number
+}> {
   return withAuth((token) =>
-    apiFetch<{ total: number }>('/student/chat/unread-count', { token }),
+    apiFetch<{ total: number; pending_requests: number }>(
+      '/student/chat/unread-count',
+      { token },
+    ),
+  )
+}
+
+/** The caller's consent/block/mute state for one conversation. */
+export function fetchChatConversationMeta(
+  conversationId: number,
+): Promise<ChatConversationMeta> {
+  return withAuth((token) =>
+    apiFetch<ChatConversationMeta>(
+      `/student/chat/conversations/${conversationId}`,
+      { token },
+    ),
+  )
+}
+
+/** Incoming message requests — the Requests inbox. */
+export function fetchChatRequests(): Promise<ChatRequestSummary[]> {
+  return withAuth((token) =>
+    apiFetch<ChatRequestSummary[]>('/student/chat/requests', { token }),
+  )
+}
+
+/** Conversations the caller has muted and/or blocked — the management list. */
+export function fetchChatRestricted(): Promise<ChatConversationSummary[]> {
+  return withAuth((token) =>
+    apiFetch<ChatConversationSummary[]>('/student/chat/restricted', { token }),
+  )
+}
+
+/** Accept an incoming request, optionally muting it in the same step. */
+export function acceptChatRequest(
+  conversationId: number,
+  opts: { mute?: boolean } = {},
+): Promise<{ ok: true }> {
+  return withAuth((token) =>
+    apiFetch<{ ok: true }>(
+      `/student/chat/conversations/${conversationId}/accept`,
+      { method: 'POST', token, body: { mute: opts.mute ?? false } },
+    ),
+  )
+}
+
+/** Block the other participant (works on a request or an accepted chat). */
+export function blockChatConversation(
+  conversationId: number,
+): Promise<{ ok: true }> {
+  return withAuth((token) =>
+    apiFetch<{ ok: true }>(
+      `/student/chat/conversations/${conversationId}/block`,
+      { method: 'POST', token },
+    ),
+  )
+}
+
+/** Unblock the other participant. */
+export function unblockChatConversation(
+  conversationId: number,
+): Promise<{ ok: true }> {
+  return withAuth((token) =>
+    apiFetch<{ ok: true }>(
+      `/student/chat/conversations/${conversationId}/unblock`,
+      { method: 'POST', token },
+    ),
+  )
+}
+
+/** Mute the conversation (suppresses our notifications). */
+export function muteChatConversation(
+  conversationId: number,
+): Promise<{ ok: true }> {
+  return withAuth((token) =>
+    apiFetch<{ ok: true }>(
+      `/student/chat/conversations/${conversationId}/mute`,
+      { method: 'POST', token },
+    ),
+  )
+}
+
+/** Unmute the conversation. */
+export function unmuteChatConversation(
+  conversationId: number,
+): Promise<{ ok: true }> {
+  return withAuth((token) =>
+    apiFetch<{ ok: true }>(
+      `/student/chat/conversations/${conversationId}/unmute`,
+      { method: 'POST', token },
+    ),
   )
 }
 

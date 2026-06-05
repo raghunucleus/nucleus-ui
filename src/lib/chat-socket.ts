@@ -31,6 +31,11 @@ export interface DeliveredEvent {
   conversation_id: number
   message_id: number
 }
+export interface ConversationAcceptedEvent {
+  conversation_id: number
+  /** The student who accepted the request. */
+  by_student_id: number
+}
 export interface SendAck {
   ok: boolean
   message?: ChatMessage
@@ -188,6 +193,7 @@ type ChatEventMap = {
   'message:new': ChatMessage
   'message:read': ReadEvent
   'message:delivered': DeliveredEvent
+  'conversation:accepted': ConversationAcceptedEvent
   typing: TypingEvent
 }
 

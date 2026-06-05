@@ -8,6 +8,7 @@ import {
   useChatConnection,
   useChatEvent,
 } from '@/lib/chat-socket'
+import { fetchChatConversationMeta } from '@/lib/student-chat'
 import { getStudentId } from '@/lib/student-auth'
 
 /**
@@ -33,18 +34,27 @@ export function ChatNotifier() {
     if (getActiveChatConversation() === msg.conversation_id) return
 
     const name = msg.sender_name ?? 'New message'
-    toast(name, {
-      description: msg.body,
-      icon: <MessageCircle className="size-4" />,
-      action: {
-        label: 'Open',
-        onClick: () =>
-          void navigate({
-            to: '/connect',
-            search: { to: msg.sender_id, name: msg.sender_name ?? undefined },
-          }),
-      },
-    })
+    const show = () =>
+      toast(name, {
+        description: msg.body,
+        icon: <MessageCircle className="size-4" />,
+        action: {
+          label: 'Open',
+          onClick: () =>
+            void navigate({
+              to: '/connect',
+              search: { to: msg.sender_id, name: msg.sender_name ?? undefined },
+            }),
+        },
+      })
+
+    // Stay quiet for muted conversations — the message still lands in the list.
+    // Fail open: if the mute check errors, show the toast rather than swallow it.
+    void fetchChatConversationMeta(msg.conversation_id)
+      .then((meta) => {
+        if (!meta.muted) show()
+      })
+      .catch(() => show())
   })
 
   return null

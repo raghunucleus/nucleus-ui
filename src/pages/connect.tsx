@@ -3,15 +3,21 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import {
   ArrowLeft,
+  Ban,
+  Bell,
+  BellOff,
   Check,
   CheckCheck,
   CircleAlert,
   Clock,
   Loader2,
   MessageCircle,
+  MoreVertical,
   Plus,
   Search,
   Send,
+  ShieldOff,
+  UserPlus,
   Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -19,22 +25,39 @@ import { toast } from 'sonner'
 import { PageHeader } from '@/components/portal-layout'
 import { StateView } from '@/components/state-view'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { ApiError } from '@/lib/api'
 import { MODULE_SOFT } from '@/lib/modules'
 import { avatarColorFor } from '@/lib/student-birthdays'
 import {
+  acceptChatRequest,
   birthdayWish,
+  blockChatConversation,
   fetchChatConfig,
   fetchChatContacts,
+  fetchChatConversationMeta,
   fetchChatConversations,
   fetchChatMessages,
+  fetchChatRequests,
+  fetchChatRestricted,
+  fetchChatUnreadCount,
   formatConversationTime,
   formatMessageTime,
+  muteChatConversation,
   openChatConversation,
+  unblockChatConversation,
+  unmuteChatConversation,
   type ChatContact,
+  type ChatConversationMeta,
   type ChatConversationSummary,
   type ChatMessage,
+  type ChatRequestSummary,
 } from '@/lib/student-chat'
 import {
   markChatRead,
@@ -99,7 +122,13 @@ export default function ConnectPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [active, setActive] = useState<ActiveChat | null>(null)
-  const [composing, setComposing] = useState(false)
+  // Which view the left pane shows: the chat list, the new-chat picker, the
+  // incoming message-requests inbox, or the blocked/muted management list.
+  const [leftView, setLeftView] = useState<
+    'list' | 'new' | 'requests' | 'restricted'
+  >('list')
+  const [requestCount, setRequestCount] = useState(0)
+  const [restrictedCount, setRestrictedCount] = useState(0)
 
   useEffect(() => {
     document.title = 'Connect — Nucleus'
@@ -127,7 +156,7 @@ export default function ConnectPage() {
           otherLastRead: 0,
           draft: wantWish ? birthdayWish(name) : undefined,
         })
-        setComposing(false)
+        setLeftView('list')
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) signOut()
         else toast.error('Could not open the chat.')
@@ -154,12 +183,36 @@ export default function ConnectPage() {
     }
   }, [signOut])
 
+  const loadRequestCount = useCallback(async () => {
+    try {
+      const { pending_requests } = await fetchChatUnreadCount()
+      setRequestCount(pending_requests)
+    } catch {
+      // Non-critical badge; leave the last known value.
+    }
+  }, [])
+
+  const loadRestrictedCount = useCallback(async () => {
+    try {
+      const rows = await fetchChatRestricted()
+      setRestrictedCount(rows.length)
+    } catch {
+      // Non-critical entry; leave the last known value.
+    }
+  }, [])
+
   useEffect(() => {
     void loadConversations()
-  }, [loadConversations])
+    void loadRequestCount()
+    void loadRestrictedCount()
+  }, [loadConversations, loadRequestCount, loadRestrictedCount])
 
-  // Any message or read change anywhere refreshes the list (previews/unread).
-  useChatEvent('message:new', () => void loadConversations())
+  // Any message or read change anywhere refreshes the list (previews/unread) and
+  // the requests badge (a first-time message from a stranger is a new request).
+  useChatEvent('message:new', () => {
+    void loadConversations()
+    void loadRequestCount()
+  })
   useChatEvent('message:read', () => void loadConversations())
 
   const openConversation = useCallback((c: ChatConversationSummary) => {
@@ -168,15 +221,46 @@ export default function ConnectPage() {
       other: c.other,
       otherLastRead: c.other_last_read_message_id ?? 0,
     })
-    setComposing(false)
+    setLeftView('list')
   }, [])
+
+  // Accept an incoming request from the inbox, then drop into the now-open chat.
+  const acceptRequest = useCallback(
+    async (req: ChatRequestSummary) => {
+      try {
+        await acceptChatRequest(req.id)
+        setActive({ id: req.id, other: req.other, otherLastRead: 0 })
+        setLeftView('list')
+        void loadConversations()
+        void loadRequestCount()
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) signOut()
+        else toast.error('Could not accept the request.')
+      }
+    },
+    [loadConversations, loadRequestCount, signOut],
+  )
+
+  const blockRequest = useCallback(
+    async (req: ChatRequestSummary) => {
+      try {
+        await blockChatConversation(req.id)
+        void loadRequestCount()
+        void loadRestrictedCount()
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) signOut()
+        else toast.error('Could not block.')
+      }
+    },
+    [loadRequestCount, loadRestrictedCount, signOut],
+  )
 
   const startChatWith = useCallback(
     async (contact: ChatContact) => {
       try {
         const conv = await openChatConversation(contact.id)
         setActive({ id: conv.id, other: contact, otherLastRead: 0 })
-        setComposing(false)
+        setLeftView('list')
         void loadConversations()
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
@@ -208,10 +292,26 @@ export default function ConnectPage() {
             active ? 'hidden' : 'flex',
           )}
         >
-          {composing ? (
+          {leftView === 'new' ? (
             <NewChatPanel
               onPick={startChatWith}
-              onClose={() => setComposing(false)}
+              onClose={() => setLeftView('list')}
+              onSessionEnd={signOut}
+            />
+          ) : leftView === 'requests' ? (
+            <RequestsPanel
+              onClose={() => setLeftView('list')}
+              onAccept={acceptRequest}
+              onBlock={blockRequest}
+              onSessionEnd={signOut}
+            />
+          ) : leftView === 'restricted' ? (
+            <RestrictedPanel
+              onClose={() => setLeftView('list')}
+              onChanged={() => {
+                void loadConversations()
+                void loadRestrictedCount()
+              }}
               onSessionEnd={signOut}
             />
           ) : (
@@ -220,8 +320,12 @@ export default function ConnectPage() {
               loading={loading}
               error={error}
               activeId={active?.id ?? null}
+              requestCount={requestCount}
+              restrictedCount={restrictedCount}
               onSelect={openConversation}
-              onNewChat={() => setComposing(true)}
+              onNewChat={() => setLeftView('new')}
+              onOpenRequests={() => setLeftView('requests')}
+              onOpenRestricted={() => setLeftView('restricted')}
               onRetry={() => {
                 setLoading(true)
                 void loadConversations()
@@ -248,6 +352,11 @@ export default function ConnectPage() {
               initialDraft={active.draft}
               onBack={() => setActive(null)}
               onActivity={loadConversations}
+              onMutated={() => {
+                void loadConversations()
+                void loadRequestCount()
+                void loadRestrictedCount()
+              }}
               onSessionEnd={signOut}
             />
           ) : (
@@ -268,16 +377,24 @@ function ConversationList({
   loading,
   error,
   activeId,
+  requestCount,
+  restrictedCount,
   onSelect,
   onNewChat,
+  onOpenRequests,
+  onOpenRestricted,
   onRetry,
 }: {
   conversations: ChatConversationSummary[]
   loading: boolean
   error: string | null
   activeId: number | null
+  requestCount: number
+  restrictedCount: number
   onSelect: (c: ChatConversationSummary) => void
   onNewChat: () => void
+  onOpenRequests: () => void
+  onOpenRestricted: () => void
   onRetry: () => void
 }) {
   const [query, setQuery] = useState('')
@@ -302,6 +419,47 @@ function ConversationList({
           New
         </Button>
       </header>
+
+      {requestCount > 0 ? (
+        <button
+          type="button"
+          onClick={onOpenRequests}
+          className="flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-muted/70"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+            <UserPlus className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium">Message requests</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {requestCount} {requestCount === 1 ? 'person wants' : 'people want'}{' '}
+              to chat
+            </p>
+          </div>
+          <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-destructive-foreground">
+            {requestCount > 99 ? '99+' : requestCount}
+          </span>
+        </button>
+      ) : null}
+
+      {restrictedCount > 0 ? (
+        <button
+          type="button"
+          onClick={onOpenRestricted}
+          className="flex w-full items-center gap-3 border-b px-4 py-3 text-left transition-colors hover:bg-muted/70"
+        >
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
+            <ShieldOff className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium">Blocked &amp; muted</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {restrictedCount}{' '}
+              {restrictedCount === 1 ? 'conversation' : 'conversations'}
+            </p>
+          </div>
+        </button>
+      ) : null}
 
       {!loading && !error && conversations.length > 0 ? (
         <div className="border-b p-2.5">
@@ -348,62 +506,78 @@ function ConversationList({
           </p>
         ) : (
           <ul className="p-1.5">
-            {filtered.map((c) => (
-              <li key={c.id}>
-                <button
-                  type="button"
-                  onClick={() => onSelect(c)}
-                  aria-current={activeId === c.id}
-                  className={cn(
-                    'relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
-                    activeId === c.id
-                      ? 'bg-primary/10'
-                      : 'hover:bg-muted/70',
-                  )}
-                >
-                  {activeId === c.id ? (
-                    <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" />
-                  ) : null}
-                  <Avatar name={c.other.display_name} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <p className="truncate text-sm font-medium">
-                        {c.other.display_name}
-                      </p>
-                      {c.last_message_at ? (
-                        <span
+            {filtered.map((c) => {
+              const pendingSent = c.status === 'pending' && c.is_initiator
+              const subtitle = c.blocked_by_me
+                ? 'Blocked'
+                : pendingSent
+                  ? 'Request sent · waiting to accept'
+                  : (c.last_message_preview ?? 'No messages yet')
+              return (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(c)}
+                    aria-current={activeId === c.id}
+                    className={cn(
+                      'relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors',
+                      activeId === c.id ? 'bg-primary/10' : 'hover:bg-muted/70',
+                      c.blocked_by_me && 'opacity-60',
+                    )}
+                  >
+                    {activeId === c.id ? (
+                      <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" />
+                    ) : null}
+                    <Avatar name={c.other.display_name} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-medium">
+                          <span className="truncate">{c.other.display_name}</span>
+                          {c.muted ? (
+                            <BellOff className="size-3 shrink-0 text-muted-foreground" />
+                          ) : null}
+                        </p>
+                        {c.last_message_at && !pendingSent ? (
+                          <span
+                            className={cn(
+                              'shrink-0 text-[11px]',
+                              c.unread > 0 && !c.muted
+                                ? 'font-medium text-primary'
+                                : 'text-muted-foreground',
+                            )}
+                          >
+                            {formatConversationTime(c.last_message_at)}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-0.5 flex items-center justify-between gap-2">
+                        <p
                           className={cn(
-                            'shrink-0 text-[11px]',
-                            c.unread > 0
-                              ? 'font-medium text-primary'
+                            'truncate text-xs',
+                            c.unread > 0 && !c.muted
+                              ? 'font-medium text-foreground'
                               : 'text-muted-foreground',
+                            (pendingSent || c.blocked_by_me) && 'italic',
                           )}
                         >
-                          {formatConversationTime(c.last_message_at)}
-                        </span>
-                      ) : null}
+                          {subtitle}
+                        </p>
+                        {c.unread > 0 && !pendingSent ? (
+                          <span
+                            className={cn(
+                              'grid h-5 min-w-5 shrink-0 place-items-center rounded-full px-1.5 text-[10px] font-semibold text-primary-foreground',
+                              c.muted ? 'bg-muted-foreground/50' : 'bg-primary',
+                            )}
+                          >
+                            {c.unread > 99 ? '99+' : c.unread}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="mt-0.5 flex items-center justify-between gap-2">
-                      <p
-                        className={cn(
-                          'truncate text-xs',
-                          c.unread > 0
-                            ? 'font-medium text-foreground'
-                            : 'text-muted-foreground',
-                        )}
-                      >
-                        {c.last_message_preview ?? 'No messages yet'}
-                      </p>
-                      {c.unread > 0 ? (
-                        <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
-                          {c.unread > 99 ? '99+' : c.unread}
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                </button>
-              </li>
-            ))}
+                  </button>
+                </li>
+              )
+            })}
           </ul>
         )}
       </div>
@@ -599,6 +773,350 @@ function NewChatPanel({
 }
 
 // ---------------------------------------------------------------------------
+// Message-requests inbox
+// ---------------------------------------------------------------------------
+
+function RequestsPanel({
+  onClose,
+  onAccept,
+  onBlock,
+  onSessionEnd,
+}: {
+  onClose: () => void
+  onAccept: (req: ChatRequestSummary) => Promise<void>
+  onBlock: (req: ChatRequestSummary) => Promise<void>
+  onSessionEnd: () => void
+}) {
+  const [requests, setRequests] = useState<ChatRequestSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<number | null>(null)
+
+  const load = useCallback(() => {
+    setLoading(true)
+    fetchChatRequests()
+      .then((rows) => {
+        setRequests(rows)
+        setError(null)
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 401) {
+          onSessionEnd()
+          return
+        }
+        setError(
+          err instanceof Error ? err.message : 'Could not load requests.',
+        )
+      })
+      .finally(() => setLoading(false))
+  }, [onSessionEnd])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const accept = async (req: ChatRequestSummary) => {
+    if (busyId != null) return
+    setBusyId(req.id)
+    try {
+      await onAccept(req)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const block = async (req: ChatRequestSummary) => {
+    if (busyId != null) return
+    setBusyId(req.id)
+    try {
+      await onBlock(req)
+      setRequests((prev) => prev.filter((r) => r.id !== req.id))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <>
+      <header className="flex items-center gap-2 border-b px-3 py-3">
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={onClose}
+          aria-label="Back to chats"
+        >
+          <ArrowLeft />
+        </Button>
+        <h2 className="text-sm font-semibold">Message requests</h2>
+      </header>
+
+      <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto">
+        {loading ? (
+          <div className="space-y-2 p-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-28 animate-pulse rounded-xl bg-muted" />
+            ))}
+          </div>
+        ) : error ? (
+          <StateView
+            compact
+            icon={UserPlus}
+            title="Couldn't load requests"
+            description={error}
+            action={{ label: 'Try again', onClick: load }}
+          />
+        ) : requests.length === 0 ? (
+          <StateView
+            compact
+            icon={UserPlus}
+            title="No requests"
+            description="When someone outside your chats messages you, it'll show up here to accept or block."
+          />
+        ) : (
+          <ul className="space-y-2 p-2.5">
+            {requests.map((req) => (
+              <li
+                key={req.id}
+                className="space-y-2.5 rounded-xl border p-3"
+              >
+                <div className="flex items-center gap-3">
+                  <Avatar name={req.other.display_name} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="truncate text-sm font-medium">
+                        {req.other.display_name}
+                      </p>
+                      {req.invite_at ? (
+                        <span className="shrink-0 text-[11px] text-muted-foreground">
+                          {formatConversationTime(req.invite_at)}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {req.other.student_id}
+                    </p>
+                  </div>
+                </div>
+                {req.invite_preview ? (
+                  <p className="line-clamp-2 text-xs text-foreground">
+                    &ldquo;{req.invite_preview}&rdquo;
+                  </p>
+                ) : null}
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    disabled={busyId != null}
+                    onClick={() => void accept(req)}
+                  >
+                    <Check />
+                    Accept
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busyId != null}
+                    onClick={() => void block(req)}
+                  >
+                    <Ban />
+                    Block
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Blocked & muted management
+// ---------------------------------------------------------------------------
+
+type RestrictedFilter = 'all' | 'muted' | 'blocked'
+
+function RestrictedPanel({
+  onClose,
+  onChanged,
+  onSessionEnd,
+}: {
+  onClose: () => void
+  onChanged: () => void
+  onSessionEnd: () => void
+}) {
+  const [rows, setRows] = useState<ChatConversationSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<RestrictedFilter>('all')
+  const [busyId, setBusyId] = useState<number | null>(null)
+
+  const load = useCallback(() => {
+    setLoading(true)
+    fetchChatRestricted()
+      .then((data) => {
+        setRows(data)
+        setError(null)
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 401) {
+          onSessionEnd()
+          return
+        }
+        setError(err instanceof Error ? err.message : 'Could not load.')
+      })
+      .finally(() => setLoading(false))
+  }, [onSessionEnd])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const act = async (
+    c: ChatConversationSummary,
+    kind: 'unmute' | 'unblock',
+  ) => {
+    if (busyId != null) return
+    setBusyId(c.id)
+    try {
+      await (kind === 'unmute'
+        ? unmuteChatConversation(c.id)
+        : unblockChatConversation(c.id))
+      // Recompute this row's flags; drop it once it's neither muted nor blocked.
+      setRows((prev) =>
+        prev
+          .map((r) =>
+            r.id === c.id
+              ? {
+                  ...r,
+                  muted: kind === 'unmute' ? false : r.muted,
+                  blocked_by_me: kind === 'unblock' ? false : r.blocked_by_me,
+                }
+              : r,
+          )
+          .filter((r) => r.muted || r.blocked_by_me),
+      )
+      onChanged()
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) onSessionEnd()
+      else toast.error('Something went wrong. Try again.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const filtered = useMemo(() => {
+    if (filter === 'muted') return rows.filter((r) => r.muted)
+    if (filter === 'blocked') return rows.filter((r) => r.blocked_by_me)
+    return rows
+  }, [rows, filter])
+
+  return (
+    <>
+      <header className="flex items-center gap-2 border-b px-3 py-3">
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={onClose}
+          aria-label="Back to chats"
+        >
+          <ArrowLeft />
+        </Button>
+        <h2 className="text-sm font-semibold">Blocked &amp; muted</h2>
+      </header>
+
+      {!loading && !error && rows.length > 0 ? (
+        <div className="border-b p-2.5">
+          <div className="flex gap-1 rounded-lg bg-muted p-1">
+            {(['all', 'muted', 'blocked'] as const).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setFilter(f)}
+                className={cn(
+                  'flex-1 rounded-md py-1.5 text-xs font-semibold capitalize transition-colors',
+                  filter === f
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto">
+        {loading ? (
+          <div className="space-y-2 p-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />
+            ))}
+          </div>
+        ) : error ? (
+          <StateView
+            compact
+            icon={ShieldOff}
+            title="Couldn't load"
+            description={error}
+            action={{ label: 'Try again', onClick: load }}
+          />
+        ) : filtered.length === 0 ? (
+          <StateView
+            compact
+            icon={ShieldOff}
+            title={filter === 'all' ? 'Nothing here' : `No ${filter}`}
+            description="When you mute or block someone, they show up here to undo."
+          />
+        ) : (
+          <ul className="space-y-2 p-2.5">
+            {filtered.map((c) => (
+              <li key={c.id} className="rounded-xl border p-3">
+                <div className="flex items-center gap-3">
+                  <Avatar name={c.other.display_name} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {c.other.display_name}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {c.other.student_id}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {c.muted ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId != null}
+                        onClick={() => void act(c, 'unmute')}
+                      >
+                        Unmute
+                      </Button>
+                    ) : null}
+                    {c.blocked_by_me ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={busyId != null}
+                        onClick={() => void act(c, 'unblock')}
+                      >
+                        Unblock
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Active thread
 // ---------------------------------------------------------------------------
 
@@ -665,6 +1183,7 @@ function ChatThread({
   initialDraft,
   onBack,
   onActivity,
+  onMutated,
   onSessionEnd,
 }: {
   conversationId: number
@@ -675,6 +1194,8 @@ function ChatThread({
   initialDraft?: string
   onBack: () => void
   onActivity: () => void
+  /** Called after accept/block/mute so the parent refreshes its list + badges. */
+  onMutated: () => void
   onSessionEnd: () => void
 }) {
   const [messages, setMessages] = useState<UiMessage[]>([]) // ascending (oldest→newest)
@@ -686,6 +1207,8 @@ function ChatThread({
   const [peerTyping, setPeerTyping] = useState(false)
   const [text, setText] = useState(initialDraft ?? '')
   const [retentionDays, setRetentionDays] = useState<number | null>(null)
+  const [meta, setMeta] = useState<ChatConversationMeta | null>(null)
+  const [actionBusy, setActionBusy] = useState(false)
 
   const virtuosoRef = useRef<VirtuosoHandle | null>(null)
   const tempIdRef = useRef(-1)
@@ -750,6 +1273,49 @@ function ChatThread({
       alive = false
     }
   }, [])
+
+  // Consent/block/mute state for this conversation — drives the composer and the
+  // header overflow menu. Reloadable so accept/block/mute reflect immediately.
+  const loadMeta = useCallback(() => {
+    fetchChatConversationMeta(conversationId)
+      .then(setMeta)
+      .catch(() => {})
+  }, [conversationId])
+
+  useEffect(() => {
+    loadMeta()
+  }, [loadMeta])
+
+  // The inviter accepted live — unlock the composer.
+  useChatEvent('conversation:accepted', (evt) => {
+    if (evt.conversation_id === conversationId) loadMeta()
+  })
+
+  // Run a mute/block/accept mutation, then refresh local meta + the parent list.
+  const runAction = useCallback(
+    async (fn: () => Promise<unknown>) => {
+      if (actionBusy) return
+      setActionBusy(true)
+      try {
+        await fn()
+        loadMeta()
+        onMutated()
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) onSessionEnd()
+        else toast.error('Something went wrong. Try again.')
+      } finally {
+        setActionBusy(false)
+      }
+    },
+    [actionBusy, loadMeta, onMutated, onSessionEnd],
+  )
+
+  const isIncomingPending = meta?.status === 'pending' && !meta.is_initiator
+  const isBlockedByMe = meta?.blocked_by_me === true
+  const isWaitingToAccept =
+    meta?.status === 'pending' &&
+    meta.is_initiator === true &&
+    messages.length > 0
 
   // Reverse-infinite scroll: when the top is reached, prepend the previous page
   // and shift firstItemIndex back by however many we added, so Virtuoso keeps
@@ -883,13 +1449,59 @@ function ChatThread({
         </Button>
         <Avatar name={otherName} className="size-9" />
         <div className="min-w-0 flex-1 leading-tight">
-          <p className="truncate text-sm font-semibold">{otherName}</p>
+          <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-semibold">
+            <span className="truncate">{otherName}</span>
+            {meta?.muted ? (
+              <BellOff className="size-3 shrink-0 text-muted-foreground" />
+            ) : null}
+          </p>
           {peerTyping ? (
             <p className="text-xs font-medium text-primary">typing…</p>
           ) : otherRoll ? (
             <p className="truncate text-xs text-muted-foreground">{otherRoll}</p>
           ) : null}
         </div>
+        {meta && !isIncomingPending ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label="Conversation options"
+                disabled={actionBusy}
+              >
+                <MoreVertical />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() =>
+                  void runAction(() =>
+                    meta.muted
+                      ? unmuteChatConversation(conversationId)
+                      : muteChatConversation(conversationId),
+                  )
+                }
+              >
+                {meta.muted ? <Bell /> : <BellOff />}
+                {meta.muted ? 'Unmute' : 'Mute'}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                variant={meta.blocked_by_me ? 'default' : 'destructive'}
+                onSelect={() =>
+                  void runAction(() =>
+                    meta.blocked_by_me
+                      ? unblockChatConversation(conversationId)
+                      : blockChatConversation(conversationId),
+                  )
+                }
+              >
+                <Ban />
+                {meta.blocked_by_me ? 'Unblock' : 'Block'}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </header>
 
       {loading ? (
@@ -942,29 +1554,81 @@ function ChatThread({
         />
       )}
 
-      <div className="flex items-end gap-2 border-t p-3">
-        <textarea
-          value={text}
-          onChange={(e) => onChangeText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              onSend()
+      {isIncomingPending ? (
+        <div className="space-y-2 border-t p-3">
+          <p className="text-center text-xs text-muted-foreground">
+            {otherName} wants to chat. Accept to reply.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="flex-1"
+              disabled={actionBusy}
+              onClick={() =>
+                void runAction(() => acceptChatRequest(conversationId))
+              }
+            >
+              <Check />
+              Accept
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={actionBusy}
+              onClick={() =>
+                void runAction(() =>
+                  blockChatConversation(conversationId).then(onBack),
+                )
+              }
+            >
+              <Ban />
+              Block
+            </Button>
+          </div>
+        </div>
+      ) : isBlockedByMe ? (
+        <div className="flex items-center justify-center gap-3 border-t p-3 text-xs text-muted-foreground">
+          <span>You blocked {otherName}.</span>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={actionBusy}
+            onClick={() =>
+              void runAction(() => unblockChatConversation(conversationId))
             }
-          }}
-          rows={1}
-          placeholder="Message"
-          className="max-h-32 min-h-10 flex-1 resize-none rounded-xl border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        <Button
-          size="icon"
-          onClick={onSend}
-          disabled={!text.trim()}
-          aria-label="Send message"
-        >
-          <Send />
-        </Button>
-      </div>
+          >
+            Unblock
+          </Button>
+        </div>
+      ) : isWaitingToAccept ? (
+        <div className="border-t p-4 text-center text-xs text-muted-foreground">
+          Waiting for {otherName} to accept your request.
+        </div>
+      ) : (
+        <div className="flex items-end gap-2 border-t p-3">
+          <textarea
+            value={text}
+            onChange={(e) => onChangeText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                onSend()
+              }
+            }}
+            rows={1}
+            placeholder="Message"
+            className="max-h-32 min-h-10 flex-1 resize-none rounded-xl border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <Button
+            size="icon"
+            onClick={onSend}
+            disabled={!text.trim()}
+            aria-label="Send message"
+          >
+            <Send />
+          </Button>
+        </div>
+      )}
     </>
   )
 }
