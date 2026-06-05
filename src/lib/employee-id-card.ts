@@ -30,14 +30,32 @@ export interface EmployeeIdCard {
     naac_grade: string | null
     card_footer_note: string | null
   }
-  /** Non-expiring HMAC-signed code to render as the QR. */
+  /** Single-use, short-lived security pass to render as the QR. */
   qr_token: string
-  /** Always null — employee cards never expire. */
+  /** Seconds the qr_token is valid for — drives the countdown. */
+  ttl_seconds: number
+  /** ISO timestamp the qr_token expires at. */
+  expires_at: string
+  /** Always null — the employee card itself never expires. */
   valid_until: null
+}
+
+/** A freshly issued security pass — what the client polls to rotate the QR. */
+export interface SecurityPass {
+  qr_token: string
+  ttl_seconds: number
+  expires_at: string
 }
 
 export function employeeIdCard(): Promise<EmployeeIdCard> {
   return withEmployeeAuth((token) =>
     apiFetch<EmployeeIdCard>('/employee/id-card', { token }),
+  )
+}
+
+/** Issue a fresh single-use security pass to refresh the ID-card QR. */
+export function employeeIdCardPass(): Promise<SecurityPass> {
+  return withEmployeeAuth((token) =>
+    apiFetch<SecurityPass>('/employee/id-card/pass', { token }),
   )
 }

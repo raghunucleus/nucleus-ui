@@ -39,13 +39,31 @@ export interface IdCard {
     naac_grade: string | null
     card_footer_note: string | null
   }
-  /** Signed JWT to render as the QR payload. */
+  /** Single-use, short-lived security pass to render as the QR. */
   qr_token: string
+  /** Seconds the qr_token is valid for — drives the countdown. */
+  ttl_seconds: number
+  /** ISO timestamp the qr_token expires at. */
+  expires_at: string
   valid_until: string | null
+}
+
+/** A freshly issued security pass — what the client polls to rotate the QR. */
+export interface SecurityPass {
+  qr_token: string
+  ttl_seconds: number
+  expires_at: string
 }
 
 export function studentIdCard(): Promise<IdCard> {
   return withAuth((token) => apiFetch<IdCard>('/student/id-card', { token }))
+}
+
+/** Issue a fresh single-use security pass to refresh the ID-card QR. */
+export function studentIdCardPass(): Promise<SecurityPass> {
+  return withAuth((token) =>
+    apiFetch<SecurityPass>('/student/id-card/pass', { token }),
+  )
 }
 
 // Local mirror of student-auth's (non-exported) withAuth: run an authenticated

@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
-import { QRCodeSVG } from 'qrcode.react'
-import {
-  CircleAlert,
-  IdCard as IdCardIcon,
-  RefreshCw,
-  ScanLine,
-} from 'lucide-react'
+import { CircleAlert, IdCard as IdCardIcon, RefreshCw } from 'lucide-react'
 
+import { ExpiringQr } from '@/components/expiring-qr'
 import { Button } from '@/components/ui/button'
 import { ApiError } from '@/lib/api'
-import { employeeIdCard, type EmployeeIdCard } from '@/lib/employee-id-card'
+import {
+  employeeIdCard,
+  employeeIdCardPass,
+  type EmployeeIdCard,
+} from '@/lib/employee-id-card'
 import { useEmployeeAuthStore } from '@/stores/employee-auth-store'
 
 export default function EmployeeIdCardPage() {
@@ -76,7 +75,7 @@ function IdentityCard({ card }: { card: EmployeeIdCard }) {
   const { employee, institution, designation, department } = card
 
   return (
-    <section className="mx-auto max-w-md overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm">
+    <section className="mx-auto max-w-3xl overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm">
       {/* College header band */}
       <div className="flex items-center gap-3 bg-gradient-to-br from-primary to-secondary p-4 text-primary-foreground">
         {institution.logo_url ? (
@@ -98,55 +97,59 @@ function IdentityCard({ card }: { card: EmployeeIdCard }) {
         </div>
       </div>
 
-      {/* Photo + identity */}
-      <div className="flex gap-4 p-5">
-        <EmployeePhoto
-          name={employee.emp_display_name}
-          photoUrl={employee.photo_url}
-        />
-        <div className="min-w-0 flex-1 space-y-1.5 self-center">
-          <h3 className="text-lg font-semibold leading-tight">
-            {employee.emp_display_name}
-          </h3>
-          <span className="inline-block rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-medium text-primary">
-            {employee.emp_code}
-          </span>
-          {designation ? (
-            <p className="text-sm text-muted-foreground">
-              {designation.name}
-              {department ? ` · ${department.name}` : ''}
-            </p>
-          ) : null}
+      {/* Landscape body: details column | QR column */}
+      <div className="grid sm:grid-cols-[1fr_auto]">
+        {/* Details column */}
+        <div className="min-w-0">
+          {/* Photo + identity */}
+          <div className="flex gap-4 p-5">
+            <EmployeePhoto
+              name={employee.emp_display_name}
+              photoUrl={employee.photo_url}
+            />
+            <div className="min-w-0 flex-1 space-y-1.5 self-center">
+              <h3 className="text-lg font-semibold leading-tight">
+                {employee.emp_display_name}
+              </h3>
+              <span className="inline-block rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-medium text-primary">
+                {employee.emp_code}
+              </span>
+              {designation ? (
+                <p className="text-sm text-muted-foreground">
+                  {designation.name}
+                  {department ? ` · ${department.name}` : ''}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Detail grid */}
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t px-5 py-5">
+            <Field label="Designation" value={designation?.name} />
+            <Field label="Department" value={department?.name} />
+            <Field label="Employee code" value={employee.emp_code} />
+            <Field label="Gender" value={formatGender(employee.gender)} />
+            <Field label="Date of birth" value={formatDate(employee.dob)} />
+            <Field label="Mobile" value={formatMobile(employee)} />
+            <Field label="Email" value={employee.email} />
+          </dl>
+        </div>
+
+        {/* QR column — single-use, expires in 60s, refreshed manually */}
+        <div className="flex flex-col items-center justify-center gap-3 border-t bg-muted/40 p-6 sm:w-56 sm:border-l sm:border-t-0">
+          <ExpiringQr
+            initialToken={card.qr_token}
+            ttlSeconds={card.ttl_seconds}
+            caption={employee.emp_code}
+            fetchPass={employeeIdCardPass}
+          />
         </div>
       </div>
 
-      {/* Detail grid */}
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-4 border-t px-5 py-5">
-        <Field label="Designation" value={designation?.name} />
-        <Field label="Department" value={department?.name} />
-        <Field label="Employee code" value={employee.emp_code} />
-        <Field label="Gender" value={formatGender(employee.gender)} />
-        <Field label="Date of birth" value={formatDate(employee.dob)} />
-        <Field label="Mobile" value={formatMobile(employee)} />
-        <Field label="Email" value={employee.email} />
-      </dl>
-
-      {/* QR */}
-      <div className="flex flex-col items-center gap-2 border-t bg-muted/40 px-5 py-6">
-        <div className="rounded-xl bg-white p-3 shadow-sm">
-          <QRCodeSVG value={card.qr_token} size={150} level="M" />
-        </div>
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <ScanLine className="size-3.5" />
-          Scan to verify · {employee.emp_code}
-        </p>
-      </div>
-
-      {institution.card_footer_note ? (
-        <p className="border-t px-5 py-3 text-center text-xs text-muted-foreground">
-          {institution.card_footer_note}
-        </p>
-      ) : null}
+      <p className="border-t px-5 py-3 text-center text-xs text-muted-foreground">
+        If a physical copy of any ID card is found, please return it to the
+        college administration office.
+      </p>
     </section>
   )
 }
@@ -234,19 +237,26 @@ function formatDate(value: string | null): string {
 
 function CardSkeleton() {
   return (
-    <div className="mx-auto max-w-md overflow-hidden rounded-2xl border bg-card">
+    <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border bg-card">
       <div className="h-20 animate-pulse bg-muted" />
-      <div className="flex gap-4 p-5">
-        <div className="h-28 w-24 shrink-0 animate-pulse rounded-lg bg-muted" />
-        <div className="flex-1 space-y-2">
-          <div className="h-5 w-40 animate-pulse rounded bg-muted" />
-          <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+      <div className="grid sm:grid-cols-[1fr_auto]">
+        <div className="min-w-0">
+          <div className="flex gap-4 p-5">
+            <div className="h-28 w-24 shrink-0 animate-pulse rounded-lg bg-muted" />
+            <div className="flex-1 space-y-2">
+              <div className="h-5 w-40 animate-pulse rounded bg-muted" />
+              <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 border-t p-5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-9 animate-pulse rounded bg-muted" />
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4 border-t p-5">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-9 animate-pulse rounded bg-muted" />
-        ))}
+        <div className="flex items-center justify-center border-t bg-muted/40 p-6 sm:w-56 sm:border-l sm:border-t-0">
+          <div className="size-[150px] animate-pulse rounded-xl bg-muted" />
+        </div>
       </div>
     </div>
   )
