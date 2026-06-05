@@ -23,6 +23,7 @@ import {
 import { toast } from 'sonner'
 
 import { PageHeader } from '@/components/portal-layout'
+import { PeerProfileOverlay } from '@/components/peer-profile-overlay'
 import { StateView } from '@/components/state-view'
 import { Button } from '@/components/ui/button'
 import {
@@ -129,6 +130,8 @@ export default function ConnectPage() {
   >('list')
   const [requestCount, setRequestCount] = useState(0)
   const [restrictedCount, setRestrictedCount] = useState(0)
+  // The classmate whose profile overlay is open (tapped in a thread header).
+  const [profileFor, setProfileFor] = useState<ChatContact | null>(null)
 
   useEffect(() => {
     document.title = 'Connect — Nucleus'
@@ -350,6 +353,7 @@ export default function ConnectPage() {
               otherRoll={active.other.student_id}
               otherLastReadInit={active.otherLastRead}
               initialDraft={active.draft}
+              onViewProfile={() => setProfileFor(active.other)}
               onBack={() => setActive(null)}
               onActivity={loadConversations}
               onMutated={() => {
@@ -364,6 +368,16 @@ export default function ConnectPage() {
           )}
         </section>
       </div>
+
+      {profileFor ? (
+        <PeerProfileOverlay
+          key={profileFor.id}
+          studentId={profileFor.id}
+          fallbackName={profileFor.display_name}
+          onClose={() => setProfileFor(null)}
+          onSessionEnd={signOut}
+        />
+      ) : null}
     </>
   )
 }
@@ -1181,6 +1195,7 @@ function ChatThread({
   otherRoll,
   otherLastReadInit,
   initialDraft,
+  onViewProfile,
   onBack,
   onActivity,
   onMutated,
@@ -1192,6 +1207,8 @@ function ChatThread({
   otherRoll: string
   otherLastReadInit: number
   initialDraft?: string
+  /** Open the other participant's profile (tapped the header avatar/name). */
+  onViewProfile: () => void
   onBack: () => void
   onActivity: () => void
   /** Called after accept/block/mute so the parent refreshes its list + badges. */
@@ -1447,20 +1464,29 @@ function ChatThread({
         >
           <ArrowLeft />
         </Button>
-        <Avatar name={otherName} className="size-9" />
-        <div className="min-w-0 flex-1 leading-tight">
-          <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-semibold">
-            <span className="truncate">{otherName}</span>
-            {meta?.muted ? (
-              <BellOff className="size-3 shrink-0 text-muted-foreground" />
+        <button
+          type="button"
+          onClick={onViewProfile}
+          aria-label={`View ${otherName}'s profile`}
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left transition-opacity hover:opacity-80"
+        >
+          <Avatar name={otherName} className="size-9" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-semibold">
+              <span className="truncate">{otherName}</span>
+              {meta?.muted ? (
+                <BellOff className="size-3 shrink-0 text-muted-foreground" />
+              ) : null}
+            </p>
+            {peerTyping ? (
+              <p className="text-xs font-medium text-primary">typing…</p>
+            ) : otherRoll ? (
+              <p className="truncate text-xs text-muted-foreground">
+                {otherRoll}
+              </p>
             ) : null}
-          </p>
-          {peerTyping ? (
-            <p className="text-xs font-medium text-primary">typing…</p>
-          ) : otherRoll ? (
-            <p className="truncate text-xs text-muted-foreground">{otherRoll}</p>
-          ) : null}
-        </div>
+          </div>
+        </button>
         {meta && !isIncomingPending ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
