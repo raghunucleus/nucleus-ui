@@ -395,7 +395,7 @@ function EmptyState({ onlyUnread }: { onlyUnread: boolean }) {
         <p className="max-w-sm text-xs text-muted-foreground">
           {onlyUnread
             ? "You're all caught up — switch to All to see earlier notifications."
-            : 'When something needs your attention — a new message, a fee due, marks published — it’ll show up here.'}
+            : 'When something needs your attention — a new message, a timetable change, marks published — it’ll show up here.'}
         </p>
       </div>
     </div>

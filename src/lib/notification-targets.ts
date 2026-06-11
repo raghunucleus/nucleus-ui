@@ -45,7 +45,6 @@ const REGISTRY: Partial<Record<NotificationModuleKey, ModuleResolver>> = {
   },
   attendance: { home: { to: '/attendance' } },
   'exam-marks': { home: { to: '/exam-marks' } },
-  fees: { home: { to: '/fees' } },
   timetable: {
     home: { to: '/timetable' },
     resolve: (t) => {
@@ -59,8 +58,9 @@ const REGISTRY: Partial<Record<NotificationModuleKey, ModuleResolver>> = {
   birthdays: { home: { to: '/birthdays' } },
   'id-card': { home: { to: '/id-card' } },
   profile: { home: { to: '/profile' } },
-  // 'announcements' intentionally absent — no live page yet, so it resolves to
-  // null ("no screen to open") until the module ships.
+  // 'announcements' and 'fees' intentionally absent — no live page yet (fees
+  // is disabled / coming soon), so they resolve to null ("no screen to open")
+  // until the modules ship.
 }
 
 /**

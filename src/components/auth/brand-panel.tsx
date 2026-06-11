@@ -15,7 +15,7 @@ const COPY = {
   },
   member: {
     headline: 'Your learning,\nsimplified.',
-    sub: 'Classes, attendance, fees, and announcements — all in one home.',
+    sub: 'Classes, attendance, marks, and announcements — all in one home.',
     footer: 'Student portal',
   },
 } as const

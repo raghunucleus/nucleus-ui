@@ -6,7 +6,6 @@ import {
   AttendanceTile,
   BirthdaysTile,
   CgpaTile,
-  FeesTile,
   HolidaysTile,
   MessagesAlert,
   ModulesTile,
@@ -62,17 +61,17 @@ export default function StudentHome() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <AttendanceTile />
         <CgpaTile />
-        <FeesTile className="col-span-2" />
+        <HolidaysTile className="col-span-2" />
       </div>
 
+      {/* Modules sets the row height; Birthdays is absolutely positioned (at
+          lg) inside its cell so it can't stretch the row — it just fills the
+          Modules height and scrolls its list internally when longer. */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <ModulesTile />
+        <ModulesTile className="lg:col-span-2" />
+        <div className="relative">
+          <BirthdaysTile className="lg:absolute lg:inset-0" />
         </div>
-        <aside className="space-y-6">
-          <BirthdaysTile />
-          <HolidaysTile />
-        </aside>
       </div>
     </>
   )

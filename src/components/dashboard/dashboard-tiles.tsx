@@ -4,7 +4,6 @@ import {
   Award,
   Cake,
   ClipboardCheck,
-  CreditCard,
   LayoutGrid,
   MessageCircle,
   PartyPopper,
@@ -17,13 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { ApiError } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import {
-  FEE_DUES,
-  attendanceStanding,
-  feeTotals,
-  formatDate,
-  formatINR,
-} from '@/lib/academics-mock'
+import { attendanceStanding } from '@/lib/academics-mock'
 import {
   fetchStudentAttendanceDashboard,
   fetchStudentExamResults,
@@ -307,11 +300,12 @@ export function CgpaTile({ className }: { className?: string }) {
 
   const value = data?.has_results ? data.cgpa : null
   const hasResults = value !== null
+  const semestersCount = data?.semesters_count ?? 0
   const note = failed
     ? "Couldn't load results"
     : !hasResults
       ? 'No results published yet'
-      : `Cumulative GPA across ${data.semesters_count} semester${data.semesters_count === 1 ? '' : 's'}`
+      : `Cumulative GPA across ${semestersCount} semester${semestersCount === 1 ? '' : 's'}`
 
   return (
     <StatTile
@@ -349,47 +343,6 @@ export function CgpaTile({ className }: { className?: string }) {
         className="mt-3"
       />
       <p className="mt-2 text-xs text-muted-foreground">{note}</p>
-    </StatTile>
-  )
-}
-
-export function FeesTile({ className }: { className?: string }) {
-  const { total, paid, pending } = feeTotals()
-  const paidPct = total > 0 ? Math.round((paid / total) * 100) : 0
-  const due = FEE_DUES[0]
-
-  return (
-    <StatTile
-      to="/fees"
-      icon={CreditCard}
-      color="rose"
-      title="Fees"
-      className={className}
-    >
-      <div className="mt-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
-        <div>
-          <p className="text-3xl font-bold tabular-nums">
-            {formatINR(pending)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {pending > 0 ? 'pending dues' : 'all dues cleared'}
-          </p>
-        </div>
-        {pending > 0 && due ? (
-          <span className="rounded-full bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
-            Due {formatDate(due.dueDate)}
-          </span>
-        ) : null}
-      </div>
-      <Progress
-        value={paidPct}
-        indicatorClassName="bg-success"
-        className="mt-3"
-      />
-      <p className="mt-2 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">{formatINR(paid)}</span>{' '}
-        paid of {formatINR(total)} · {paidPct}% complete
-      </p>
     </StatTile>
   )
 }
@@ -543,8 +496,20 @@ export function BirthdaysTile({ className }: { className?: string }) {
   const upcoming = (people ?? []).filter((p) => p.days_until > 0).slice(0, 5)
 
   return (
-    <PanelTile icon={Cake} title="Birthdays" className={className}>
-      <div className="space-y-4 p-5">
+    <Link
+      to="/birthdays"
+      className={cn(
+        TILE_BASE,
+        'group flex flex-col transition-all hover:-translate-y-0.5 hover:shadow-md',
+        className,
+      )}
+    >
+      <header className="flex items-center gap-2 border-b px-5 py-3.5">
+        <Cake className="size-4 text-muted-foreground" />
+        <h3 className="text-sm font-semibold">Birthdays</h3>
+        <ArrowUpRight className="ml-auto size-4 text-muted-foreground transition-colors group-hover:text-primary" />
+      </header>
+      <div className="scrollbar-themed min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
         {people === null && !error ? (
           <div className="space-y-3">
             <div className="h-12 animate-pulse rounded-xl bg-muted" />
@@ -555,7 +520,12 @@ export function BirthdaysTile({ className }: { className?: string }) {
             Couldn&rsquo;t load birthdays.{' '}
             <button
               type="button"
-              onClick={() => void load()}
+              onClick={(e) => {
+                // The whole card is a link — keep Retry from navigating.
+                e.preventDefault()
+                e.stopPropagation()
+                void load()
+              }}
               className="font-medium text-primary hover:underline"
             >
               Retry
@@ -590,7 +560,11 @@ export function BirthdaysTile({ className }: { className?: string }) {
                     <Button
                       size="sm"
                       className="shrink-0"
-                      onClick={() =>
+                      onClick={(e) => {
+                        // The whole card is a link — Wish goes to Connect, not
+                        // the Birthdays page.
+                        e.preventDefault()
+                        e.stopPropagation()
                         void navigate({
                           to: '/connect',
                           search: {
@@ -599,7 +573,7 @@ export function BirthdaysTile({ className }: { className?: string }) {
                             wish: true,
                           },
                         })
-                      }
+                      }}
                     >
                       <PartyPopper />
                       Wish
@@ -644,7 +618,7 @@ export function BirthdaysTile({ className }: { className?: string }) {
           </>
         )}
       </div>
-    </PanelTile>
+    </Link>
   )
 }
 
@@ -665,6 +639,10 @@ function offsetDaysFromIso(iso: string): number {
   return Math.round((d.getTime() - today.getTime()) / (24 * 60 * 60 * 1000))
 }
 
+/**
+ * Upcoming holidays as a stat-row tile — the next few current/upcoming
+ * holidays at a glance; the whole tile links to the Holidays page.
+ */
 export function HolidaysTile({ className }: { className?: string }) {
   const signOut = useAuthStore((state) => state.signOut)
   const [holidays, setHolidays] = useState<AcademicHoliday[] | null>(null)
@@ -691,41 +669,39 @@ export function HolidaysTile({ className }: { className?: string }) {
   }, [load])
 
   const today = toIsoDate(new Date())
-  const upcoming = (holidays ?? []).slice(0, 5)
+  // The tile fits the stat row, so only the next few — the page has the rest.
+  const upcoming = (holidays ?? []).slice(0, 3)
 
   return (
-    <PanelTile icon={PartyPopper} title="Upcoming holidays" className={className}>
+    <StatTile
+      to="/academic-holidays"
+      icon={PartyPopper}
+      color="blue"
+      title="Upcoming holidays"
+      className={className}
+      pulseIcon={holidays !== null && !error && upcoming.length === 0}
+    >
       {holidays === null && !error ? (
-        <div className="space-y-3 p-5">
+        <div className="mt-4 space-y-2">
           <div className="h-12 animate-pulse rounded-xl bg-muted" />
           <div className="h-12 animate-pulse rounded-xl bg-muted" />
         </div>
       ) : error ? (
-        <p className="px-5 py-4 text-xs text-muted-foreground">
-          Couldn&rsquo;t load holidays.{' '}
-          <button
-            type="button"
-            onClick={() => void load()}
-            className="font-medium text-primary hover:underline"
-          >
-            Retry
-          </button>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Couldn&rsquo;t load holidays — open to retry.
         </p>
       ) : upcoming.length === 0 ? (
-        <p className="px-5 py-4 text-xs text-muted-foreground">
+        <p className="mt-4 text-xs text-muted-foreground">
           No holidays coming up.
         </p>
       ) : (
-        <ul className="divide-y">
+        <ul className="mt-4 space-y-2.5">
           {upcoming.map((holiday) => {
             const date = new Date(`${holiday.date}T00:00:00`)
             const ongoing =
               holiday.date <= today && (holiday.end_date ?? holiday.date) >= today
             return (
-              <li
-                key={holiday.id}
-                className="flex items-center gap-3 px-5 py-3"
-              >
+              <li key={holiday.id} className="flex items-center gap-3">
                 <DateChip date={date} color={HOLIDAY_COLOR[holiday.type]} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{holiday.name}</p>
@@ -741,6 +717,6 @@ export function HolidaysTile({ className }: { className?: string }) {
           })}
         </ul>
       )}
-    </PanelTile>
+    </StatTile>
   )
 }

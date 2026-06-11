@@ -20,7 +20,6 @@ export type ModuleRoute =
   | '/timetable'
   | '/attendance'
   | '/exam-marks'
-  | '/fees'
   | '/birthdays'
   | '/connect'
   | '/notifications'
@@ -117,11 +116,11 @@ export const MODULES: Module[] = [
     to: '/exam-marks',
   },
   {
-    icon: CreditCard,
-    title: 'Fees',
-    description: 'Fee structure and pending dues.',
-    color: 'rose',
-    to: '/fees',
+    icon: MessageCircle,
+    title: 'Connect',
+    description: 'Chat one-to-one with students in your group.',
+    color: 'cyan',
+    to: '/connect',
   },
   {
     icon: Cake,
@@ -138,18 +137,18 @@ export const MODULES: Module[] = [
     to: '/academic-holidays',
   },
   {
-    icon: MessageCircle,
-    title: 'Connect',
-    description: 'Chat one-to-one with students in your group.',
-    color: 'cyan',
-    to: '/connect',
-  },
-  {
     icon: Bell,
     title: 'Notifications',
-    description: 'Your alerts — messages, fees, marks and more.',
+    description: 'Your alerts — messages, marks and more.',
     color: 'violet',
     to: '/notifications',
+  },
+  {
+    icon: CreditCard,
+    title: 'Fees',
+    description: 'Fee structure and pending dues.',
+    color: 'rose',
+    // Intentionally no `to` — the module is disabled and renders "Coming soon".
   },
   {
     icon: BookOpen,
