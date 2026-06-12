@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import { PhotoLightbox } from '@/components/photo-lightbox'
 import { ApiError } from '@/lib/api'
 import { MODULE_SOFT } from '@/lib/modules'
 import { avatarColorFor } from '@/lib/student-birthdays'
@@ -84,6 +85,7 @@ export function PeerProfileOverlay({
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [photoFailed, setPhotoFailed] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -113,14 +115,16 @@ export function PeerProfileOverlay({
     }
   }, [studentId, onSessionEnd])
 
-  // Esc closes the overlay.
+  // Esc closes the overlay — unless the photo lightbox is open, in which case
+  // Radix closes just the lightbox and the overlay stays put.
   useEffect(() => {
+    if (lightboxOpen) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [onClose, lightboxOpen])
 
   const name = profile?.display_name ?? fallbackName
   const showPhoto = !!profile?.photo_url && !photoFailed
@@ -149,12 +153,27 @@ export function PeerProfileOverlay({
         {/* Identity header */}
         <div className="flex flex-col items-center px-6 pb-4 pt-8">
           {showPhoto ? (
-            <img
-              src={profile!.photo_url!}
-              alt={name}
-              onError={() => setPhotoFailed(true)}
-              className="size-28 rounded-full object-cover"
-            />
+            <>
+              <button
+                type="button"
+                aria-label={`View ${name}'s photo full size`}
+                onClick={() => setLightboxOpen(true)}
+                className="cursor-zoom-in rounded-full"
+              >
+                <img
+                  src={profile!.photo_url!}
+                  alt={name}
+                  onError={() => setPhotoFailed(true)}
+                  className="size-28 rounded-full object-cover"
+                />
+              </button>
+              <PhotoLightbox
+                open={lightboxOpen}
+                onOpenChange={setLightboxOpen}
+                src={profile!.photo_url!}
+                name={name}
+              />
+            </>
           ) : (
             <div
               className={cn(

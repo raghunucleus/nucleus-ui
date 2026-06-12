@@ -23,6 +23,8 @@ export interface ChatContact {
   display_name: string
   /** Roll number. */
   student_id: string
+  /** Stable (~12h) photo URL; null when unset or hidden by privacy. */
+  photo_url: string | null
 }
 
 /** One chat message, as returned by REST history and socket events. */

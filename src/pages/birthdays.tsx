@@ -299,7 +299,10 @@ export default function BirthdaysPage() {
                           >
                             {isSel ? <Check className="size-3.5" /> : null}
                           </span>
-                          <PersonAvatar name={person.display_name} />
+                          <PersonAvatar
+                            name={person.display_name}
+                            photoUrl={person.photo_url}
+                          />
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-sm font-semibold">
                               {person.display_name}
@@ -343,7 +346,10 @@ export default function BirthdaysPage() {
                       key={person.id}
                       className="flex items-center gap-3 px-5 py-3"
                     >
-                      <PersonAvatar name={person.display_name} />
+                      <PersonAvatar
+                        name={person.display_name}
+                        photoUrl={person.photo_url}
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">
                           {person.display_name}
@@ -389,7 +395,28 @@ export default function BirthdaysPage() {
   )
 }
 
-function PersonAvatar({ name }: { name: string }) {
+function PersonAvatar({
+  name,
+  photoUrl,
+}: {
+  name: string
+  photoUrl?: string | null
+}) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+
+  // Failure is per-URL: when a refetch delivers a fresh signed URL, retry the
+  // image instead of staying on initials forever.
+  if (photoUrl && failedUrl !== photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt={name}
+        onError={() => setFailedUrl(photoUrl)}
+        className="size-10 shrink-0 rounded-full border bg-muted object-cover"
+      />
+    )
+  }
+
   return (
     <div
       className={cn(

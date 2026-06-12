@@ -69,7 +69,30 @@ function initials(name: string): string {
 }
 
 /** Initials avatar in the person's accent tint. */
-function Avatar({ name, color }: { name: string; color: ModuleColor }) {
+function Avatar({
+  name,
+  color,
+  photoUrl,
+}: {
+  name: string
+  color: ModuleColor
+  photoUrl?: string | null
+}) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+
+  // Failure is per-URL: a refetch may deliver a fresh signed URL — retry it
+  // instead of staying on initials forever.
+  if (photoUrl && failedUrl !== photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt={name}
+        onError={() => setFailedUrl(photoUrl)}
+        className="size-9 shrink-0 rounded-full border bg-muted object-cover"
+      />
+    )
+  }
+
   return (
     <div
       className={cn(
@@ -548,6 +571,7 @@ export function BirthdaysTile({ className }: { className?: string }) {
                     <Avatar
                       name={person.display_name}
                       color={avatarColorFor(person.display_name)}
+                      photoUrl={person.photo_url}
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">
@@ -595,6 +619,7 @@ export function BirthdaysTile({ className }: { className?: string }) {
                     <Avatar
                       name={person.display_name}
                       color={avatarColorFor(person.display_name)}
+                      photoUrl={person.photo_url}
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">

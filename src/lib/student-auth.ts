@@ -29,6 +29,8 @@ export interface StudentProfile extends StudentSummary {
   is_active: boolean
   programme: { id: number; name: string; code: string } | null
   admission_year: { id: number; year: number; display_year: string } | null
+  /** Presigned, short-lived URL of the profile photo; null when unset. */
+  photo_url: string | null
 }
 
 // --- token storage --------------------------------------------------------
@@ -151,7 +153,9 @@ export async function studentLogout(): Promise<void> {
  * single refresh-and-retry; if that fails the session is cleared and a 401
  * ApiError is thrown so callers can route back to the login screen.
  */
-async function withAuth<T>(call: (token: string) => Promise<T>): Promise<T> {
+export async function withAuth<T>(
+  call: (token: string) => Promise<T>,
+): Promise<T> {
   const token = getAccessToken()
   if (!token) {
     throw new ApiError(401, 'Your session has ended. Please sign in again.')

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import {
+  type ReactElement,
   type ReactNode,
   useCallback,
   useEffect,
@@ -3889,7 +3890,7 @@ function RepublishDiff({
 
       <p className="text-xs text-muted-foreground">
         {(() => {
-          const parts: JSX.Element[] = []
+          const parts: ReactElement[] = []
           if (totals.added)
             parts.push(
               <span key="a" className="text-icon-emerald">
@@ -3991,7 +3992,6 @@ function RepublishDiff({
 }
 
 function DiffRow({
-  group,
   ctx,
   row,
   onChanged,

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   Cake,
   CalendarDays,
+  Camera,
   CircleAlert,
   Droplet,
   GraduationCap,
@@ -13,6 +14,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
+import { PhotoLightbox } from '@/components/photo-lightbox'
+import { PhotoUploadDialog } from '@/components/photo-upload-dialog'
 import { PageHeader } from '@/components/portal-layout'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -67,26 +70,74 @@ export default function Profile() {
       ) : error ? (
         <ErrorState message={error} onRetry={() => void load()} />
       ) : profile ? (
-        <IdentityCard profile={profile} />
+        <IdentityCard
+          profile={profile}
+          onPhotoChange={(photoUrl) =>
+            setProfile((p) => (p ? { ...p, photo_url: photoUrl } : p))
+          }
+        />
       ) : null}
     </>
   )
 }
 
-function IdentityCard({ profile }: { profile: StudentProfile }) {
-  const initials = profile.display_name
-    .trim()
-    .split(/\s+/)
-    .map((part) => part[0] ?? '')
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
+function IdentityCard({
+  profile,
+  onPhotoChange,
+}: {
+  profile: StudentProfile
+  onPhotoChange: (photoUrl: string | null) => void
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
 
   return (
     <section className="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
       <div className="flex flex-col gap-4 border-b bg-gradient-to-br from-primary/8 to-secondary/8 p-5 sm:flex-row sm:items-center">
-        <div className="grid size-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-secondary text-xl font-semibold text-primary-foreground shadow-md shadow-primary/30">
-          {initials || '—'}
+        <div className="relative size-16 shrink-0 self-start sm:self-auto">
+          {profile.photo_url ? (
+            <>
+              <button
+                type="button"
+                aria-label="View photo full size"
+                onClick={() => setLightboxOpen(true)}
+                className="block cursor-zoom-in rounded-full"
+              >
+                {/* Keyed by URL so a fresh presigned link resets the fallback. */}
+                <ProfileAvatar
+                  key={profile.photo_url}
+                  name={profile.display_name}
+                  photoUrl={profile.photo_url}
+                />
+              </button>
+              <PhotoLightbox
+                open={lightboxOpen}
+                onOpenChange={setLightboxOpen}
+                src={profile.photo_url}
+                name={profile.display_name}
+              />
+            </>
+          ) : (
+            <ProfileAvatar
+              key="no-photo"
+              name={profile.display_name}
+              photoUrl={null}
+            />
+          )}
+          <button
+            type="button"
+            aria-label="Change profile photo"
+            onClick={() => setDialogOpen(true)}
+            className="absolute -bottom-0.5 -right-0.5 grid size-6 place-items-center rounded-full border bg-card text-muted-foreground shadow-sm transition-colors hover:text-foreground"
+          >
+            <Camera className="size-3.5" />
+          </button>
+          <PhotoUploadDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            hasPhoto={!!profile.photo_url}
+            onUploaded={onPhotoChange}
+          />
         </div>
         <div className="min-w-0 space-y-1.5">
           <h2 className="truncate text-lg font-semibold">
@@ -155,6 +206,42 @@ function IdentityCard({ profile }: { profile: StudentProfile }) {
         </DetailGroup>
       </div>
     </section>
+  )
+}
+
+/** Circular avatar: photo when available, initials gradient otherwise. */
+function ProfileAvatar({
+  name,
+  photoUrl,
+}: {
+  name: string
+  photoUrl: string | null
+}) {
+  const [errored, setErrored] = useState(false)
+
+  if (photoUrl && !errored) {
+    return (
+      <img
+        src={photoUrl}
+        alt={name}
+        onError={() => setErrored(true)}
+        className="size-16 rounded-full border bg-muted object-cover shadow-md shadow-primary/20"
+      />
+    )
+  }
+
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .map((part) => part[0] ?? '')
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+
+  return (
+    <div className="grid size-16 place-items-center rounded-full bg-gradient-to-br from-primary to-secondary text-xl font-semibold text-primary-foreground shadow-md shadow-primary/30">
+      {initials || '—'}
+    </div>
   )
 }
 

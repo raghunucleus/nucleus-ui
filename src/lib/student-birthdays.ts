@@ -20,6 +20,8 @@ export interface BirthdayPerson {
   days_until: number
   /** ISO date of the next occurrence (no birth year is ever returned). */
   date: string
+  /** Stable (~12h) photo URL; null when unset or hidden by privacy. */
+  photo_url: string | null
 }
 
 /** One page of classmate birthdays — mirrors the server response. */

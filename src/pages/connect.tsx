@@ -80,11 +80,31 @@ function initials(name: string): string {
 
 function Avatar({
   name,
+  photoUrl,
   className,
 }: {
   name: string
+  photoUrl?: string | null
   className?: string
 }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+
+  // Failure is per-URL: when a refetch delivers a fresh signed URL, retry the
+  // image instead of staying on initials forever.
+  if (photoUrl && failedUrl !== photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt={name}
+        onError={() => setFailedUrl(photoUrl)}
+        className={cn(
+          'size-10 shrink-0 rounded-full border bg-muted object-cover',
+          className,
+        )}
+      />
+    )
+  }
+
   return (
     <div
       className={cn(
@@ -155,7 +175,9 @@ export default function ConnectPage() {
         const conv = await openChatConversation(to)
         setActive({
           id: conv.id,
-          other: { id: to, display_name: name, student_id: '' },
+          // Placeholder until the conversation meta loads (which carries the
+          // real roll number and photo URL for the header).
+          other: { id: to, display_name: name, student_id: '', photo_url: null },
           otherLastRead: 0,
           draft: wantWish ? birthdayWish(name) : undefined,
         })
@@ -542,7 +564,10 @@ function ConversationList({
                     {activeId === c.id ? (
                       <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-primary" />
                     ) : null}
-                    <Avatar name={c.other.display_name} />
+                    <Avatar
+                      name={c.other.display_name}
+                      photoUrl={c.other.photo_url}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-2">
                         <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-medium">
@@ -761,7 +786,7 @@ function NewChatPanel({
                     onClick={() => onPick(c)}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent"
                   >
-                    <Avatar name={c.display_name} />
+                    <Avatar name={c.display_name} photoUrl={c.photo_url} />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
                         {c.display_name}
@@ -894,7 +919,10 @@ function RequestsPanel({
                 className="space-y-2.5 rounded-xl border p-3"
               >
                 <div className="flex items-center gap-3">
-                  <Avatar name={req.other.display_name} />
+                  <Avatar
+                    name={req.other.display_name}
+                    photoUrl={req.other.photo_url}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <p className="truncate text-sm font-medium">
@@ -1089,7 +1117,10 @@ function RestrictedPanel({
             {filtered.map((c) => (
               <li key={c.id} className="rounded-xl border p-3">
                 <div className="flex items-center gap-3">
-                  <Avatar name={c.other.display_name} />
+                  <Avatar
+                    name={c.other.display_name}
+                    photoUrl={c.other.photo_url}
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
                       {c.other.display_name}
@@ -1470,7 +1501,11 @@ function ChatThread({
           aria-label={`View ${otherName}'s profile`}
           className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left transition-opacity hover:opacity-80"
         >
-          <Avatar name={otherName} className="size-9" />
+          <Avatar
+            name={otherName}
+            photoUrl={meta?.other.photo_url}
+            className="size-9"
+          />
           <div className="min-w-0 flex-1 leading-tight">
             <p className="flex min-w-0 items-center gap-1.5 truncate text-sm font-semibold">
               <span className="truncate">{otherName}</span>
