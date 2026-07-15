@@ -40,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { EmployeeAccessContext } from '@/hooks/use-screen-access'
 import { fetchEmployeeAccess, type EffectiveAccess } from '@/lib/employee-access'
 import {
@@ -223,7 +224,7 @@ export function EmployeePortalLayout() {
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card/80 px-4 backdrop-blur sm:px-6">
+          <header className="flex h-14 shrink-0 items-center justify-between border-b bg-card/80 px-4 backdrop-blur sm:px-6">
             <Button
               variant="ghost"
               size="icon"
@@ -238,6 +239,7 @@ export function EmployeePortalLayout() {
             </Button>
 
             <div className="flex items-center gap-2">
+              <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -308,7 +310,7 @@ export function EmployeePortalLayout() {
             </div>
           </header>
 
-          <main className="scrollbar-themed min-w-0 flex-1 overflow-auto px-4 py-8 sm:px-6">
+          <main className="scrollbar-themed min-w-0 flex-1 overflow-auto px-4 py-6 sm:px-6">
             {/* Gate page content until the access payload has resolved.
                 Screens read their permissions from `EmployeeAccessContext`
                 and render a "No access" state when it's null — which is also
@@ -556,10 +558,10 @@ function EmployeeSidebar({
         className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/[0.06] via-secondary/[0.03] to-transparent"
       />
 
-      {/* Brand row — vertically aligned with the main header's h-16. */}
+      {/* Brand row — vertically aligned with the main header's h-14. */}
       <div
         className={cn(
-          'relative flex h-16 shrink-0 items-center border-b transition-[padding] duration-300 ease-out',
+          'relative flex h-14 shrink-0 items-center border-b transition-[padding] duration-300 ease-out',
           collapsed ? 'justify-center px-0' : 'gap-2 px-4',
         )}
       >

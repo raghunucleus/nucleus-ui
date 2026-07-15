@@ -55,18 +55,18 @@ export default function EmployeeProfilePage() {
   const active = navItems.find((n) => n.key === section) ?? navItems[0]
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 py-2">
+    <div className="mx-auto max-w-5xl space-y-4 py-2">
       <div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <User className="size-4" /> Account
         </div>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">Profile</h1>
+        <h1 className="mt-2 text-xl font-semibold tracking-tight">Profile</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Manage your account and security preferences.
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[16rem_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
         <SideNav activeKey={section} />
         <div className="rounded-lg border bg-card p-6 text-card-foreground">
           <header className="mb-5 flex items-start gap-3">

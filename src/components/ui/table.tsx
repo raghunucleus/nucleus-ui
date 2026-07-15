@@ -80,7 +80,7 @@ function TableHead({
     <th
       data-slot="table-head"
       className={cn(
-        'h-10 px-4 text-left align-middle text-xs font-medium uppercase tracking-wide text-muted-foreground whitespace-nowrap',
+        'h-9 px-3 text-left align-middle text-xs font-medium uppercase tracking-wide text-muted-foreground whitespace-nowrap',
         className,
       )}
       {...props}
@@ -95,7 +95,7 @@ function TableCell({
   return (
     <td
       data-slot="table-cell"
-      className={cn('px-4 py-3 align-middle', className)}
+      className={cn('px-3 py-2 align-middle', className)}
       {...props}
     />
   )

@@ -33,9 +33,9 @@ export default function EmployeeHome() {
   }, [access])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Welcome</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Pick a module to get started. Only the modules and screens your role
           grants are shown.

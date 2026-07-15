@@ -253,7 +253,7 @@ export default function EmployeeInchargeSchedulePage() {
   return (
     <section className="space-y-5">
       <header className="space-y-1">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+        <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
           <CalendarRange className="size-6 text-icon-blue" />
           Schedule management
         </h1>

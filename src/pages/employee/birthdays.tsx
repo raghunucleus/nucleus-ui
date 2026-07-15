@@ -173,7 +173,7 @@ export default function EmployeeBirthdaysPage() {
   // Very first paint, before we know anything about the roster.
   if (firstLoad && loading) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto max-w-3xl space-y-4">
         {header}
         <ListSkeleton />
       </div>
@@ -182,7 +182,7 @@ export default function EmployeeBirthdaysPage() {
 
   if (error && items.length === 0) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto max-w-3xl space-y-4">
         {header}
         <ErrorState message={error} onRetry={() => void loadFirst()} />
       </div>
@@ -193,7 +193,7 @@ export default function EmployeeBirthdaysPage() {
   // record in this department yet.
   if (debounced === '' && items.length === 0 && !loading) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto max-w-3xl space-y-4">
         {header}
         <EmptyState />
       </div>
@@ -201,7 +201,7 @@ export default function EmployeeBirthdaysPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-4">
       {header}
 
       <div className="relative">
@@ -331,7 +331,7 @@ function PersonAvatar({ name }: { name: string }) {
 // Uses the shared `shimmer` sweep rather than a flat pulse.
 function ListSkeleton() {
   return (
-    <div className="space-y-6" aria-hidden>
+    <div className="space-y-4" aria-hidden>
       {[4, 3].map((rows, g) => (
         <section
           key={g}

@@ -261,9 +261,9 @@ export default function EmployeeMarksViewPage() {
   const loadingBatches = batches === null
 
   return (
-    <section className="mx-auto max-w-5xl space-y-6">
+    <section className="mx-auto max-w-5xl space-y-4">
       <header>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+        <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
           <GraduationCap className="size-6 text-icon-blue" />
           Student marks
         </h1>
@@ -277,7 +277,7 @@ export default function EmployeeMarksViewPage() {
       <div
         role="tablist"
         aria-label="Student marks view"
-        className="flex gap-6 border-b"
+        className="flex gap-4 border-b"
       >
         {(
           [

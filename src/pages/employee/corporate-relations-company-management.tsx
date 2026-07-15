@@ -15,7 +15,7 @@ export default function EmployeeCompanyManagementPage() {
   const access = useScreenAccess(SCREEN_KEY)
   if (!access) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="mx-auto max-w-3xl space-y-4">
         <NoAccessEmptyState />
       </div>
     )

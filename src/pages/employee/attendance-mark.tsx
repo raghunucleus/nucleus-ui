@@ -80,7 +80,7 @@ export default function EmployeeAttendanceMarkPage() {
     <section className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
             <ClipboardCheck className="size-6 text-icon-emerald" />
             Mark attendance
           </h1>

@@ -123,7 +123,7 @@ export default function EmployeeAttendanceHistoryPage() {
     <section className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
             <History className="size-6 text-icon-emerald" />
             Attendance history
           </h1>
@@ -196,7 +196,7 @@ export default function EmployeeAttendanceHistoryPage() {
           />
         </Card>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {grouped.map(([date, list]) => (
             <DayGroup key={date} date={date} sessions={list} />
           ))}

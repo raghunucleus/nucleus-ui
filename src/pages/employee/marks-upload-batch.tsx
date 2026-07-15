@@ -423,7 +423,7 @@ export default function EmployeeMarksUploadBatchPage() {
   const totalErrors = clientErrors.length + serverErrors.length
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-4">
       <header className="flex items-start gap-3">
         <Button
           variant="ghost"
@@ -434,7 +434,7 @@ export default function EmployeeMarksUploadBatchPage() {
           <ArrowLeft />
         </Button>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Upload marks</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Upload marks</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {batch === undefined
               ? 'Loading batch…'

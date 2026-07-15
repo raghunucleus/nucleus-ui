@@ -317,7 +317,7 @@ function HeaderCard({
     <Card className="p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
             <ClipboardCheck className="size-6 text-icon-emerald" />
             {title}
           </h1>

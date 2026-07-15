@@ -68,7 +68,7 @@ export default function EmployeeAcademicHolidaysPage() {
   const rangeEnd = Math.min(page * PAGE_SIZE, total)
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-4">
       <div className="flex items-start gap-3">
         <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-icon-blue/10 text-icon-blue">
           <CalendarDays className="size-5" />
@@ -105,7 +105,7 @@ export default function EmployeeAcademicHolidaysPage() {
           }
         />
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           <HolidayList
             holidays={holidays}
             today={today}
@@ -216,7 +216,7 @@ function Pagination({
 // rather than as featureless blocks. Uses the shared `shimmer` sweep.
 function ListSkeleton() {
   return (
-    <div className="space-y-6" aria-hidden>
+    <div className="space-y-4" aria-hidden>
       {[3, 2].map((rows, g) => (
         <section
           key={g}

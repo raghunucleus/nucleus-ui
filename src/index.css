@@ -17,7 +17,7 @@
   --brand-accent: #38bdf8;      /* sky-400 — lighter highlight in same family */
 
   /* Radius scale */
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 
   /* shadcn semantic tokens — light theme */
   /* Canvas sits a touch below pure white so elevated surfaces (header,
@@ -95,11 +95,15 @@
   --brand-secondary: #38bdf8;   /* sky-400 */
   --brand-accent: #7dd3fc;      /* sky-300 */
 
-  --background: oklch(0.141 0.005 285.823);
+  /* Surfaces — central's warm gray-navy. Cards/popover lift off the page; both
+     stay near-neutral so the brand-blue accents read against them. Derived
+     surfaces (muted/border/input below) color-mix from these so re-darkening
+     the whole theme is a one-line change. */
+  --background: #202124;
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.21 0.006 285.885);
+  --card: #2a2b2e;
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.21 0.006 285.885);
+  --popover: #2a2b2e;
   --popover-foreground: oklch(0.985 0 0);
 
   --primary: var(--brand-primary);
@@ -109,16 +113,16 @@
   --accent: var(--brand-accent);
   --accent-foreground: oklch(0.21 0.006 285.885);
 
-  --muted: oklch(0.274 0.006 286.033);
-  --muted-foreground: oklch(0.705 0.015 286.067);
+  --muted: color-mix(in oklab, var(--primary) 12%, var(--background));
+  --muted-foreground: color-mix(in oklab, oklch(0.98 0 0) 75%, var(--background));
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
   --success: oklch(0.72 0.16 156);
   --success-foreground: oklch(0.21 0.006 285.885);
   --warning: oklch(0.8 0.15 78);
   --warning-foreground: oklch(0.21 0.006 285.885);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --border: color-mix(in oklab, oklch(0.985 0 0) 16%, var(--background));
+  --input: color-mix(in oklab, oklch(0.985 0 0) 24%, var(--background));
   --ring: var(--brand-primary);
 
   --chart-1: oklch(0.488 0.243 264.376);
@@ -136,13 +140,13 @@
   --icon-cyan: oklch(0.74 0.11 213);
   --icon-orange: oklch(0.75 0.16 48);
 
-  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar: #111111;
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: var(--brand-primary);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent: color-mix(in oklab, var(--primary) 16%, var(--sidebar));
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-border: color-mix(in oklab, oklch(0.985 0 0) 12%, var(--sidebar));
   --sidebar-ring: var(--brand-primary);
 }
 
@@ -308,33 +312,36 @@
 
      The whole app is rem-based, so the root font-size is a single density
      knob: shrink it and every rem-sized text/padding/gap/width shrinks
-     proportionally, letting the same data fit on small laptops without the
+     proportionally, letting the same data fit on a laptop screen without the
      user having to zoom the browser out.
 
      Tailwind v4 breakpoints (sm/md/lg/xl/2xl) are defined in PX, not rem, so
      changing this does NOT shift layout breakpoints — grids keep the same
      column counts; only the content inside each track gets denser.
 
-     The compact tier is intentionally bounded to the laptop range (768px+):
-     phones keep the full 16px so the student/parent app.* portal stays
-     readable on mobile, where layouts already stack vertically and shrinking
-     text would only hurt.
-
-       • 1080p @150% scaling  ≈ 1280px CSS width → 13px  (the reported case)
-       • 1080p @125% scaling  ≈ 1536px CSS width → 14.5px
-       • larger desktops      ≥ 1537px           → 16px
+     Density curve mirrors akrivia-central/central-ui so the two apps read at
+     the same scale: a compact 14px base that steps up on larger monitors.
+     Phones (<768px) keep the full 16px so the student/parent app.* / parent.*
+     portals stay readable in a mobile browser, where layouts already stack
+     vertically and shrinking text would only hurt.
      ------------------------------------------------------------------------- */
   html {
-    font-size: 16px;
+    font-size: 14px;
   }
-  @media (min-width: 768px) and (max-width: 1366px) {
+  @media (min-width: 1600px) {
     html {
-      font-size: 13px;
+      font-size: 15px;
     }
   }
-  @media (min-width: 1367px) and (max-width: 1536px) {
+  @media (min-width: 1920px) {
     html {
-      font-size: 14.5px;
+      font-size: 16px;
+    }
+  }
+  /* Mobile floor — keep phone browsers at the full 16px (see note above). */
+  @media (max-width: 767px) {
+    html {
+      font-size: 16px;
     }
   }
 }
