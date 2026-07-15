@@ -18,8 +18,8 @@ export default function NotFound() {
           behind the content via z-index and don't intercept pointer events. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -left-32 top-12 size-80 rounded-full bg-gradient-to-br from-primary/40 to-secondary/30 blur-3xl animate-pulse [animation-duration:7s]" />
-        <div className="absolute -right-32 bottom-12 size-[28rem] rounded-full bg-gradient-to-br from-secondary/30 to-accent/30 blur-3xl animate-pulse [animation-duration:9s] [animation-delay:1.5s]" />
-        <div className="absolute left-1/2 -bottom-40 size-72 -translate-x-1/2 rounded-full bg-gradient-to-br from-accent/30 to-primary/40 blur-3xl animate-pulse [animation-duration:8s] [animation-delay:3s]" />
+        <div className="absolute -right-32 bottom-12 size-[28rem] rounded-full bg-gradient-to-br from-secondary/30 to-primary/30 blur-3xl animate-pulse [animation-duration:9s] [animation-delay:1.5s]" />
+        <div className="absolute left-1/2 -bottom-40 size-72 -translate-x-1/2 rounded-full bg-gradient-to-br from-secondary/30 to-primary/40 blur-3xl animate-pulse [animation-duration:8s] [animation-delay:3s]" />
       </div>
 
       {/* Soft grid overlay — fades out at the edges via radial mask so it
@@ -50,7 +50,7 @@ export default function NotFound() {
           <div className="relative">
             <Sparkle
               aria-hidden
-              className="absolute -left-7 top-1 size-3 text-accent animate-ping [animation-duration:2.4s]"
+              className="absolute -left-7 top-1 size-3 text-secondary animate-ping [animation-duration:2.4s]"
             />
             <Sparkle
               aria-hidden
@@ -75,7 +75,7 @@ export default function NotFound() {
             <span className="inline-block animate-bob bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent">
               4
             </span>
-            <span className="inline-block animate-bob bg-gradient-to-br from-secondary to-accent bg-clip-text text-transparent [animation-delay:500ms]">
+            <span className="inline-block animate-bob bg-gradient-to-br from-secondary to-primary bg-clip-text text-transparent [animation-delay:500ms]">
               0
             </span>
             <span className="inline-block animate-bob bg-gradient-to-br from-primary to-secondary bg-clip-text text-transparent [animation-delay:1000ms]">

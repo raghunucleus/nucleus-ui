@@ -39,8 +39,10 @@
   --primary-foreground: oklch(0.985 0 0);
   --secondary: var(--brand-secondary);
   --secondary-foreground: oklch(0.985 0 0);
-  --accent: var(--brand-accent);
-  --accent-foreground: oklch(0.21 0.006 285.885);
+  /* Subtle hover/selected surface (shadcn contract) — a soft brand tint, NOT the
+     vivid brand sky. The sky itself lives in --secondary / --brand-accent. */
+  --accent: color-mix(in oklab, var(--primary) 14%, var(--background));
+  --accent-foreground: var(--foreground);
 
   --muted: oklch(0.938 0.004 286.3);
   --muted-foreground: oklch(0.552 0.016 285.938);
@@ -118,8 +120,10 @@
   --primary-foreground: oklch(0.21 0.006 285.885);
   --secondary: var(--brand-secondary);
   --secondary-foreground: oklch(0.21 0.006 285.885);
-  --accent: var(--brand-accent);
-  --accent-foreground: oklch(0.21 0.006 285.885);
+  /* Subtle hover/selected surface (shadcn contract) — a soft brand tint, NOT the
+     vivid brand sky. The sky itself lives in --secondary / --brand-accent. */
+  --accent: color-mix(in oklab, var(--primary) 20%, var(--background));
+  --accent-foreground: var(--foreground);
 
   --muted: color-mix(in oklab, var(--primary) 12%, var(--background));
   --muted-foreground: color-mix(in oklab, oklch(0.98 0 0) 75%, var(--background));
