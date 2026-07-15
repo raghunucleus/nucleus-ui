@@ -97,7 +97,13 @@ export default function EmployeeCompanyFormPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <div className="flex items-center gap-3">
+      {/* Manual sticky header (not the shared <StickyHeader>): the portal
+          `<main>` scroll container has `py-6`, and `sticky top-0` pins to its
+          content box — 24px below the padding edge — leaving an uncovered band
+          where content scrolls through. `-top-6` (= the 24px padding) pins the
+          header flush under the app header; `-mt-6`+`pt-6` keeps its resting
+          position while the opaque `bg-background` + `pt-6` cover the band. */}
+      <div className="sticky -top-6 z-10 -mx-4 -mt-6 flex items-center gap-3 border-b bg-background px-4 pb-3 pt-6 sm:-mx-6 sm:px-6">
         <button
           type="button"
           onClick={() => navigateTo(LIST_ROUTE)}

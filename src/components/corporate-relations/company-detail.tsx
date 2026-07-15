@@ -3,6 +3,7 @@ import {
   CalendarClock,
   CalendarDays,
   Handshake,
+  History,
   Loader2,
   Pencil,
   Plus,
@@ -14,6 +15,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
+import { BackButton } from '@/components/ui/back-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -45,14 +47,19 @@ import {
   deleteContact,
   deleteInteraction,
   deleteMilestone,
+  getAssignableEmployees,
   getCompany,
   getFormOptions,
+  listActivity,
   listInteractions,
   listMilestones,
   setCompanyStatus,
+  updateCompany,
   updateContact,
   updateInteraction,
   uploadCompanyLogo,
+  type AssignableEmployee,
+  type CompanyActivity,
   type CompanyContact,
   type CompanyDetail as Company,
   type CompanyInteraction,
@@ -63,6 +70,7 @@ import {
   type MilestonePayload,
   type Surface,
 } from '@/lib/corporate-relations'
+import { CompanyForm } from '@/components/corporate-relations/company-form'
 import { ApiError } from '@/lib/api'
 
 const TABS: TabDef[] = [
@@ -70,6 +78,7 @@ const TABS: TabDef[] = [
   { key: 'drives', label: 'Drives', icon: CalendarDays },
   { key: 'relationship', label: 'Relationship', icon: Handshake },
   { key: 'interactions', label: 'Interactions', icon: CalendarClock },
+  { key: 'activity', label: 'Activity', icon: History },
 ]
 
 function errMsg(e: unknown, fallback: string): string {
@@ -79,10 +88,14 @@ function errMsg(e: unknown, fallback: string): string {
 export interface CompanyDetailProps {
   surface: Surface
   companyId: number
-  /** Manager surface only: company master fields are editable. */
+  /** Manager surface only: header logo/status controls + full-screen edit. */
   canEditCompany: boolean
   /** May record interactions / milestones / contacts. */
   canRecord: boolean
+  /** May inline-edit the company detail fields on the Overview tab. */
+  canEditDetails?: boolean
+  /** Whether the company name is editable in the inline editor. */
+  nameEditable?: boolean
   onBack: () => void
   /** Manager: open the company edit form (owned by the page). */
   onEditCompany?: (company: Company) => void
@@ -95,6 +108,8 @@ export function CompanyDetail({
   companyId,
   canEditCompany,
   canRecord,
+  canEditDetails = false,
+  nameEditable = true,
   onBack,
   onEditCompany,
   reloadToken = 0,
@@ -155,47 +170,61 @@ export function CompanyDetail({
   }
 
   return (
-    <div className="space-y-5">
-      <CompanyHeader
-        company={company}
-        canEditCompany={canEditCompany}
-        onBack={onBack}
-        onEdit={() => onEditCompany?.(company)}
-        onChanged={refresh}
-      />
+    <div className="flex h-full flex-col gap-4">
+      <div className="shrink-0 space-y-3 pt-1">
+        <CompanyHeader
+          company={company}
+          canEditCompany={canEditCompany}
+          onBack={onBack}
+          onEdit={() => onEditCompany?.(company)}
+          onChanged={refresh}
+        />
 
-      <TabBar tabs={TABS} active={tab} onChange={setTab} />
+        <TabBar tabs={TABS} active={tab} onChange={setTab} />
+      </div>
 
-      {tab === 'overview' && (
-        <OverviewTab
-          surface={surface}
-          company={company}
-          canRecord={canRecord}
-          onContactsChanged={refresh}
-        />
-      )}
-      {tab === 'drives' && (
-        <ComingSoon
-          title="Placement drives"
-          subtitle="Drive management ships as a dedicated screen soon. You'll be able to plan and track each drive conducted by this company here."
-          icon={CalendarDays}
-        />
-      )}
-      {tab === 'relationship' && (
-        <RelationshipTab
-          surface={surface}
-          company={company}
-          canRecord={canRecord}
-        />
-      )}
-      {tab === 'interactions' && (
-        <InteractionsTab
-          surface={surface}
-          company={company}
-          options={options}
-          canRecord={canRecord}
-        />
-      )}
+      <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto">
+        {tab === 'overview' && (
+          <OverviewTab
+            surface={surface}
+            company={company}
+            options={options}
+            canRecord={canRecord}
+            canEditDetails={canEditDetails}
+            nameEditable={nameEditable}
+            onContactsChanged={refresh}
+            onSaved={refresh}
+          />
+        )}
+        {tab === 'drives' && (
+          <ComingSoon
+            title="Placement drives"
+            subtitle="Drive management ships as a dedicated screen soon. You'll be able to plan and track each drive conducted by this company here."
+            icon={CalendarDays}
+          />
+        )}
+        {tab === 'relationship' && (
+          <RelationshipTab
+            surface={surface}
+            company={company}
+            options={options}
+            canRecord={canRecord}
+            canEditDetails={canEditDetails}
+            onSaved={refresh}
+          />
+        )}
+        {tab === 'interactions' && (
+          <InteractionsTab
+            surface={surface}
+            company={company}
+            options={options}
+            canRecord={canRecord}
+          />
+        )}
+        {tab === 'activity' && (
+          <ActivityTab surface={surface} company={company} />
+        )}
+      </div>
     </div>
   )
 }
@@ -251,11 +280,9 @@ function CompanyHeader({
 
   return (
     <div className="space-y-3">
-      <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
-        ← Back to companies
-      </Button>
-      <div className="flex flex-wrap items-start gap-4 rounded-xl border bg-card p-4">
-        <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted">
+      <BackButton label="Back to companies" onClick={onBack} />
+      <div className="flex flex-wrap items-start gap-3 rounded-xl border bg-card p-3">
+        <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted">
           {company.logo_url ? (
             <img
               src={company.logo_url}
@@ -263,12 +290,12 @@ function CompanyHeader({
               className="size-full object-cover"
             />
           ) : (
-            <Building2 className="size-6 text-muted-foreground" />
+            <Building2 className="size-5 text-muted-foreground" />
           )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-lg font-semibold tracking-tight">
+            <h1 className="text-base font-semibold tracking-tight">
               {company.name}
             </h1>
             <Badge variant={relationshipVariant(company.relationship_status)}>
@@ -277,18 +304,16 @@ function CompanyHeader({
             {!company.is_active && <Badge variant="destructive">Inactive</Badge>}
             {company.tier && <Badge variant="outline">Tier {company.tier}</Badge>}
           </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {[company.short_name, company.city].filter(Boolean).join(' · ') ||
-              'No short name'}
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {[
+              company.short_name,
+              company.city,
+              company.responsible_employee &&
+                `Officer: ${company.responsible_employee.name}`,
+            ]
+              .filter(Boolean)
+              .join(' · ') || 'No short name'}
           </p>
-          {company.responsible_employee && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              Responsible officer:{' '}
-              <span className="font-medium text-foreground">
-                {company.responsible_employee.name}
-              </span>
-            </p>
-          )}
         </div>
         {canEditCompany && (
           <div className="flex flex-wrap gap-2">
@@ -342,14 +367,60 @@ function DL({ label, children }: { label: string; children: React.ReactNode }) {
 function OverviewTab({
   surface,
   company,
+  options,
   canRecord,
+  canEditDetails,
+  nameEditable,
   onContactsChanged,
+  onSaved,
 }: {
   surface: Surface
   company: Company
+  options: FormOptions | null
   canRecord: boolean
+  canEditDetails: boolean
+  nameEditable: boolean
   onContactsChanged: () => void
+  onSaved: () => void
 }) {
+  const [editing, setEditing] = useState(false)
+  const [officers, setOfficers] = useState<AssignableEmployee[]>([])
+
+  // Assignable officers are a manager-only endpoint; load them lazily when the
+  // manager opens the inline editor (the officer surface hides that field).
+  useEffect(() => {
+    if (!editing || surface !== 'management') return
+    let cancelled = false
+    getAssignableEmployees()
+      .then((e) => !cancelled && setOfficers(e))
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [editing, surface])
+
+  if (editing && options) {
+    return (
+      <section className="rounded-xl border bg-card p-4">
+        <h2 className="mb-4 text-sm font-semibold">Edit company details</h2>
+        <CompanyForm
+          company={company}
+          options={options}
+          employees={officers}
+          surface={surface}
+          lockName={!nameEditable}
+          showAssignment={surface === 'management'}
+          embedded
+          onSaved={() => {
+            setEditing(false)
+            onSaved()
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      </section>
+    )
+  }
+
   const link = (url: string | null) =>
     url ? (
       <a
@@ -368,7 +439,19 @@ function OverviewTab({
     <div className="grid gap-4 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
         <section className="rounded-xl border bg-card p-4">
-          <h2 className="mb-3 text-sm font-semibold">Profile</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Profile</h2>
+            {canEditDetails && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!options}
+                onClick={() => setEditing(true)}
+              >
+                <Pencil className="size-4" /> Edit details
+              </Button>
+            )}
+          </div>
           <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <DL label="Website">{link(company.website)}</DL>
             <DL label="LinkedIn">{link(company.linkedin_url)}</DL>
@@ -689,15 +772,27 @@ function ContactSheet({
 function RelationshipTab({
   surface,
   company,
+  options,
   canRecord,
+  canEditDetails,
+  onSaved,
 }: {
   surface: Surface
   company: Company
+  options: FormOptions | null
   canRecord: boolean
+  canEditDetails: boolean
+  onSaved: () => void
 }) {
   const [items, setItems] = useState<CompanyMilestone[] | null>(null)
   const [adding, setAdding] = useState(false)
   const [reload, setReload] = useState(0)
+
+  // Inline edit of the two company-level relationship fields.
+  const [editingStatus, setEditingStatus] = useState(false)
+  const [status, setStatus] = useState(company.relationship_status)
+  const [since, setSince] = useState(company.partnership_since ?? '')
+  const [savingStatus, setSavingStatus] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -708,6 +803,30 @@ function RelationshipTab({
       cancelled = true
     }
   }, [surface, company.id, reload])
+
+  function startEditStatus() {
+    setStatus(company.relationship_status)
+    setSince(company.partnership_since ?? '')
+    setEditingStatus(true)
+  }
+
+  async function saveStatus() {
+    setSavingStatus(true)
+    try {
+      await updateCompany(
+        company.id,
+        { relationship_status: status, partnership_since: since || null },
+        surface,
+      )
+      toast.success('Relationship updated.')
+      setEditingStatus(false)
+      onSaved()
+    } catch (err) {
+      toast.error(errMsg(err, 'Could not update.'))
+    } finally {
+      setSavingStatus(false)
+    }
+  }
 
   async function remove(m: CompanyMilestone) {
     try {
@@ -721,25 +840,78 @@ function RelationshipTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4">
-        <div>
-          <p className="text-xs font-medium text-muted-foreground">
-            Relationship status
-          </p>
-          <Badge
-            variant={relationshipVariant(company.relationship_status)}
-            className="mt-1"
-          >
-            {titleCase(company.relationship_status)}
-          </Badge>
+      {editingStatus ? (
+        <div className="space-y-3 rounded-xl border bg-card p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Relationship status" htmlFor="rel-status">
+              <NativeSelect
+                id="rel-status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                {(options?.relationship_statuses ?? [company.relationship_status]).map(
+                  (r) => (
+                    <option key={r} value={r}>
+                      {titleCase(r)}
+                    </option>
+                  ),
+                )}
+              </NativeSelect>
+            </Field>
+            <Field label="Partner since" htmlFor="rel-since">
+              <Input
+                id="rel-since"
+                type="date"
+                value={since}
+                onChange={(e) => setSince(e.target.value)}
+              />
+            </Field>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditingStatus(false)}
+              disabled={savingStatus}
+            >
+              Cancel
+            </Button>
+            <Button size="sm" onClick={() => void saveStatus()} disabled={savingStatus}>
+              {savingStatus && <Loader2 className="size-4 animate-spin" />} Save
+            </Button>
+          </div>
         </div>
-        <div className="ml-auto text-right">
-          <p className="text-xs font-medium text-muted-foreground">
-            Partner since
-          </p>
-          <p className="text-sm">{formatDate(company.partnership_since)}</p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-4">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">
+              Relationship status
+            </p>
+            <Badge
+              variant={relationshipVariant(company.relationship_status)}
+              className="mt-1"
+            >
+              {titleCase(company.relationship_status)}
+            </Badge>
+          </div>
+          <div className="ml-auto text-right">
+            <p className="text-xs font-medium text-muted-foreground">
+              Partner since
+            </p>
+            <p className="text-sm">{formatDate(company.partnership_since)}</p>
+          </div>
+          {canEditDetails && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={!options}
+              onClick={startEditStatus}
+            >
+              <Pencil className="size-4" /> Edit
+            </Button>
+          )}
         </div>
-      </div>
+      )}
 
       <div className="rounded-xl border bg-card p-4">
         <div className="mb-3 flex items-center justify-between">
@@ -966,42 +1138,44 @@ function InteractionsTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3">
-        <Field label="Year" className="w-28">
-          <NativeSelect
-            value={year}
-            onChange={(e) => setYear(e.target.value ? Number(e.target.value) : '')}
-          >
-            <option value="">All years</option>
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </NativeSelect>
-        </Field>
-        <Field label="Month" className="w-32">
-          <NativeSelect
-            value={month}
-            onChange={(e) => setMonth(e.target.value ? Number(e.target.value) : '')}
-          >
-            <option value="">All months</option>
-            {MONTHS.map((m, i) => (
-              <option key={m} value={i + 1}>
-                {m}
-              </option>
-            ))}
-          </NativeSelect>
-        </Field>
-        {canRecord && (
-          <Button
-            size="sm"
-            className="ml-auto"
-            onClick={() => setAdding(true)}
-          >
-            <Plus className="size-4" /> Log interaction
-          </Button>
-        )}
+      <div className="sticky top-0 z-10 bg-background pb-1">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3">
+          <Field label="Year" className="w-28">
+            <NativeSelect
+              value={year}
+              onChange={(e) => setYear(e.target.value ? Number(e.target.value) : '')}
+            >
+              <option value="">All years</option>
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+          <Field label="Month" className="w-32">
+            <NativeSelect
+              value={month}
+              onChange={(e) => setMonth(e.target.value ? Number(e.target.value) : '')}
+            >
+              <option value="">All months</option>
+              {MONTHS.map((m, i) => (
+                <option key={m} value={i + 1}>
+                  {m}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+          {canRecord && (
+            <Button
+              size="sm"
+              className="ml-auto"
+              onClick={() => setAdding(true)}
+            >
+              <Plus className="size-4" /> Log interaction
+            </Button>
+          )}
+        </div>
       </div>
 
       {items === null ? (
@@ -1223,5 +1397,217 @@ function InteractionSheet({
         </SheetFooter>
       </SheetContent>
     </Sheet>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Activity (unified audit feed)
+// ---------------------------------------------------------------------------
+
+const ACTIVITY_FILTERS: { value: '' | CompanyActivity['entity_type']; label: string }[] = [
+  { value: '', label: 'All activity' },
+  { value: 'company', label: 'Company' },
+  { value: 'interaction', label: 'Interactions' },
+  { value: 'milestone', label: 'Milestones' },
+  { value: 'contact', label: 'Contacts' },
+]
+
+const ACTIVITY_ICONS: Record<CompanyActivity['entity_type'], typeof Building2> = {
+  company: Building2,
+  interaction: CalendarClock,
+  milestone: Handshake,
+  contact: Users,
+}
+
+const ACTIVITY_PAGE_SIZE = 25
+
+function formatDateTime(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+function displayValue(v: unknown): string {
+  if (v === null || v === undefined || v === '') return '—'
+  if (typeof v === 'boolean') return v ? 'Yes' : 'No'
+  return String(v)
+}
+
+function ActivityTab({
+  surface,
+  company,
+}: {
+  surface: Surface
+  company: Company
+}) {
+  const [filter, setFilter] = useState<'' | CompanyActivity['entity_type']>('')
+  const [items, setItems] = useState<CompanyActivity[] | null>(null)
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [expanded, setExpanded] = useState<Set<number>>(new Set())
+
+  useEffect(() => {
+    let cancelled = false
+    setItems(null)
+    setPage(1)
+    setExpanded(new Set())
+    listActivity(surface, company.id, {
+      page: 1,
+      limit: ACTIVITY_PAGE_SIZE,
+      entity_type: filter === '' ? undefined : filter,
+    })
+      .then((r) => {
+        if (cancelled) return
+        setItems(r.items)
+        setTotal(r.total)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setItems([])
+        setTotal(0)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [surface, company.id, filter])
+
+  async function loadMore() {
+    const next = page + 1
+    setLoadingMore(true)
+    try {
+      const r = await listActivity(surface, company.id, {
+        page: next,
+        limit: ACTIVITY_PAGE_SIZE,
+        entity_type: filter === '' ? undefined : filter,
+      })
+      setItems((prev) => [...(prev ?? []), ...r.items])
+      setTotal(r.total)
+      setPage(next)
+    } catch (err) {
+      toast.error(errMsg(err, 'Could not load more activity.'))
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  const toggleExpand = (id: number) =>
+    setExpanded((prev) => {
+      const nextSet = new Set(prev)
+      if (nextSet.has(id)) nextSet.delete(id)
+      else nextSet.add(id)
+      return nextSet
+    })
+
+  const canLoadMore = items !== null && items.length < total
+
+  return (
+    <div className="space-y-4">
+      <div className="sticky top-0 z-10 bg-background pb-1">
+        <div className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-3">
+          <Field label="Show" className="w-44">
+            <NativeSelect
+              value={filter}
+              onChange={(e) =>
+                setFilter(e.target.value as '' | CompanyActivity['entity_type'])
+              }
+            >
+              {ACTIVITY_FILTERS.map((f) => (
+                <option key={f.value || 'all'} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+          {items !== null && (
+            <p className="ml-auto text-xs text-muted-foreground">
+              {total} {total === 1 ? 'entry' : 'entries'}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {items === null ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : items.length === 0 ? (
+        <p className="rounded-xl border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+          No activity recorded yet.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {items.map((a) => {
+            const Icon = ACTIVITY_ICONS[a.entity_type] ?? Building2
+            const hasChanges = !!a.changes && a.changes.length > 0
+            const open = expanded.has(a.id)
+            return (
+              <li key={a.id} className="rounded-xl border bg-card p-3">
+                <div className="flex items-start gap-3">
+                  <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <Icon className="size-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="flex flex-wrap items-center gap-1.5 text-sm">
+                      <Badge variant="secondary">{titleCase(a.action)}</Badge>
+                      <span className="font-medium">{a.summary}</span>
+                    </p>
+                    <p className="mt-1 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
+                      {a.actor && <span>By {a.actor.name}</span>}
+                      <span>{formatDateTime(a.created_at)}</span>
+                      {hasChanges && (
+                        <button
+                          type="button"
+                          className="font-medium text-foreground/70 hover:text-foreground"
+                          onClick={() => toggleExpand(a.id)}
+                        >
+                          {open
+                            ? 'Hide changes'
+                            : `${a.changes!.length} field change${a.changes!.length === 1 ? '' : 's'}`}
+                        </button>
+                      )}
+                    </p>
+                    {hasChanges && open && (
+                      <ul className="mt-2 space-y-1 rounded-lg border bg-muted/20 p-2 text-xs">
+                        {a.changes!.map((c, i) => (
+                          <li
+                            key={i}
+                            className="flex flex-wrap items-baseline gap-1.5"
+                          >
+                            <span className="font-medium">{c.field}:</span>
+                            <span className="text-muted-foreground line-through">
+                              {displayValue(c.from)}
+                            </span>
+                            <span className="text-muted-foreground">→</span>
+                            <span>{displayValue(c.to)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      {canLoadMore && (
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void loadMore()}
+            disabled={loadingMore}
+          >
+            {loadingMore && <Loader2 className="size-4 animate-spin" />} Load more
+          </Button>
+        </div>
+      )}
+    </div>
   )
 }

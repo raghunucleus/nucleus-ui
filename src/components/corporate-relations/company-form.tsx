@@ -21,6 +21,7 @@ import {
   type CompanyDetail,
   type CompanyPayload,
   type FormOptions,
+  type Surface,
 } from '@/lib/corporate-relations'
 
 interface FS {
@@ -115,8 +116,12 @@ const n = (v: string) => (v.trim() === '' ? null : Number(v))
 /**
  * Full-width company create/edit form body. Create vs edit is keyed on whether
  * a `company` is passed. Rendered inside the dedicated full-screen form route
- * (see `corporate-relations-company-form.tsx`); the wrapping page owns the
- * layout width and page chrome.
+ * (see `corporate-relations-company-form.tsx`) and inline on the Overview tab.
+ *
+ * `surface` routes the save (manager vs officer endpoint). On the officer
+ * surface the name is locked (`lockName`) and the responsible-officer field is
+ * hidden (`showAssignment=false`) — the server enforces both regardless.
+ * `embedded` drops the sticky full-bleed footer so it sits inside a card.
  */
 export function CompanyForm({
   company,
@@ -124,12 +129,20 @@ export function CompanyForm({
   employees,
   onSaved,
   onCancel,
+  surface = 'management',
+  lockName = false,
+  showAssignment = surface === 'management',
+  embedded = false,
 }: {
   company: CompanyDetail | null
   options: FormOptions
   employees: AssignableEmployee[]
   onSaved: (saved: CompanyDetail) => void
   onCancel: () => void
+  surface?: Surface
+  lockName?: boolean
+  showAssignment?: boolean
+  embedded?: boolean
 }) {
   const [f, setF] = useState<FS>(() => initial(company))
   const [busy, setBusy] = useState(false)
@@ -188,7 +201,7 @@ export function CompanyForm({
     setBusy(true)
     try {
       const saved = company
-        ? await updateCompany(company.id, payload())
+        ? await updateCompany(company.id, payload(), surface)
         : await createCompany(payload())
       toast.success(company ? 'Company updated.' : 'Company created.')
       onSaved(saved)
@@ -213,11 +226,12 @@ export function CompanyForm({
     <div className="space-y-6">
       <Section title="Identity">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Name *" htmlFor="f-name">
+          <Field label={lockName ? 'Name' : 'Name *'} htmlFor="f-name">
             <Input
               id="f-name"
               value={f.name}
               onChange={(e) => set('name', e.target.value)}
+              disabled={lockName}
             />
           </Field>
           <Field label="Short name" htmlFor="f-short">
@@ -284,24 +298,26 @@ export function CompanyForm({
 
       <Section title="Relationship & ownership">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Responsible officer" htmlFor="f-resp">
-            <Combobox
-              id="f-resp"
-              value={
-                f.responsible_employee_id
-                  ? Number(f.responsible_employee_id)
-                  : null
-              }
-              options={officerOptions}
-              onChange={(v) =>
-                set('responsible_employee_id', v === null ? '' : String(v))
-              }
-              placeholder="— unassigned —"
-              searchPlaceholder="Search officers…"
-              clearLabel="— unassigned —"
-              emptyMessage="No officers found"
-            />
-          </Field>
+          {showAssignment && (
+            <Field label="Responsible officer" htmlFor="f-resp">
+              <Combobox
+                id="f-resp"
+                value={
+                  f.responsible_employee_id
+                    ? Number(f.responsible_employee_id)
+                    : null
+                }
+                options={officerOptions}
+                onChange={(v) =>
+                  set('responsible_employee_id', v === null ? '' : String(v))
+                }
+                placeholder="— unassigned —"
+                searchPlaceholder="Search officers…"
+                clearLabel="— unassigned —"
+                emptyMessage="No officers found"
+              />
+            </Field>
+          )}
           <Field label="Relationship status" htmlFor="f-rel">
             <NativeSelect
               id="f-rel"
@@ -449,7 +465,13 @@ export function CompanyForm({
         </div>
       </Section>
 
-      <div className="sticky bottom-0 z-10 -mx-4 -mb-6 flex justify-end gap-2 border-t bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-6 sm:px-6">
+      <div
+        className={
+          embedded
+            ? 'flex justify-end gap-2 border-t pt-4'
+            : 'sticky -bottom-6 z-10 -mx-4 -mb-6 flex justify-end gap-2 border-t bg-background px-4 pb-6 pt-4 sm:-mx-6 sm:px-6'
+        }
+      >
         <Button variant="outline" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>

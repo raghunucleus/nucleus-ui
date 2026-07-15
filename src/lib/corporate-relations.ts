@@ -33,13 +33,22 @@ export interface CompanyListItem {
   id: number
   name: string
   short_name: string | null
+  website: string | null
   city: string | null
   relationship_status: string
   tier: string | null
+  ownership_type: string | null
+  package_min: string | null
+  package_max: string | null
+  offers_internships: boolean
+  offers_ppo: boolean
+  founded_year: number | null
   is_active: boolean
   last_engaged_on: string | null
+  logo_url: string | null
   responsible_employee: { id: number; name: string } | null
   categories: Chip[]
+  industries: Chip[]
   updated_at: string
 }
 
@@ -127,6 +136,29 @@ export interface CompanyMilestone {
   title: string
   summary: string | null
   logged_by: { id: number; name: string } | null
+  created_at: string
+}
+
+export type ActivityEntityType =
+  | 'company'
+  | 'interaction'
+  | 'milestone'
+  | 'contact'
+
+export interface ActivityChange {
+  field: string
+  from: unknown
+  to: unknown
+}
+
+export interface CompanyActivity {
+  id: number
+  action: string
+  entity_type: ActivityEntityType
+  entity_id: number | null
+  summary: string
+  changes: ActivityChange[] | null
+  actor: { id: number; name: string } | null
   created_at: string
 }
 
@@ -231,9 +263,23 @@ export interface MilestonePayload {
 export interface CompanyListParams {
   search?: string
   status?: 'active' | 'inactive' | 'all'
-  category_id?: number
-  industry_id?: number
-  responsible_employee_id?: number
+  // Multi-select classifier filters (serialized as comma lists).
+  category_ids?: number[]
+  industry_ids?: number[]
+  type_ids?: number[]
+  size_ids?: number[]
+  source_ids?: number[]
+  hiring_mode_ids?: number[]
+  role_ids?: number[]
+  tag_ids?: number[]
+  eligible_branch_ids?: number[]
+  // Plain-column filters.
+  tiers?: string[]
+  relationship_statuses?: string[]
+  ownership_types?: string[]
+  responsible_employee_ids?: number[]
+  offers_internships?: boolean
+  offers_ppo?: boolean
   page?: number
   limit?: number
 }
@@ -241,7 +287,13 @@ export interface CompanyListParams {
 function qs(params: object): string {
   const sp = new URLSearchParams()
   for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== null && v !== '') sp.set(k, String(v))
+    if (v === undefined || v === null || v === '') continue
+    // Arrays serialize to a comma list; empty arrays are omitted.
+    if (Array.isArray(v)) {
+      if (v.length > 0) sp.set(k, v.join(','))
+    } else {
+      sp.set(k, String(v))
+    }
   }
   const s = sp.toString()
   return s ? `?${s}` : ''
@@ -286,9 +338,10 @@ export function createCompany(body: CompanyPayload): Promise<CompanyDetail> {
 export function updateCompany(
   id: number,
   body: Partial<CompanyPayload>,
+  surface: Surface = 'management',
 ): Promise<CompanyDetail> {
   return withEmployeeAuth((token) =>
-    apiFetch(`${ROOT.management}/${id}`, { method: 'PATCH', body, token }),
+    apiFetch(`${ROOT[surface]}/${id}`, { method: 'PATCH', body, token }),
   )
 }
 
@@ -454,6 +507,18 @@ export function deleteMilestone(
       method: 'DELETE',
       token,
     }),
+  )
+}
+
+// --- Activity log (unified audit feed) ------------------------------------
+
+export function listActivity(
+  surface: Surface,
+  id: number,
+  params: { page?: number; limit?: number; entity_type?: ActivityEntityType } = {},
+): Promise<Paginated<CompanyActivity>> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${ROOT[surface]}/${id}/activity${qs(params)}`, { token }),
   )
 }
 

@@ -2,9 +2,20 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 
-function Table({ className, ...props }: React.HTMLAttributes<HTMLTableElement>) {
+function Table({
+  className,
+  containerClassName,
+  ...props
+}: React.HTMLAttributes<HTMLTableElement> & {
+  /**
+   * Extra classes for the scroll wrapper — e.g. `max-h-[62vh] overflow-y-auto`
+   * to turn it into a single bounded scroll box so a `sticky` header resolves
+   * against it. Omitted by default, so existing callers are unaffected.
+   */
+  containerClassName?: string
+}) {
   return (
-    <div className="relative w-full overflow-x-auto">
+    <div className={cn('relative w-full overflow-x-auto', containerClassName)}>
       <table
         data-slot="table"
         className={cn('w-full caption-bottom text-sm', className)}

@@ -22,6 +22,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { StickyHeader } from '@/components/ui/sticky-header'
 import {
   Dialog,
   DialogContent,
@@ -424,7 +425,7 @@ export default function EmployeeMarksUploadBatchPage() {
 
   return (
     <section className="space-y-4">
-      <header className="flex items-start gap-3">
+      <StickyHeader className="flex items-start gap-3 border-b pb-3 pt-1">
         <Button
           variant="ghost"
           size="icon"
@@ -443,7 +444,7 @@ export default function EmployeeMarksUploadBatchPage() {
                 : batch.label}
           </p>
         </div>
-      </header>
+      </StickyHeader>
 
       {batch === null ? (
         <div className="rounded-md border border-dashed bg-muted/20 px-6 py-12 text-center">

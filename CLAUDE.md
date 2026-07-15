@@ -70,6 +70,12 @@ All colors, radii, and surface treatments live as CSS variables in [src/index.cs
 - Read/set theme via `useTheme()`. Never read `localStorage` or `prefers-color-scheme` directly from a component.
 - Dark-mode variants use the `dark:` prefix (which targets the `.dark` class on `<html>` set by `ThemeProvider`). Never write a separate `@media (prefers-color-scheme: dark)` block — the provider already mirrors system preference.
 
+### Native scrollbars & `color-scheme`
+
+- Native browser UI (scrollbars, native `<select>` popups, form controls) is painted from the CSS `color-scheme` property. Because theme is switched via the `.dark` class and **not** the OS `prefers-color-scheme`, `color-scheme` is pinned per app-theme in [src/index.css](src/index.css): `color-scheme: light` in `:root`, `color-scheme: dark` in `.dark`.
+- **Never set `color-scheme: light dark`** (or leave it OS-driven) — that follows the OS, giving a **dark native scrollbar in light mode** and a light one in dark mode. Keep the two pinned declarations in sync whenever you touch the token blocks.
+- For a themed thin scrollbar on a specific scroll container, add the `scrollbar-themed` utility class (defined in `src/index.css`, follows `--border`). The `color-scheme` pin above already covers every container that doesn't opt in.
+
 ### Where dark mode applies
 
 - **Dark mode is available ONLY on the student/parent portal** (`app.*` subdomain — `member` variant from [src/lib/subdomain.ts](src/lib/subdomain.ts)).
@@ -98,6 +104,15 @@ All colors, radii, and surface treatments live as CSS variables in [src/index.cs
 - Composite/feature components live in [src/components/](src/components/) (or feature folders).
 - Use `class-variance-authority` (`cva`) for components with variants, following the pattern in [src/components/ui/button.tsx](src/components/ui/button.tsx). Always declare `defaultVariants`.
 - Always pipe `className` through `cn(...)` so callers can extend styles.
+
+### Sticky back button / page header
+
+- **Any screen with a back button must keep it pinned** — the back control (and its primary nav: tabs or title) must stay visible while the body scrolls. Never let the back button scroll out of view.
+- Employee-portal content scrolls **inside `<main>`** (see [src/components/employee-portal-layout.tsx](src/components/employee-portal-layout.tsx)), which sits below a fixed top bar. So `position: sticky; top-0` pins flush beneath that bar — no header offset needed.
+- Use the two shared primitives, don't hand-roll:
+  - [src/components/ui/back-button.tsx](src/components/ui/back-button.tsx) — `<BackButton label onClick />`, the one standardized back control (ghost button + `ArrowLeft`). Put the navigation in `onClick` (router `useNavigate` / the `navigateTo` helper) — never `window.location`.
+  - [src/components/ui/sticky-header.tsx](src/components/ui/sticky-header.tsx) — `<StickyHeader className>` wraps the pinned region with `sticky top-0 z-10 bg-background`. Supply padding, a `border-b` divider, and `space-y-*` via `className`.
+- The pinned bar **must be opaque** (`bg-background` — the employee portal is light-only) so scrolled content doesn't bleed through, and use `z-10` so it stays below popovers/sheets (`z-50`). Reference: [src/components/corporate-relations/company-detail.tsx](src/components/corporate-relations/company-detail.tsx) pins its back button + header card + `TabBar` together.
 
 ## What NOT to do
 

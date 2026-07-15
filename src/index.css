@@ -11,6 +11,11 @@
    theme switcher, A/B test) without touching components.
    ============================================================================= */
 :root {
+  /* Native UI (scrollbars, <select> popups) follows the app theme, not the OS.
+     Never use `color-scheme: light dark` — that tracks the OS preference and
+     yields a dark scrollbar in light mode (and vice-versa). Paired in .dark. */
+  color-scheme: light;
+
   /* Brand — light theme */
   --brand-primary: #2563eb;     /* blue-600 */
   --brand-secondary: #0ea5e9;   /* sky-500 — gradient partner for primary */
@@ -20,9 +25,10 @@
   --radius: 0.5rem;
 
   /* shadcn semantic tokens — light theme */
-  /* Canvas sits a touch below pure white so elevated surfaces (header,
-     cards, popovers) read as raised against it. */
-  --background: oklch(0.984 0.003 286.3);
+  /* Canvas is a deliberate light gray so white cards/popovers lift clearly off
+     it. Keep cards at pure white; the gray page + darker borders below are what
+     give the UI depth in light mode. */
+  --background: oklch(0.966 0.004 286.3);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.141 0.005 285.823);
@@ -36,7 +42,7 @@
   --accent: var(--brand-accent);
   --accent-foreground: oklch(0.21 0.006 285.885);
 
-  --muted: oklch(0.967 0.001 286.375);
+  --muted: oklch(0.938 0.004 286.3);
   --muted-foreground: oklch(0.552 0.016 285.938);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
@@ -44,8 +50,8 @@
   --success-foreground: oklch(0.985 0 0);
   --warning: oklch(0.62 0.14 65);
   --warning-foreground: oklch(0.21 0.006 285.885);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
+  --border: oklch(0.878 0.005 286.3);
+  --input: oklch(0.86 0.006 286.3);
   --ring: var(--brand-primary);
 
   --chart-1: oklch(0.646 0.222 41.116);
@@ -70,9 +76,9 @@
   --sidebar-foreground: oklch(0.141 0.005 285.823);
   --sidebar-primary: var(--brand-primary);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent: oklch(0.938 0.004 286.3);
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-border: oklch(0.878 0.005 286.3);
   --sidebar-ring: var(--brand-primary);
 
   /* Brand hero panel — stays dark in both themes for editorial contrast.
@@ -90,6 +96,8 @@
 }
 
 .dark {
+  color-scheme: dark;
+
   /* Brand — dark theme (lighter shades for legibility on dark surfaces) */
   --brand-primary: #60a5fa;     /* blue-400 */
   --brand-secondary: #38bdf8;   /* sky-400 */
@@ -294,9 +302,6 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-  }
-  html {
-    color-scheme: light dark;
   }
   body {
     @apply bg-background text-foreground;

@@ -1,6 +1,5 @@
 import { useParams } from '@tanstack/react-router'
 import {
-  ArrowLeft,
   CalendarRange,
   CheckCircle2,
   CircleAlert,
@@ -25,11 +24,13 @@ import {
 import { CoursesManager } from '@/components/incharge/courses-manager'
 import { PeriodEditorSheet } from '@/components/incharge/period-editor-sheet'
 import { TimetableGrid } from '@/components/incharge/timetable-grid'
+import { BackButton } from '@/components/ui/back-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { StickyHeader } from '@/components/ui/sticky-header'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import { ApiError } from '@/lib/api'
 import {
@@ -216,17 +217,12 @@ export default function EmployeeInchargeTemplateDetailPage() {
 
   return (
     <section className="space-y-5">
-      <a
-        href="/timetable/incharge/templates"
-        onClick={(e) => {
-          e.preventDefault()
-          navigateTo('/timetable/incharge/templates')
-        }}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Back to templates
-      </a>
+      <StickyHeader className="border-b pb-3">
+        <BackButton
+          label="Back to templates"
+          onClick={() => navigateTo('/timetable/incharge/templates')}
+        />
+      </StickyHeader>
 
       {error ? (
         <Card className="flex items-start gap-3 border-destructive/30 bg-destructive/10 p-4">

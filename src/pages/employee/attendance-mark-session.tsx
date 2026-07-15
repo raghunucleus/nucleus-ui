@@ -1,6 +1,5 @@
 import { useParams } from '@tanstack/react-router'
 import {
-  ArrowLeft,
   CheckCircle2,
   CircleAlert,
   ClipboardCheck,
@@ -13,10 +12,12 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
+import { BackButton } from '@/components/ui/back-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { StickyHeader } from '@/components/ui/sticky-header'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import { ApiError } from '@/lib/api'
 import {
@@ -170,17 +171,12 @@ export default function EmployeeAttendanceMarkSessionPage() {
     // the bottom of <main> when the roster is short. Without this the bar
     // floats wherever the content ends.
     <section className="flex min-h-full flex-col gap-4">
-      <a
-        href="/attendance/mark"
-        onClick={(e) => {
-          e.preventDefault()
-          navigateTo('/attendance/mark')
-        }}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Back to today's classes
-      </a>
+      <StickyHeader className="border-b pb-3">
+        <BackButton
+          label="Back to today's classes"
+          onClick={() => navigateTo('/attendance/mark')}
+        />
+      </StickyHeader>
 
       {error ? (
         <Card className="flex items-start gap-3 border-destructive/30 bg-destructive/10 p-4">

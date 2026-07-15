@@ -10,9 +10,9 @@ const SCREEN_KEY = 'corporate_relations.companies.view'
 /**
  * Responsible-officer surface. Reuses the same CompanyList + CompanyDetail as
  * the manager screen, but on the `companies` API surface (scoped server-side to
- * the officer's own companies) and with company fields read-only — only the
- * `record` action is honoured, so interactions/milestones/contacts are
- * editable while the master record is not.
+ * the officer's own companies) and with company fields read-only. Screen access
+ * implies recording, so interactions/milestones/contacts are editable while the
+ * master record is not.
  */
 export default function EmployeeCompaniesPage() {
   useEffect(() => {
@@ -32,12 +32,14 @@ export default function EmployeeCompaniesPage() {
 
   if (selectedId !== null) {
     return (
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto h-full max-w-5xl">
         <CompanyDetail
           surface="companies"
           companyId={selectedId}
           canEditCompany={false}
-          canRecord={access.actions.includes('record')}
+          canRecord={access.actions.includes('view')}
+          canEditDetails
+          nameEditable={false}
           onBack={() => setSelectedId(null)}
         />
       </div>
