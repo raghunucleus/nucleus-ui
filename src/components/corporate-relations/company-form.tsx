@@ -1,5 +1,5 @@
-import { Loader2 } from 'lucide-react'
-import { useState } from 'react'
+import { Building2, Loader2, Upload } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -17,12 +17,15 @@ import { ApiError } from '@/lib/api'
 import {
   createCompany,
   updateCompany,
+  uploadCompanyLogo,
   type AssignableEmployee,
   type CompanyDetail,
   type CompanyPayload,
   type FormOptions,
   type Surface,
 } from '@/lib/corporate-relations'
+
+const MAX_LOGO_BYTES = 2 * 1024 * 1024
 
 interface FS {
   name: string
@@ -122,6 +125,12 @@ const n = (v: string) => (v.trim() === '' ? null : Number(v))
  * surface the name is locked (`lockName`) and the responsible-officer field is
  * hidden (`showAssignment=false`) — the server enforces both regardless.
  * `embedded` drops the sticky full-bleed footer so it sits inside a card.
+ *
+ * `showLogo` (default `!embedded`) renders an inline logo picker. The logo lives
+ * behind a dedicated multipart endpoint that needs an existing company id, so the
+ * picked file is staged and uploaded right after create/update returns — the only
+ * point at which an id exists. The embedded Overview usage keeps it off because the
+ * detail header already carries its own "Logo" button.
  */
 export function CompanyForm({
   company,
@@ -133,6 +142,7 @@ export function CompanyForm({
   lockName = false,
   showAssignment = surface === 'management',
   embedded = false,
+  showLogo = !embedded,
 }: {
   company: CompanyDetail | null
   options: FormOptions
@@ -143,11 +153,42 @@ export function CompanyForm({
   lockName?: boolean
   showAssignment?: boolean
   embedded?: boolean
+  showLogo?: boolean
 }) {
   const [f, setF] = useState<FS>(() => initial(company))
   const [busy, setBusy] = useState(false)
   const set = <K extends keyof FS>(k: K, v: FS[K]) =>
     setF((prev) => ({ ...prev, [k]: v }))
+
+  // Staged logo file + preview. Preview seeds from the server URL on edit; once a
+  // new file is picked we show a local blob URL (revoked on replace/unmount).
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(
+    company?.logo_url ?? null,
+  )
+  const blobUrlRef = useRef<string | null>(null)
+  useEffect(
+    () => () => {
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+    },
+    [],
+  )
+
+  function onLogoPicked(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (file.size > MAX_LOGO_BYTES) {
+      toast.error('Logo must be 2 MB or smaller.')
+      return
+    }
+    if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+    const url = URL.createObjectURL(file)
+    blobUrlRef.current = url
+    setLogoFile(file)
+    setLogoPreview(url)
+  }
 
   function payload(): CompanyPayload {
     return {
@@ -203,6 +244,21 @@ export function CompanyForm({
       const saved = company
         ? await updateCompany(company.id, payload(), surface)
         : await createCompany(payload())
+      // The company row now exists, so the logo can be uploaded against its id.
+      // A logo failure must not read as "company not saved" — the row persisted.
+      if (logoFile) {
+        try {
+          await uploadCompanyLogo(saved.id, logoFile)
+        } catch (logoErr) {
+          toast.error(
+            logoErr instanceof ApiError || logoErr instanceof Error
+              ? `Company saved, but the logo failed: ${logoErr.message}`
+              : 'Company saved, but the logo could not be uploaded.',
+          )
+          onSaved(saved)
+          return
+        }
+      }
       toast.success(company ? 'Company updated.' : 'Company created.')
       onSaved(saved)
     } catch (err) {
@@ -225,6 +281,43 @@ export function CompanyForm({
   return (
     <div className="space-y-6">
       <Section title="Identity">
+        {showLogo && (
+          <div className="flex items-center gap-4">
+            <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted">
+              {logoPreview ? (
+                <img
+                  src={logoPreview}
+                  alt=""
+                  className="size-full object-cover"
+                />
+              ) : (
+                <Building2 className="size-6 text-muted-foreground" />
+              )}
+            </div>
+            <div className="space-y-1">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={onLogoPicked}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload className="size-4" /> Upload logo
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                PNG or JPG, up to 2 MB.
+                {company ? '' : ' Saved when you create the company.'}
+              </p>
+            </div>
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label={lockName ? 'Name' : 'Name *'} htmlFor="f-name">
             <Input
