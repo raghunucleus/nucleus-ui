@@ -11,6 +11,8 @@ import EmployeeAttendanceMarkPage from '@/pages/employee/attendance-mark'
 import EmployeeAttendanceMarkSessionPage from '@/pages/employee/attendance-mark-session'
 import EmployeeAcademicHolidaysPage from '@/pages/employee/academic-holidays'
 import EmployeeBirthdaysPage from '@/pages/employee/birthdays'
+import EmployeeCompaniesPage from '@/pages/employee/corporate-relations-companies'
+import EmployeeCompanyManagementPage from '@/pages/employee/corporate-relations-company-management'
 import EmployeeHome from '@/pages/employee/home'
 import EmployeeIdCardPage from '@/pages/employee/id-card'
 import EmployeeMarksUploadPage from '@/pages/employee/marks-upload'
@@ -120,6 +122,18 @@ const inchargeScheduleRoute = createRoute({
   component: EmployeeInchargeSchedulePage,
 })
 
+const companyManagementRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/corporate-relations/company-management',
+  component: EmployeeCompanyManagementPage,
+})
+
+const companiesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/corporate-relations/companies',
+  component: EmployeeCompaniesPage,
+})
+
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/profile',
@@ -147,6 +161,8 @@ const routeTree = rootRoute.addChildren([
   inchargeTemplatesRoute,
   inchargeTemplateDetailRoute,
   inchargeScheduleRoute,
+  companyManagementRoute,
+  companiesRoute,
   profileRoute,
 ])
 
