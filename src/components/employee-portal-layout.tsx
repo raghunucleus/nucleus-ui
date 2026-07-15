@@ -9,11 +9,12 @@ import {
   Home,
   IdCard,
   LayoutGrid,
+  Lock,
+  LockOpen,
   LogOut,
   type LucideIcon,
   Menu,
   PanelLeftClose,
-  PanelLeftOpen,
   Search,
   SearchX,
   Settings,
@@ -107,6 +108,13 @@ function toneFor(icon: string): ToneName {
 const SIDEBAR_STORAGE_KEY = 'nucleus-employee-sidebar'
 const MOBILE_MQ = '(max-width: 767px)' // matches Tailwind's < md
 
+// Hover-to-expand (auto-hide) only applies to devices with a real pointer.
+// On touch a tap synthesises mouseenter, which would leave the rail stuck open.
+const CAN_HOVER =
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(hover: hover) and (pointer: fine)').matches
+
 /**
  * Shared chrome for every signed-in employee page: a full-height left
  * sidebar that joins seamlessly with the top header (admin-app style),
@@ -134,23 +142,24 @@ export function EmployeePortalLayout() {
   const [profile, setProfile] = useState<EmployeeProfile | null>(null)
   const [signingOut, setSigningOut] = useState(false)
 
-  // True → narrow icon rail. False → full menu. Persisted so a user's
-  // last preference survives reload. First visit: collapsed on mobile,
-  // expanded on desktop.
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
+  // Persisted sidebar preference. true → pinned open. false → auto-hide rail
+  // that expands on hover (central-ui style). First visit: pinned open on
+  // desktop, rail on mobile. Legacy 'expanded'/'collapsed' values migrate so an
+  // existing preference isn't lost.
+  const [sidebarLocked, setSidebarLocked] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true
     const stored = window.localStorage.getItem(SIDEBAR_STORAGE_KEY)
-    if (stored === 'collapsed') return true
-    if (stored === 'expanded') return false
-    return window.matchMedia(MOBILE_MQ).matches
+    if (stored === 'locked' || stored === 'expanded') return true
+    if (stored === 'unlocked' || stored === 'collapsed') return false
+    return !window.matchMedia(MOBILE_MQ).matches
   })
 
   useEffect(() => {
     window.localStorage.setItem(
       SIDEBAR_STORAGE_KEY,
-      sidebarCollapsed ? 'collapsed' : 'expanded',
+      sidebarLocked ? 'locked' : 'unlocked',
     )
-  }, [sidebarCollapsed])
+  }, [sidebarLocked])
 
   // Tag <body> while the employee portal is mounted so portal-rendered
   // chrome (sheet overlays, dropdowns, etc.) can scope employee-only
@@ -218,9 +227,8 @@ export function EmployeePortalLayout() {
         <EmployeeSidebar
           access={access}
           accessError={accessError}
-          collapsed={sidebarCollapsed}
-          onExpand={() => setSidebarCollapsed(false)}
-          onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
+          locked={sidebarLocked}
+          onLockedChange={setSidebarLocked}
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -228,11 +236,9 @@ export function EmployeePortalLayout() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setSidebarCollapsed((c) => !c)}
-              aria-label={
-                sidebarCollapsed ? 'Expand menu' : 'Collapse menu'
-              }
-              aria-expanded={!sidebarCollapsed}
+              onClick={() => setSidebarLocked((l) => !l)}
+              aria-label={sidebarLocked ? 'Auto-hide menu' : 'Pin menu open'}
+              aria-expanded={sidebarLocked}
               aria-controls="employee-sidebar"
             >
               <Menu />
@@ -439,20 +445,24 @@ function highlight(text: string, q: string): ReactNode {
 function EmployeeSidebar({
   access,
   accessError,
-  collapsed,
-  onExpand,
-  onToggleCollapse,
+  locked,
+  onLockedChange,
 }: {
   access: EffectiveAccess | null
   accessError: string | null
-  collapsed: boolean
-  onExpand: () => void
-  onToggleCollapse: () => void
+  locked: boolean
+  onLockedChange: (locked: boolean) => void
 }) {
   const pathname = useLocation({ select: (l) => l.pathname })
   const [query, setQuery] = useState('')
   const [moduleClosed, setModuleClosed] = useState<Set<string>>(new Set())
+  const [hovered, setHovered] = useState(false)
+  const [searchFocused, setSearchFocused] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Auto-hide: rest as an icon rail, expand while hovered or while the search
+  // box has focus — unless pinned open (locked). Hover is honoured only on
+  // pointer devices (see CAN_HOVER) so a tap doesn't leave the rail stuck open.
+  const collapsed = !(locked || hovered || searchFocused)
   const isMac =
     typeof navigator !== 'undefined' &&
     /Mac|iPod|iPhone|iPad/.test(navigator.platform)
@@ -464,7 +474,7 @@ function EmployeeSidebar({
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         if (collapsed) {
-          onExpand()
+          onLockedChange(true)
           requestAnimationFrame(() => {
             inputRef.current?.focus()
             inputRef.current?.select()
@@ -481,7 +491,7 @@ function EmployeeSidebar({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [collapsed, onExpand])
+  }, [collapsed, onLockedChange])
 
   const modules = useMemo(() => {
     if (!access) return []
@@ -535,7 +545,7 @@ function EmployeeSidebar({
   }
 
   function expandAndOpenModule(key: string) {
-    onExpand()
+    onLockedChange(true)
     setModuleClosed((prev) => {
       if (!prev.has(key)) return prev
       const next = new Set(prev)
@@ -547,6 +557,8 @@ function EmployeeSidebar({
   return (
     <aside
       id="employee-sidebar"
+      onMouseEnter={CAN_HOVER ? () => setHovered(true) : undefined}
+      onMouseLeave={CAN_HOVER ? () => setHovered(false) : undefined}
       className={cn(
         'relative isolate flex shrink-0 flex-col overflow-hidden border-r bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-out',
         collapsed ? 'w-16' : 'w-64',
@@ -595,7 +607,7 @@ function EmployeeSidebar({
         <button
           type="button"
           onClick={() => {
-            onExpand()
+            onLockedChange(true)
             requestAnimationFrame(() => inputRef.current?.focus())
           }}
           aria-label="Search menu"
@@ -613,6 +625,8 @@ function EmployeeSidebar({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={onSearchKeyDown}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
               placeholder="Search menu"
               aria-label="Search menu"
               className="h-9 pl-9 pr-16 text-sm"
@@ -797,24 +811,66 @@ function EmployeeSidebar({
         )}
       </nav>
 
-      <button
-        type="button"
-        onClick={onToggleCollapse}
+      {/* Footer controls — central-ui style. Collapse returns to the auto-hide
+          rail; Lock pins the sidebar open, disabling hover expansion. */}
+      <div
         className={cn(
-          'flex h-12 shrink-0 items-center border-t text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground',
-          collapsed ? 'justify-center px-0' : 'gap-2 px-4',
+          'flex shrink-0 items-center border-t p-2',
+          collapsed ? 'flex-col gap-1' : 'gap-1',
         )}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
-        {collapsed ? (
-          <PanelLeftOpen className="size-4" />
-        ) : (
-          <>
-            <PanelLeftClose className="size-4" />
-            <span>Collapse</span>
-          </>
-        )}
-      </button>
+        {/* Collapse: unpin and close now so it returns to the auto-hide rail.
+            It re-expands on the next hover (pointer devices) or module tap. */}
+        <button
+          type="button"
+          onClick={() => {
+            onLockedChange(false)
+            setHovered(false)
+          }}
+          aria-label="Collapse sidebar (auto-hide)"
+          title="Collapse — auto-hide on hover"
+          className={cn(
+            'flex h-9 items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground',
+            collapsed ? 'w-9 justify-center px-0' : 'flex-1 justify-center px-2',
+          )}
+        >
+          <PanelLeftClose className="size-4 shrink-0" />
+          {!collapsed && <span className="truncate">Collapse</span>}
+        </button>
+
+        {/* Lock: pin open, disabling auto-hide on hover. */}
+        <button
+          type="button"
+          onClick={() => onLockedChange(!locked)}
+          aria-pressed={locked}
+          aria-label={
+            locked
+              ? 'Unlock sidebar (enable auto-hide)'
+              : 'Keep sidebar open (disable auto-hide)'
+          }
+          title={
+            locked
+              ? 'Locked open — click to auto-hide'
+              : 'Auto-hide — click to keep open'
+          }
+          className={cn(
+            'flex h-9 items-center gap-2 rounded-md text-sm transition-colors',
+            locked
+              ? 'text-primary hover:bg-sidebar-accent/60'
+              : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground',
+            collapsed ? 'w-9 justify-center px-0' : 'flex-1 justify-center px-2',
+          )}
+        >
+          {locked ? (
+            <Lock className="size-4 shrink-0" />
+          ) : (
+            <LockOpen className="size-4 shrink-0" />
+          )}
+          {!collapsed && (
+            <span className="truncate">{locked ? 'Locked' : 'Lock'}</span>
+          )}
+        </button>
+      </div>
     </aside>
   )
 }
