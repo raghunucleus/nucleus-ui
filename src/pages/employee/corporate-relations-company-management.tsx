@@ -16,12 +16,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 import {
   Table,
@@ -267,6 +267,116 @@ function FilterField({
   )
 }
 
+/** A titled group of fields inside the filter sheet. */
+function FilterSection({
+  title,
+  children,
+  className,
+}: {
+  title: string
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={cn('space-y-3 border-t pt-4 first:border-t-0 first:pt-0', className)}>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </p>
+      {children}
+    </div>
+  )
+}
+
+// The id-based classifier facets, in display order. `source` picks the matching
+// option list off `FormOptions` so a selected id can be resolved to its name for
+// the applied-filter chips. `responsible_employee_ids` is handled separately
+// (its options come from the officers endpoint, management surface only).
+type IdFacetKey =
+  | 'industry_ids'
+  | 'category_ids'
+  | 'type_ids'
+  | 'size_ids'
+  | 'source_ids'
+  | 'hiring_mode_ids'
+  | 'role_ids'
+  | 'tag_ids'
+const ID_FACETS: {
+  key: IdFacetKey
+  label: string
+  source: (o: FormOptions) => { id: number; name: string }[]
+}[] = [
+  { key: 'industry_ids', label: 'Industry', source: (o) => o.industries },
+  { key: 'category_ids', label: 'Category', source: (o) => o.categories },
+  { key: 'type_ids', label: 'Type', source: (o) => o.types },
+  { key: 'size_ids', label: 'Size', source: (o) => o.sizes },
+  { key: 'source_ids', label: 'Source', source: (o) => o.sources },
+  { key: 'hiring_mode_ids', label: 'Hiring mode', source: (o) => o.hiring_modes },
+  { key: 'role_ids', label: 'Role', source: (o) => o.roles },
+  { key: 'tag_ids', label: 'Tag', source: (o) => o.tags },
+]
+
+// The fixed-enum (string) facets and how to render each value in a chip.
+type EnumFacetKey = 'tiers' | 'relationship_statuses' | 'ownership_types'
+const ENUM_FACETS: {
+  key: EnumFacetKey
+  label: string
+  format: (s: string) => string
+}[] = [
+  { key: 'tiers', label: 'Tier', format: (s) => s.toUpperCase() },
+  { key: 'relationship_statuses', label: 'Relationship', format: titleCase },
+  { key: 'ownership_types', label: 'Ownership', format: titleCase },
+]
+
+// The boolean facets and their chip labels.
+const BOOL_FACETS: { key: 'offers_internships' | 'offers_ppo'; label: string }[] = [
+  { key: 'offers_internships', label: 'Offers internships' },
+  { key: 'offers_ppo', label: 'Offers PPO' },
+]
+
+/** One grouped, removable applied-filter chip (a whole facet). */
+type AppliedFacetChip = {
+  /** Stable react key — the facet key. */
+  id: string
+  /** Facet label, e.g. "Industry". */
+  label: string
+  /** Resolved value names; empty for a boolean facet (label only). */
+  values: string[]
+  /** Clears the whole facet. */
+  onClear: () => void
+}
+
+/** A grouped pill used in the applied-filters row (facet + its values). */
+function AppliedFilterChip({ label, values, onClear }: AppliedFacetChip) {
+  const shown = values.slice(0, 2)
+  const overflow = values.length - shown.length
+  return (
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border bg-muted py-1 pl-2.5 pr-1 text-xs">
+      <span className="min-w-0 truncate">
+        <span className="font-medium text-foreground">{label}</span>
+        {values.length > 0 && (
+          <>
+            <span className="text-muted-foreground">: </span>
+            <span className="font-medium text-foreground">
+              {shown.join(', ')}
+            </span>
+            {overflow > 0 && (
+              <span className="text-muted-foreground"> +{overflow}</span>
+            )}
+          </>
+        )}
+      </span>
+      <button
+        type="button"
+        onClick={onClear}
+        className="flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+        aria-label={`Remove ${label} filter`}
+      >
+        <X className="size-3" />
+      </button>
+    </span>
+  )
+}
+
 export function CompanyList({
   surface,
   onOpen,
@@ -287,7 +397,7 @@ export function CompanyList({
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<'active' | 'inactive' | 'all'>('active')
   const [filters, setFilters] = useState<AdvancedFilters>(EMPTY_FILTERS)
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
   const [draftFilters, setDraftFilters] = useState<AdvancedFilters>(EMPTY_FILTERS)
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(25)
@@ -401,18 +511,109 @@ export function CompanyList({
 
   function openFilters() {
     setDraftFilters(filters)
-    setFilterSheetOpen(true)
+    setFilterOpen(true)
   }
 
   function applyFilters() {
     setPage(1)
     setFilters(draftFilters)
-    setFilterSheetOpen(false)
+    setFilterOpen(false)
   }
 
   function clearDraft() {
     setDraftFilters(EMPTY_FILTERS)
   }
+
+  // Removing a chip applies instantly against the committed filters (clears the
+  // whole facet) — this changes `filtersKey` and refetches.
+  function clearArrayFacet(
+    key: IdFacetKey | 'responsible_employee_ids' | EnumFacetKey,
+  ) {
+    setPage(1)
+    setFilters((f) => ({ ...f, [key]: [] }))
+  }
+  function clearBool(key: 'offers_internships' | 'offers_ppo') {
+    setPage(1)
+    setFilters((f) => ({ ...f, [key]: false }))
+  }
+  function clearAllFilters() {
+    setPage(1)
+    setFilters(EMPTY_FILTERS)
+  }
+
+  // One grouped chip per active facet, values resolved to names. Ids whose option
+  // lists haven't loaded yet are skipped rather than shown as a bare number.
+  const appliedChips: AppliedFacetChip[] = []
+  if (options) {
+    for (const facet of ID_FACETS) {
+      const ids = filters[facet.key]
+      if (ids.length === 0) continue
+      const opts = facet.source(options)
+      const names = ids
+        .map((id) => opts.find((o) => o.id === id)?.name)
+        .filter((n): n is string => Boolean(n))
+      if (names.length === 0) continue
+      appliedChips.push({
+        id: facet.key,
+        label: facet.label,
+        values: names,
+        onClear: () => clearArrayFacet(facet.key),
+      })
+    }
+  }
+  if (surface === 'management' && filters.responsible_employee_ids.length > 0) {
+    const names = filters.responsible_employee_ids
+      .map((id) => officers.find((o) => o.id === id)?.name)
+      .filter((n): n is string => Boolean(n))
+    if (names.length > 0) {
+      appliedChips.push({
+        id: 'responsible_employee_ids',
+        label: 'Officer',
+        values: names,
+        onClear: () => clearArrayFacet('responsible_employee_ids'),
+      })
+    }
+  }
+  for (const facet of ENUM_FACETS) {
+    const values = filters[facet.key]
+    if (values.length === 0) continue
+    appliedChips.push({
+      id: facet.key,
+      label: facet.label,
+      values: values.map(facet.format),
+      onClear: () => clearArrayFacet(facet.key),
+    })
+  }
+  for (const facet of BOOL_FACETS) {
+    if (filters[facet.key]) {
+      appliedChips.push({
+        id: facet.key,
+        label: facet.label,
+        values: [],
+        onClear: () => clearBool(facet.key),
+      })
+    }
+  }
+
+  // Whether the draft differs from the committed filters — drives the Apply button.
+  const draftDirty = JSON.stringify(draftFilters) !== filtersKey
+  // Live count of facets selected in the draft (mirrors `activeFilterCount`).
+  const draftFilterCount = [
+    draftFilters.category_ids,
+    draftFilters.industry_ids,
+    draftFilters.type_ids,
+    draftFilters.size_ids,
+    draftFilters.source_ids,
+    draftFilters.hiring_mode_ids,
+    draftFilters.role_ids,
+    draftFilters.tag_ids,
+    draftFilters.tiers,
+    draftFilters.relationship_statuses,
+    draftFilters.ownership_types,
+    draftFilters.responsible_employee_ids,
+  ].filter((a) => a.length > 0).length +
+    (draftFilters.offers_internships ? 1 : 0) +
+    (draftFilters.offers_ppo ? 1 : 0)
 
   async function toggleActive(row: CompanyListItem) {
     setBusyStatusId(row.id)
@@ -469,144 +670,191 @@ export function CompanyList({
               )}
             </Button>
           </div>
+
+          {appliedChips.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <span className="text-xs font-medium text-muted-foreground">
+                Filters · {activeFilterCount}
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {appliedChips.map((chip) => (
+                  <AppliedFilterChip key={chip.id} {...chip} />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <X className="size-3" /> Clear all
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
-        <SheetContent side="right" className="w-full gap-0 sm:max-w-md">
-          <SheetHeader className="border-b">
-            <SheetTitle>Filters</SheetTitle>
-          </SheetHeader>
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-4xl flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b px-6 py-4">
+            <DialogTitle className="flex items-center gap-2">
+              Filters
+              {draftFilterCount > 0 && (
+                <Badge variant="secondary">{draftFilterCount}</Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
 
-          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-            <div className="grid grid-cols-1 gap-4">
-              <FilterField label="Industries">
-                <SearchableMultiSelect
-                  options={options?.industries ?? []}
-                  selected={draftFilters.industry_ids}
-                  onChange={(v) => patchDraft('industry_ids', v)}
-                  placeholder="Any industry"
-                />
-              </FilterField>
-              <FilterField label="Categories">
-                <SearchableMultiSelect
-                  options={options?.categories ?? []}
-                  selected={draftFilters.category_ids}
-                  onChange={(v) => patchDraft('category_ids', v)}
-                  placeholder="Any category"
-                />
-              </FilterField>
-              <FilterField label="Types">
-                <SearchableMultiSelect
-                  options={options?.types ?? []}
-                  selected={draftFilters.type_ids}
-                  onChange={(v) => patchDraft('type_ids', v)}
-                  placeholder="Any type"
-                />
-              </FilterField>
-              <FilterField label="Company size">
-                <SearchableMultiSelect
-                  options={options?.sizes ?? []}
-                  selected={draftFilters.size_ids}
-                  onChange={(v) => patchDraft('size_ids', v)}
-                  placeholder="Any size"
-                />
-              </FilterField>
-              <FilterField label="Sources">
-                <SearchableMultiSelect
-                  options={options?.sources ?? []}
-                  selected={draftFilters.source_ids}
-                  onChange={(v) => patchDraft('source_ids', v)}
-                  placeholder="Any source"
-                />
-              </FilterField>
-              <FilterField label="Hiring modes">
-                <SearchableMultiSelect
-                  options={options?.hiring_modes ?? []}
-                  selected={draftFilters.hiring_mode_ids}
-                  onChange={(v) => patchDraft('hiring_mode_ids', v)}
-                  placeholder="Any hiring mode"
-                />
-              </FilterField>
-              <FilterField label="Roles">
-                <SearchableMultiSelect
-                  options={options?.roles ?? []}
-                  selected={draftFilters.role_ids}
-                  onChange={(v) => patchDraft('role_ids', v)}
-                  placeholder="Any role"
-                />
-              </FilterField>
-              <FilterField label="Tags">
-                <SearchableMultiSelect
-                  options={options?.tags ?? []}
-                  selected={draftFilters.tag_ids}
-                  onChange={(v) => patchDraft('tag_ids', v)}
-                  placeholder="Any tag"
-                />
-              </FilterField>
-              {surface === 'management' && (
-                <FilterField label="Responsible officer">
+          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+            <FilterSection title="Classification">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <FilterField label="Industries">
                   <SearchableMultiSelect
-                    options={officers.map((o) => ({ id: o.id, name: o.name }))}
-                    selected={draftFilters.responsible_employee_ids}
-                    onChange={(v) =>
-                      patchDraft('responsible_employee_ids', v)
-                    }
-                    placeholder="Any officer"
+                    options={options?.industries ?? []}
+                    selected={draftFilters.industry_ids}
+                    onChange={(v) => patchDraft('industry_ids', v)}
+                    placeholder="Any industry"
                   />
                 </FilterField>
-              )}
-            </div>
+                <FilterField label="Categories">
+                  <SearchableMultiSelect
+                    options={options?.categories ?? []}
+                    selected={draftFilters.category_ids}
+                    onChange={(v) => patchDraft('category_ids', v)}
+                    placeholder="Any category"
+                  />
+                </FilterField>
+                <FilterField label="Types">
+                  <SearchableMultiSelect
+                    options={options?.types ?? []}
+                    selected={draftFilters.type_ids}
+                    onChange={(v) => patchDraft('type_ids', v)}
+                    placeholder="Any type"
+                  />
+                </FilterField>
+                <FilterField label="Company size">
+                  <SearchableMultiSelect
+                    options={options?.sizes ?? []}
+                    selected={draftFilters.size_ids}
+                    onChange={(v) => patchDraft('size_ids', v)}
+                    placeholder="Any size"
+                  />
+                </FilterField>
+                <FilterField label="Tags">
+                  <SearchableMultiSelect
+                    options={options?.tags ?? []}
+                    selected={draftFilters.tag_ids}
+                    onChange={(v) => patchDraft('tag_ids', v)}
+                    placeholder="Any tag"
+                  />
+                </FilterField>
+              </div>
+            </FilterSection>
 
-            <FilterField label="Tier">
-              <EnumChips
-                options={options?.tiers ?? []}
-                selected={draftFilters.tiers}
-                onChange={(v) => patchDraft('tiers', v)}
-                format={(s) => s.toUpperCase()}
-              />
-            </FilterField>
-            <FilterField label="Relationship">
-              <EnumChips
-                options={options?.relationship_statuses ?? []}
-                selected={draftFilters.relationship_statuses}
-                onChange={(v) => patchDraft('relationship_statuses', v)}
-              />
-            </FilterField>
-            <FilterField label="Ownership">
-              <EnumChips
-                options={options?.ownership_types ?? []}
-                selected={draftFilters.ownership_types}
-                onChange={(v) => patchDraft('ownership_types', v)}
-              />
-            </FilterField>
+            <FilterSection title="Sourcing & hiring">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <FilterField label="Sources">
+                  <SearchableMultiSelect
+                    options={options?.sources ?? []}
+                    selected={draftFilters.source_ids}
+                    onChange={(v) => patchDraft('source_ids', v)}
+                    placeholder="Any source"
+                  />
+                </FilterField>
+                <FilterField label="Hiring modes">
+                  <SearchableMultiSelect
+                    options={options?.hiring_modes ?? []}
+                    selected={draftFilters.hiring_mode_ids}
+                    onChange={(v) => patchDraft('hiring_mode_ids', v)}
+                    placeholder="Any hiring mode"
+                  />
+                </FilterField>
+                <FilterField label="Roles">
+                  <SearchableMultiSelect
+                    options={options?.roles ?? []}
+                    selected={draftFilters.role_ids}
+                    onChange={(v) => patchDraft('role_ids', v)}
+                    placeholder="Any role"
+                  />
+                </FilterField>
+              </div>
+            </FilterSection>
 
-            <div className="flex flex-wrap gap-4 pt-1">
-              <label className="flex items-center gap-2 text-sm">
-                <Switch
-                  checked={draftFilters.offers_internships}
-                  onCheckedChange={(v) => patchDraft('offers_internships', v)}
-                />
-                Offers internships
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch
-                  checked={draftFilters.offers_ppo}
-                  onCheckedChange={(v) => patchDraft('offers_ppo', v)}
-                />
-                Offers PPO
-              </label>
-            </div>
+            <FilterSection title="Status">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <FilterField label="Tier">
+                  <EnumChips
+                    options={options?.tiers ?? []}
+                    selected={draftFilters.tiers}
+                    onChange={(v) => patchDraft('tiers', v)}
+                    format={(s) => s.toUpperCase()}
+                  />
+                </FilterField>
+                <FilterField label="Relationship">
+                  <EnumChips
+                    options={options?.relationship_statuses ?? []}
+                    selected={draftFilters.relationship_statuses}
+                    onChange={(v) => patchDraft('relationship_statuses', v)}
+                  />
+                </FilterField>
+                <FilterField label="Ownership">
+                  <EnumChips
+                    options={options?.ownership_types ?? []}
+                    selected={draftFilters.ownership_types}
+                    onChange={(v) => patchDraft('ownership_types', v)}
+                  />
+                </FilterField>
+              </div>
+            </FilterSection>
+
+            <FilterSection title="Offerings">
+              <div className="flex flex-wrap gap-4">
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch
+                    checked={draftFilters.offers_internships}
+                    onCheckedChange={(v) => patchDraft('offers_internships', v)}
+                  />
+                  Offers internships
+                </label>
+                <label className="flex items-center gap-2 text-sm">
+                  <Switch
+                    checked={draftFilters.offers_ppo}
+                    onCheckedChange={(v) => patchDraft('offers_ppo', v)}
+                  />
+                  Offers PPO
+                </label>
+              </div>
+            </FilterSection>
+
+            {surface === 'management' && (
+              <FilterSection title="Assignment">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <FilterField label="Responsible officer">
+                    <SearchableMultiSelect
+                      options={officers.map((o) => ({ id: o.id, name: o.name }))}
+                      selected={draftFilters.responsible_employee_ids}
+                      onChange={(v) => patchDraft('responsible_employee_ids', v)}
+                      placeholder="Any officer"
+                    />
+                  </FilterField>
+                </div>
+              </FilterSection>
+            )}
           </div>
 
-          <SheetFooter className="flex-row justify-between border-t">
-            <Button variant="ghost" onClick={clearDraft}>
+          <DialogFooter className="flex-row justify-between border-t px-6 py-4">
+            <Button
+              variant="ghost"
+              onClick={clearDraft}
+              disabled={draftFilterCount === 0}
+            >
               <X className="size-4" /> Clear all
             </Button>
-            <Button onClick={applyFilters}>Apply</Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+            <Button onClick={applyFilters} disabled={!draftDirty}>
+              Apply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {loading && !data ? (
         <div className="flex min-h-[62vh] items-center justify-center py-16 text-muted-foreground">
