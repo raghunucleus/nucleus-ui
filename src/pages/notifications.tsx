@@ -7,6 +7,7 @@ import {
   CalendarDays,
   CheckCheck,
   ClipboardCheck,
+  ClipboardList,
   CreditCard,
   IdCard,
   Loader2,
@@ -55,6 +56,7 @@ const MODULE_META: Record<
   'id-card': { icon: IdCard, color: 'cyan' },
   profile: { icon: UserRound, color: 'violet' },
   announcements: { icon: Megaphone, color: 'orange' },
+  requests: { icon: ClipboardList, color: 'orange' },
 }
 
 export default function NotificationsPage() {

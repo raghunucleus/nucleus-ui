@@ -6,9 +6,11 @@ import {
   CalendarDays,
   CalendarOff,
   ClipboardCheck,
+  ClipboardList,
   CreditCard,
   IdCard,
   MessageCircle,
+  Stamp,
   UserRound,
   type LucideIcon,
 } from 'lucide-react'
@@ -24,6 +26,8 @@ export type ModuleRoute =
   | '/connect'
   | '/notifications'
   | '/academic-holidays'
+  | '/my-requests'
+  | '/approvals'
 
 /**
  * The icon accent palette — one hue per module. The actual colors live as
@@ -135,6 +139,20 @@ export const MODULES: Module[] = [
     description: 'College holidays and no-class days.',
     color: 'blue',
     to: '/academic-holidays',
+  },
+  {
+    icon: ClipboardList,
+    title: 'My Requests',
+    description: 'Request profile changes and track approvals.',
+    color: 'orange',
+    to: '/my-requests',
+  },
+  {
+    icon: Stamp,
+    title: 'Approvals',
+    description: 'Requests waiting for your decision.',
+    color: 'emerald',
+    to: '/approvals',
   },
   {
     icon: Bell,

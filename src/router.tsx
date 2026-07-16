@@ -18,6 +18,8 @@ import Birthdays from '@/pages/birthdays'
 import Connect from '@/pages/connect'
 import Notifications from '@/pages/notifications'
 import AcademicHolidays from '@/pages/academic-holidays'
+import MyRequests from '@/pages/my-requests'
+import Approvals from '@/pages/approvals'
 
 /** The signed-in student/parent portal. `PortalLayout` renders the chrome. */
 const rootRoute = createRootRoute({ component: PortalLayout })
@@ -93,6 +95,26 @@ const academicHolidaysRoute = createRoute({
   component: AcademicHolidays,
 })
 
+const myRequestsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/my-requests',
+  component: MyRequests,
+  // `?open=<id>` expands a specific request (used by the decision
+  // notification deep-link).
+  validateSearch: (search: Record<string, unknown>): { open?: number } => ({
+    open:
+      search.open != null && Number.isFinite(Number(search.open))
+        ? Number(search.open)
+        : undefined,
+  }),
+})
+
+const approvalsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/approvals',
+  component: Approvals,
+})
+
 const connectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/connect',
@@ -125,6 +147,8 @@ const routeTree = rootRoute.addChildren([
   notificationsRoute,
   connectRoute,
   academicHolidaysRoute,
+  myRequestsRoute,
+  approvalsRoute,
 ])
 
 export const router = createRouter({

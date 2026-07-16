@@ -26,6 +26,8 @@ import EmployeeInchargeTemplatesPage from '@/pages/employee/incharge-templates'
 import EmployeeProfilePage, {
   type EmployeeProfileSection,
 } from '@/pages/employee/profile'
+import EmployeeRequestsApprovalsPage from '@/pages/employee/requests-approvals'
+import EmployeeRequestsMinePage from '@/pages/employee/requests-mine'
 import EmployeeTimetablePage from '@/pages/employee/timetable'
 
 /**
@@ -158,6 +160,20 @@ const companyAttributesRoute = createRoute({
   component: EmployeeCompanyAttributesPage,
 })
 
+// Paths must equal the RBAC catalog's `web_route` values for the two
+// derived Requests screens.
+const requestsApprovalsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/requests/approvals',
+  component: EmployeeRequestsApprovalsPage,
+})
+
+const requestsMineRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/requests/mine',
+  component: EmployeeRequestsMinePage,
+})
+
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/profile',
@@ -190,6 +206,8 @@ const routeTree = rootRoute.addChildren([
   companyEditRoute,
   companiesRoute,
   companyAttributesRoute,
+  requestsApprovalsRoute,
+  requestsMineRoute,
   profileRoute,
 ])
 

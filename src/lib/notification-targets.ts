@@ -58,6 +58,17 @@ const REGISTRY: Partial<Record<NotificationModuleKey, ModuleResolver>> = {
   birthdays: { home: { to: '/birthdays' } },
   'id-card': { home: { to: '/id-card' } },
   profile: { home: { to: '/profile' } },
+  requests: {
+    home: { to: '/my-requests' },
+    resolve: (t) => {
+      // A decision notification points at the request — open My Requests with
+      // that card expanded.
+      if (t.type === 'request' && t.id != null) {
+        return { to: '/my-requests', search: { open: Number(t.id) } }
+      }
+      return null
+    },
+  },
   // 'announcements' and 'fees' intentionally absent — no live page yet (fees
   // is disabled / coming soon), so they resolve to null ("no screen to open")
   // until the modules ship.

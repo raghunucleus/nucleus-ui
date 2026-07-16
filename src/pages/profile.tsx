@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Camera,
   CircleAlert,
+  ClipboardList,
   Droplet,
   GraduationCap,
   Mail,
@@ -17,6 +18,7 @@ import {
 import { PhotoLightbox } from '@/components/photo-lightbox'
 import { PhotoUploadDialog } from '@/components/photo-upload-dialog'
 import { PageHeader } from '@/components/portal-layout'
+import { ProfileUpdateRequestDialog } from '@/components/profile-update-request-dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { ApiError } from '@/lib/api'
@@ -29,6 +31,7 @@ export default function Profile() {
   const [profile, setProfile] = useState<StudentProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [requestOpen, setRequestOpen] = useState(false)
 
   useEffect(() => {
     document.title = 'Profile — Nucleus'
@@ -64,6 +67,19 @@ export default function Profile() {
         subtitle="Your personal and academic details."
         icon={UserRound}
         accent="violet"
+      />
+      {/* Contact/ID fields aren't directly editable — the profile module
+          raises an approval request here, reviewed by the batch's profile
+          verifiers and tracked on the My Requests screen. */}
+      <div className="-mt-2 mb-4 flex justify-end">
+        <Button size="sm" variant="outline" onClick={() => setRequestOpen(true)}>
+          <ClipboardList className="size-4" /> Request changes
+        </Button>
+      </div>
+      <ProfileUpdateRequestDialog
+        open={requestOpen}
+        onOpenChange={setRequestOpen}
+        onSubmitted={() => void load()}
       />
       {loading ? (
         <ProfileSkeleton />
