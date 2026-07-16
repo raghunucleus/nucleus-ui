@@ -1,5 +1,8 @@
 import { useSearch } from '@tanstack/react-router'
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Building2,
   Loader2,
   Pencil,
@@ -50,6 +53,7 @@ import {
   type AssignableEmployee,
   type CompanyListItem,
   type CompanyListParams,
+  type CompanySortField,
   type FormOptions,
 } from '@/lib/corporate-relations'
 
@@ -377,6 +381,37 @@ function AppliedFilterChip({ label, values, onClear }: AppliedFacetChip) {
   )
 }
 
+/** A clickable table header that toggles sorting on `field`. */
+function SortableHead({
+  label,
+  field,
+  sort,
+  onToggle,
+  className,
+}: {
+  label: string
+  field: CompanySortField
+  sort: { by: CompanySortField; dir: 'asc' | 'desc' } | null
+  onToggle: (field: CompanySortField) => void
+  className?: string
+}) {
+  const active = sort?.by === field
+  const Icon = !active ? ArrowUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown
+  return (
+    <TableHead className={className}>
+      <button
+        type="button"
+        onClick={() => onToggle(field)}
+        className="-mx-1 inline-flex items-center gap-1 rounded px-1 hover:text-foreground"
+        aria-label={`Sort by ${label}`}
+      >
+        {label}
+        <Icon className={`size-3.5 ${active ? '' : 'opacity-40'}`} />
+      </button>
+    </TableHead>
+  )
+}
+
 export function CompanyList({
   surface,
   onOpen,
@@ -401,6 +436,11 @@ export function CompanyList({
   const [draftFilters, setDraftFilters] = useState<AdvancedFilters>(EMPTY_FILTERS)
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(25)
+  // `null` = server default order (updated_at desc); a value = an active header sort.
+  const [sort, setSort] = useState<{
+    by: CompanySortField
+    dir: 'asc' | 'desc'
+  } | null>(null)
   const [localReload, setLocalReload] = useState(0)
   const [data, setData] = useState<{
     items: CompanyListItem[]
@@ -462,6 +502,8 @@ export function CompanyList({
       responsible_employee_ids: filters.responsible_employee_ids,
       offers_internships: filters.offers_internships || undefined,
       offers_ppo: filters.offers_ppo || undefined,
+      sort_by: sort?.by,
+      sort_dir: sort?.dir,
     }
     listCompanies(surface, params)
       .then((r) => {
@@ -479,7 +521,17 @@ export function CompanyList({
     }
     // `filtersKey` is a stable JSON snapshot of the whole `filters` object.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [surface, search, status, page, limit, filtersKey, reloadToken, localReload])
+  }, [
+    surface,
+    search,
+    status,
+    page,
+    limit,
+    sort,
+    filtersKey,
+    reloadToken,
+    localReload,
+  ])
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1
 
@@ -522,6 +574,18 @@ export function CompanyList({
 
   function clearDraft() {
     setDraftFilters(EMPTY_FILTERS)
+  }
+
+  // Clicking the active column flips direction; a new column starts at its
+  // natural default (A→Z for names, high→low for package/recency).
+  function toggleSort(field: CompanySortField) {
+    setPage(1)
+    setSort((cur) => {
+      if (cur?.by === field) {
+        return { by: field, dir: cur.dir === 'asc' ? 'desc' : 'asc' }
+      }
+      return { by: field, dir: field === 'name' ? 'asc' : 'desc' }
+    })
   }
 
   // Removing a chip applies instantly against the committed filters (clears the
@@ -873,13 +937,38 @@ export function CompanyList({
             <TableHeader>
               <TableRow className="sticky top-0 z-10 [&>th]:bg-card">
                 <TableHead className="w-10"></TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Tier</TableHead>
-                <TableHead>Relationship</TableHead>
+                <SortableHead
+                  label="Company"
+                  field="name"
+                  sort={sort}
+                  onToggle={toggleSort}
+                />
+                <SortableHead
+                  label="Tier"
+                  field="tier"
+                  sort={sort}
+                  onToggle={toggleSort}
+                />
+                <SortableHead
+                  label="Relationship"
+                  field="relationship_status"
+                  sort={sort}
+                  onToggle={toggleSort}
+                />
                 <TableHead>Officer</TableHead>
                 <TableHead>Industries</TableHead>
-                <TableHead>Package</TableHead>
-                <TableHead>Engaged</TableHead>
+                <SortableHead
+                  label="Package"
+                  field="package"
+                  sort={sort}
+                  onToggle={toggleSort}
+                />
+                <SortableHead
+                  label="Engaged"
+                  field="last_engaged_on"
+                  sort={sort}
+                  onToggle={toggleSort}
+                />
                 {canActivate && <TableHead>Active</TableHead>}
                 {canEdit && <TableHead className="w-10"></TableHead>}
               </TableRow>

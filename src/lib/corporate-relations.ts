@@ -280,9 +280,20 @@ export interface CompanyListParams {
   responsible_employee_ids?: number[]
   offers_internships?: boolean
   offers_ppo?: boolean
+  // Sorting (whitelisted columns; mirrors the server enum).
+  sort_by?: CompanySortField
+  sort_dir?: 'asc' | 'desc'
   page?: number
   limit?: number
 }
+
+export type CompanySortField =
+  | 'name'
+  | 'tier'
+  | 'relationship_status'
+  | 'package'
+  | 'last_engaged_on'
+  | 'updated_at'
 
 function qs(params: object): string {
   const sp = new URLSearchParams()
