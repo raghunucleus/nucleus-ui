@@ -33,6 +33,7 @@ export type EmployeeNotificationRoute =
   | '/id-card'
   | '/profile'
   | '/corporate-relations/companies'
+  | '/exports'
 
 /** A TanStack-Router navigation target. */
 export interface NavTarget {
@@ -67,6 +68,17 @@ const REGISTRY: Partial<Record<EmployeeNotificationModuleKey, ModuleResolver>> =
     'id-card': { home: { to: '/id-card' } },
     profile: { home: { to: '/profile' } },
     'corporate-relations': { home: { to: '/corporate-relations/companies' } },
+    exports: {
+      home: { to: '/exports' },
+      resolve: (t) => {
+        // "Export ready/failed" points at the job — open My exports with that
+        // row highlighted (the page reads ?open= on mount).
+        if (t.type === 'export' && t.id != null) {
+          return { to: '/exports', search: { open: Number(t.id) } }
+        }
+        return null
+      },
+    },
     // 'announcements' intentionally absent — no page yet, so it resolves to
     // null ("no screen to open") until the module ships.
   }

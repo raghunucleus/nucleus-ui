@@ -1,6 +1,15 @@
 import type { RichTextValue } from '@/components/ui/lazy-rich-text-editor'
 import { apiFetch, apiUpload } from './api'
 import { getEmployeeAccessToken, withEmployeeAuth } from './employee-auth'
+import type {
+  ExportFormat,
+  FkOption,
+  SearchGroup,
+  SearchMeta,
+  StudentSearchApi,
+  StudentSearchBody,
+  StudentSearchResult,
+} from './student-search'
 
 /**
  * Data layer for placement drive management — the drive classifier lookups
@@ -434,6 +443,54 @@ export function saveDriveEligibility(
       body,
       token,
     }),
+  )
+}
+
+// --- Filter tab (student search under a drive) -----------------------------
+
+/**
+ * The Filter tab's {@link StudentSearchApi}, bound to one drive's endpoints.
+ * All JSON — exports are async jobs, so no blob handling is needed anywhere.
+ */
+export function driveStudentsSearchApi(driveId: number): StudentSearchApi {
+  const root = `${DRIVES_ROOT}/${driveId}/students`
+  return {
+    meta: () =>
+      withEmployeeAuth((token) =>
+        apiFetch<SearchMeta>(`${root}/search/meta`, { token }),
+      ),
+    search: (body: StudentSearchBody) =>
+      withEmployeeAuth((token) =>
+        apiFetch<StudentSearchResult>(`${root}/search`, {
+          method: 'POST',
+          body,
+          token,
+        }),
+      ),
+    options: (lookup: string, q?: string) => {
+      const qs = new URLSearchParams({ lookup })
+      if (q) qs.set('q', q)
+      return withEmployeeAuth((token) =>
+        apiFetch<FkOption[]>(`${root}/search/options?${qs}`, { token }),
+      )
+    },
+    createExport: (body: StudentSearchBody, format: ExportFormat) =>
+      withEmployeeAuth((token) =>
+        apiFetch<{ job_id: number }>(`${root}/export`, {
+          method: 'POST',
+          body: { ...body, format },
+          token,
+        }),
+      ),
+  }
+}
+
+/** The drive's eligibility translated to pre-fill filter conditions. */
+export function getDriveStudentsFilterPrefill(
+  driveId: number,
+): Promise<{ filters: SearchGroup | null }> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/filter-prefill`, { token }),
   )
 }
 

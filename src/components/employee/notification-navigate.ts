@@ -13,7 +13,7 @@ import type { NavTarget } from '@/lib/employee-notification-targets'
  * typo is still a compile error; only the router's own typing is bypassed.
  */
 export function employeeNavigate(
-  target: NavTarget | { to: '/notifications' },
+  target: NavTarget | { to: '/notifications' | '/exports' },
 ): void {
   const search =
     'search' in target && target.search

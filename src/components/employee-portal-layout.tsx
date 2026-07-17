@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ClipboardCheck,
   ClipboardList,
+  FileDown,
   GraduationCap,
   Home,
   IdCard,
@@ -34,6 +35,7 @@ import {
 } from 'react'
 
 import { EmployeeNotificationBell } from '@/components/employee/notification-bell'
+import { employeeNavigate } from '@/components/employee/notification-navigate'
 import { EmployeeNotificationNotifier } from '@/components/employee/notification-notifier'
 import { Button } from '@/components/ui/button'
 import {
@@ -256,6 +258,14 @@ export function EmployeePortalLayout() {
             </Button>
 
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="My exports"
+                onClick={() => employeeNavigate({ to: '/exports' })}
+              >
+                <FileDown />
+              </Button>
               <EmployeeNotificationBell />
               <ThemeToggle />
               <DropdownMenu>

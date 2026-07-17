@@ -1,6 +1,12 @@
 import { useParams } from '@tanstack/react-router'
-import { ArrowLeft, GraduationCap, LayoutDashboard, Pencil } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import {
+  ArrowLeft,
+  Filter,
+  GraduationCap,
+  LayoutDashboard,
+  Pencil,
+} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import {
@@ -13,6 +19,7 @@ import {
 } from '@/components/corporate-relations/bits'
 import ComingSoon from '@/components/employee/coming-soon'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
+import { StudentSearchPanel } from '@/components/employee/student-search/student-search-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,8 +32,10 @@ import {
   ENTRY_TYPE_OPTIONS,
   GENDER_OPTIONS,
   driveStatusVariant,
+  driveStudentsSearchApi,
   getDrive,
   getDriveEligibility,
+  getDriveStudentsFilterPrefill,
   listDriveEligibilityOptions,
   saveDriveEligibility,
   updateDriveStatus,
@@ -36,6 +45,7 @@ import {
   type DriveEligibilityOptions,
   type DriveStatus,
 } from '@/lib/drive-management'
+import type { SearchCondition, SearchGroup } from '@/lib/student-search'
 import { cn } from '@/lib/utils'
 
 const SCREEN_KEY = 'drive_management.drives.manage'
@@ -48,6 +58,7 @@ function errMsg(e: unknown, fallback: string): string {
 const TABS: TabDef[] = [
   { key: 'overview', label: 'Overview', icon: LayoutDashboard },
   { key: 'eligibility', label: 'Eligibility', icon: GraduationCap },
+  { key: 'filter', label: 'Filter', icon: Filter },
 ]
 
 export default function EmployeeDriveDetailPage() {
@@ -63,6 +74,13 @@ export default function EmployeeDriveDetailPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [tab, setTab] = useState('overview')
   const [savingStatus, setSavingStatus] = useState(false)
+  // The Filter tab mounts lazily on first visit and then STAYS mounted (just
+  // hidden), so built-up filters and results survive tab switches.
+  const [filterVisited, setFilterVisited] = useState(false)
+
+  useEffect(() => {
+    if (tab === 'filter') setFilterVisited(true)
+  }, [tab])
 
   useEffect(() => {
     document.title = 'Drive — Nucleus'
@@ -121,7 +139,7 @@ export default function EmployeeDriveDetailPage() {
   }
 
   return (
-    <div className="mx-auto flex h-full max-w-4xl flex-col gap-4 pb-4">
+    <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 pb-4">
       <div className="shrink-0 space-y-3 pt-1">
         <div className="flex flex-wrap items-center gap-3">
           <Button
@@ -192,8 +210,80 @@ export default function EmployeeDriveDetailPage() {
         {tab === 'eligibility' && (
           <EligibilityTab driveId={drive.id} canEdit={canEdit} />
         )}
+        {filterVisited && (
+          <div className={tab === 'filter' ? 'h-full' : 'hidden'}>
+            <DriveFilterTab driveId={drive.id} />
+          </div>
+        )}
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+
+/**
+ * Recommended placement defaults every drive Filter tab opens with: only
+ * active students the department has cleared and who opted into placements.
+ * They render locked in the builder — the user is warned before changing them.
+ */
+const PLACEMENT_DEFAULTS: SearchCondition[] = [
+  { attr: 'is_active', op: 'eq', value: true },
+  { attr: 'allowed_by_dept_for_placements', op: 'eq', value: true },
+  { attr: 'interested_in_placements_self', op: 'eq', value: true },
+]
+const LOCKED_ATTRS = PLACEMENT_DEFAULTS.map((c) => c.attr)
+
+/**
+ * The Filter tab: the full student search, seeded with the placement defaults
+ * above plus this drive's eligibility criteria (editable). A failed prefill
+ * degrades to just the defaults — the search itself still works.
+ */
+function DriveFilterTab({ driveId }: { driveId: number }) {
+  const api = useMemo(() => driveStudentsSearchApi(driveId), [driveId])
+  // undefined = still loading the prefill; null = none / failed.
+  const [prefill, setPrefill] = useState<SearchGroup | null | undefined>(
+    undefined,
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    getDriveStudentsFilterPrefill(driveId)
+      .then((r) => {
+        if (!cancelled) setPrefill(r.filters)
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return
+        setPrefill(null)
+        toast.info(errMsg(e, 'Could not pre-fill from eligibility.'))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [driveId])
+
+  // Placement defaults first, then the eligibility conditions.
+  const seeded = useMemo<SearchGroup>(
+    () => ({ and: [...PLACEMENT_DEFAULTS, ...(prefill?.and ?? [])] }),
+    [prefill],
+  )
+
+  if (prefill === undefined) {
+    return (
+      <div className="space-y-3 py-2">
+        <div className="h-9 w-64 animate-pulse rounded-md bg-muted" />
+        <div className="h-24 animate-pulse rounded-xl bg-muted" />
+        <div className="h-64 animate-pulse rounded-xl bg-muted" />
+      </div>
+    )
+  }
+
+  return (
+    <StudentSearchPanel
+      api={api}
+      initialFilters={seeded}
+      lockedAttrs={LOCKED_ATTRS}
+    />
   )
 }
 

@@ -6,6 +6,7 @@ import {
   CalendarDays,
   ClipboardList,
   ContactRound,
+  FileDown,
   IdCard,
   Megaphone,
   UserRound,
@@ -33,6 +34,7 @@ export const MODULE_META: Record<
   profile: { icon: UserRound, color: 'violet' },
   'corporate-relations': { icon: Building2, color: 'blue' },
   announcements: { icon: Megaphone, color: 'orange' },
+  exports: { icon: FileDown, color: 'cyan' },
 }
 
 /** A module the server knows about but this build doesn't — render it plainly. */

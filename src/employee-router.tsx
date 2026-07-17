@@ -32,6 +32,7 @@ import EmployeeProfilePage, {
 } from '@/pages/employee/profile'
 import EmployeeRequestsApprovalsPage from '@/pages/employee/requests-approvals'
 import EmployeeNotificationsPage from '@/pages/employee/notifications'
+import EmployeeExportsPage from '@/pages/employee/exports'
 import EmployeeRequestsMinePage from '@/pages/employee/requests-mine'
 import EmployeeTimetablePage from '@/pages/employee/timetable'
 
@@ -243,6 +244,14 @@ const notificationsRoute = createRoute({
   component: EmployeeNotificationsPage,
 })
 
+// Reached from export notifications/toasts only — like /notifications it has
+// no RBAC catalog entry, so it never renders in the sidebar.
+const exportsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/exports',
+  component: EmployeeExportsPage,
+})
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   academicHolidaysRoute,
@@ -272,6 +281,7 @@ const routeTree = rootRoute.addChildren([
   requestsMineRoute,
   profileRoute,
   notificationsRoute,
+  exportsRoute,
 ])
 
 export const employeeRouter = createRouter({

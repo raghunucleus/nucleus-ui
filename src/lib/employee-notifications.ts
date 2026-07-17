@@ -23,6 +23,7 @@ export type EmployeeNotificationModuleKey =
   | 'profile'
   | 'corporate-relations'
   | 'announcements'
+  | 'exports'
 
 /** Route-independent pointer to the entity a notification is about. */
 export interface NotificationTarget {
