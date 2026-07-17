@@ -32,6 +32,8 @@ import {
   useState,
 } from 'react'
 
+import { EmployeeNotificationBell } from '@/components/employee/notification-bell'
+import { EmployeeNotificationNotifier } from '@/components/employee/notification-notifier'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -227,6 +229,9 @@ export function EmployeePortalLayout() {
   return (
     <EmployeeAccessContext.Provider value={access}>
       <div className="flex h-svh bg-background text-foreground">
+        {/* Keeps the notification socket connected and toasts arrivals on any
+            employee page. Renders nothing. */}
+        <EmployeeNotificationNotifier />
         <EmployeeSidebar
           access={access}
           accessError={accessError}
@@ -248,6 +253,7 @@ export function EmployeePortalLayout() {
             </Button>
 
             <div className="flex items-center gap-2">
+              <EmployeeNotificationBell />
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

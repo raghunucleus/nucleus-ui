@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useSearch } from '@tanstack/react-router'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
@@ -113,6 +114,25 @@ function Approvals({ actions }: { actions: string[] }) {
       .then(setCatalog)
       .catch(() => setCatalog([]))
   }, [])
+
+  // `?open=<id>` — the deep-link a "needs your review" notification lands on.
+  // The detail view needs the whole row, and the id may not be on the current
+  // page (or under the current filter), so fetch it directly rather than
+  // hunting for it in `data`. Runs once per id: `openId` comes from the URL and
+  // clearing the selection deliberately doesn't re-trigger it.
+  const openId = useSearch({ strict: false }).open as number | undefined
+  const openedRef = useRef<number | null>(null)
+  useEffect(() => {
+    if (!openId || openedRef.current === openId) return
+    openedRef.current = openId
+    fetchApproval(openId)
+      .then(setSelected)
+      .catch(() =>
+        // Decided by someone else, or not one of this employee's batches (the
+        // server 404s rather than 403s). The queue behind it is still useful.
+        toast.info('That request is no longer available to you.'),
+      )
+  }, [openId])
 
   const load = useCallback(async () => {
     setLoading(true)

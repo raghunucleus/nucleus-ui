@@ -170,6 +170,17 @@ export async function withEmployeeAuth<T>(
   }
 }
 
+/**
+ * Swap the refresh token for a fresh access token, or null if that fails.
+ * Exported for the notification socket, which authenticates once at the
+ * handshake rather than per-request and so can't go through `withEmployeeAuth`.
+ * Shares the same in-flight dedupe (see below) — a socket reconnect racing an
+ * HTTP 401 must not burn the token family.
+ */
+export function refreshEmployeeAccessToken(): Promise<string | null> {
+  return tryRefresh()
+}
+
 /** Dedupe concurrent refreshes so a burst of 401s triggers a single /refresh. */
 let refreshInFlight: Promise<string | null> | null = null
 

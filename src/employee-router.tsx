@@ -27,6 +27,7 @@ import EmployeeProfilePage, {
   type EmployeeProfileSection,
 } from '@/pages/employee/profile'
 import EmployeeRequestsApprovalsPage from '@/pages/employee/requests-approvals'
+import EmployeeNotificationsPage from '@/pages/employee/notifications'
 import EmployeeRequestsMinePage from '@/pages/employee/requests-mine'
 import EmployeeTimetablePage from '@/pages/employee/timetable'
 
@@ -166,6 +167,13 @@ const requestsApprovalsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/requests/approvals',
   component: EmployeeRequestsApprovalsPage,
+  // `?open=<id>` opens that request's detail on mount — the deep-link target
+  // for a "needs your review" notification (there is no /:id route; the page is
+  // master-detail driven by local state). Mirrors the student /my-requests.
+  validateSearch: (search: Record<string, unknown>) => {
+    const raw = Number(search.open)
+    return Number.isFinite(raw) && raw > 0 ? { open: raw } : {}
+  },
 })
 
 const requestsMineRoute = createRoute({
@@ -180,10 +188,21 @@ const profileRoute = createRoute({
   component: EmployeeProfilePage,
   validateSearch: (search: Record<string, unknown>) => {
     const raw = search.section
+    // Anything unrecognised falls back to 'profile' — so every valid section
+    // must be listed here or it silently redirects to the wrong tab.
     const section: EmployeeProfileSection =
-      raw === 'password' ? 'password' : 'profile'
+      raw === 'password' || raw === 'notifications' ? raw : 'profile'
     return { section }
   },
+})
+
+// Reached from the header bell only — deliberately absent from the RBAC
+// catalog, so it never renders in the sidebar (which lists screens with a
+// `web_route`).
+const notificationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/notifications',
+  component: EmployeeNotificationsPage,
 })
 
 const routeTree = rootRoute.addChildren([
@@ -209,6 +228,7 @@ const routeTree = rootRoute.addChildren([
   requestsApprovalsRoute,
   requestsMineRoute,
   profileRoute,
+  notificationsRoute,
 ])
 
 export const employeeRouter = createRouter({

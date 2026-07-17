@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useSearch } from '@tanstack/react-router'
 import {
+  Bell,
   ChevronRight,
   KeyRound,
   type LucideIcon,
@@ -8,11 +9,13 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { ApiError } from '@/lib/api'
 import {
   employeeChangePassword,
@@ -21,9 +24,18 @@ import {
   storeEmployeeTokens,
   type EmployeeProfile,
 } from '@/lib/employee-auth'
+import {
+  fetchNotificationPreferences,
+  setNotificationPreference,
+  type EmployeeNotificationModuleKey,
+  type EmployeeNotificationPreference,
+} from '@/lib/employee-notifications'
 import { cn } from '@/lib/utils'
 
-export type EmployeeProfileSection = 'profile' | 'password'
+// Every member must also be accepted by `validateSearch` on the /profile route
+// in employee-router.tsx — anything it doesn't recognise silently falls back to
+// 'profile'.
+export type EmployeeProfileSection = 'profile' | 'password' | 'notifications'
 
 type NavItem = {
   key: EmployeeProfileSection
@@ -44,6 +56,12 @@ const navItems: NavItem[] = [
     label: 'Change password',
     description: 'Update your password',
     icon: KeyRound,
+  },
+  {
+    key: 'notifications',
+    label: 'Notifications',
+    description: 'Choose how each module reaches you',
+    icon: Bell,
   },
 ]
 
@@ -83,6 +101,7 @@ export default function EmployeeProfilePage() {
 
           {section === 'profile' && <ProfileDetails />}
           {section === 'password' && <ChangePasswordForm />}
+          {section === 'notifications' && <NotificationPreferences />}
         </div>
       </div>
     </div>
@@ -124,6 +143,129 @@ function SideNav({ activeKey }: { activeKey: EmployeeProfileSection }) {
         )
       })}
     </nav>
+  )
+}
+
+// --- Notifications section -------------------------------------------------
+
+/**
+ * Per-module delivery switches. In-app is deliberately not listed: it is the
+ * bell/notifications page itself and can't be turned off — only email and OS
+ * push are mutable, which is exactly what the server stores.
+ *
+ * The server returns every module with its effective values, so this never
+ * needs to know the defaults.
+ */
+function NotificationPreferences() {
+  const [prefs, setPrefs] = useState<EmployeeNotificationPreference[] | null>(
+    null,
+  )
+  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState<EmployeeNotificationModuleKey | null>(
+    null,
+  )
+
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      try {
+        const list = await fetchNotificationPreferences()
+        if (alive) setPrefs(list)
+      } catch (err) {
+        if (!alive) return
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load your notification preferences.',
+        )
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  async function toggle(
+    module: EmployeeNotificationModuleKey,
+    patch: { email_enabled?: boolean; push_enabled?: boolean },
+  ) {
+    // Optimistic: a switch that lags the click feels broken. Snapshot so a
+    // failed write rolls back instead of lying about the saved state.
+    const previous = prefs
+    setPrefs((prev) =>
+      prev?.map((p) => (p.module === module ? { ...p, ...patch } : p)) ?? prev,
+    )
+    setSaving(module)
+    try {
+      await setNotificationPreference(module, patch)
+    } catch {
+      setPrefs(previous)
+      toast.info('Could not save that change. Try again.')
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  if (error) {
+    return <p className="text-sm text-destructive">{error}</p>
+  }
+
+  if (!prefs) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="h-14 animate-pulse rounded-lg bg-muted" />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+        In-app notifications are always on — they are the bell itself. These
+        switches control email and push only.
+      </p>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b text-left text-xs text-muted-foreground">
+              <th className="pb-2 font-medium">Module</th>
+              <th className="pb-2 pl-4 font-medium">Email</th>
+              <th className="pb-2 pl-4 font-medium">Push</th>
+            </tr>
+          </thead>
+          <tbody>
+            {prefs.map((p) => (
+              <tr key={p.module} className="border-b last:border-0">
+                <td className="py-3 pr-4 font-medium">{p.label}</td>
+                <td className="py-3 pl-4">
+                  <Switch
+                    checked={p.email_enabled}
+                    disabled={saving === p.module}
+                    onCheckedChange={(email_enabled) =>
+                      void toggle(p.module, { email_enabled })
+                    }
+                    aria-label={`Email notifications for ${p.label}`}
+                  />
+                </td>
+                <td className="py-3 pl-4">
+                  <Switch
+                    checked={p.push_enabled}
+                    disabled={saving === p.module}
+                    onCheckedChange={(push_enabled) =>
+                      void toggle(p.module, { push_enabled })
+                    }
+                    aria-label={`Push notifications for ${p.label}`}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
 
