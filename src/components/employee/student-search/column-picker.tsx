@@ -17,10 +17,17 @@ export function ColumnPicker({
   meta,
   columns,
   onChange,
+  onApply,
 }: {
   meta: SearchMeta
   columns: string[]
   onChange: (columns: string[]) => void
+  /**
+   * Re-run the search with the current column set. Rendered as an "Apply"
+   * button in the popover footer so column changes fetch immediately instead
+   * of waiting for the next Search.
+   */
+  onApply?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -111,6 +118,21 @@ export function ColumnPicker({
             <p className="mt-2 px-1 text-[11px] text-muted-foreground">
               Column limit reached ({MAX_COLUMNS}).
             </p>
+          ) : null}
+          {onApply ? (
+            <div className="sticky bottom-0 -mx-2 -mb-2 mt-2 border-t bg-popover px-2 py-2">
+              <Button
+                type="button"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  setOpen(false)
+                  onApply()
+                }}
+              >
+                Apply
+              </Button>
+            </div>
           ) : null}
         </div>
       )}

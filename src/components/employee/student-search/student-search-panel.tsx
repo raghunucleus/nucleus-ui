@@ -50,7 +50,7 @@ import {
   decomposeFilters,
 } from './filter-model'
 import { NqlEditor } from './nql-editor'
-import { ResultsTable } from './results-table'
+import { ResultsSkeleton, ResultsTable } from './results-table'
 
 type Mode = 'builder' | 'nql'
 
@@ -382,7 +382,12 @@ export function StudentSearchPanel({
             />
           </div>
           <div className="ml-auto flex items-center gap-2">
-            <ColumnPicker meta={meta} columns={columns} onChange={setColumns} />
+            <ColumnPicker
+              meta={meta}
+              columns={columns}
+              onChange={setColumns}
+              onApply={() => void runSearch(1, pageSize)}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" disabled={exporting}>
@@ -407,7 +412,17 @@ export function StudentSearchPanel({
         </div>
 
         <div className="min-h-0 flex-1">
-          {result ? (
+          {/* Shimmer whenever a search is in flight — including refetches after
+              a column / filter change — so the stale table never sits there
+              looking final while new data loads. */}
+          {searching ? (
+            <ResultsSkeleton
+              columns={
+                (result?.columns.length ?? columns.length) ||
+                meta.implicitColumns.length
+              }
+            />
+          ) : result ? (
             <ResultsTable
               meta={meta}
               result={result}
@@ -416,8 +431,6 @@ export function StudentSearchPanel({
               onPage={(page) => void runSearch(page, pageSize)}
               onPageSize={setPageSize}
             />
-          ) : searching ? (
-            <div className="h-64 animate-pulse rounded-xl bg-muted" />
           ) : null}
         </div>
       </div>
