@@ -68,11 +68,12 @@ export async function apiUpload<T>(
   path: string,
   form: FormData,
   token: string,
+  method: 'POST' | 'PUT' = 'POST',
 ): Promise<T> {
   let res: Response
   try {
     res = await fetch(`${API_BASE_URL}${path}`, {
-      method: 'POST',
+      method,
       headers: { Authorization: `Bearer ${token}` },
       body: form,
     })

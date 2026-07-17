@@ -9,6 +9,7 @@ import StudentHome from '@/pages/student-home'
 import NotFound from '@/pages/not-found'
 import IdCard from '@/pages/id-card'
 import Profile from '@/pages/profile'
+import ProfileUpdateRequest from '@/pages/profile-update-request'
 import PrivacySettings from '@/pages/privacy-settings'
 import Timetable from '@/pages/timetable'
 import Attendance from '@/pages/attendance'
@@ -40,6 +41,19 @@ const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/profile',
   component: Profile,
+})
+
+const profileUpdateRequestRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/profile/request-changes',
+  component: ProfileUpdateRequest,
+  // `?edit=<id>` revises a sent-back request instead of raising a new one.
+  validateSearch: (search: Record<string, unknown>): { edit?: number } => ({
+    edit:
+      search.edit != null && Number.isFinite(Number(search.edit))
+        ? Number(search.edit)
+        : undefined,
+  }),
 })
 
 const privacyRoute = createRoute({
@@ -138,6 +152,7 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   idCardRoute,
   profileRoute,
+  profileUpdateRequestRoute,
   privacyRoute,
   timetableRoute,
   attendanceRoute,

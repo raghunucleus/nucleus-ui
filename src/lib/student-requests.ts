@@ -136,34 +136,132 @@ export type RequestStatusCounts = Partial<Record<RequestStatus, number>>
 
 // --- profile_update payload (owned by the profile domain server-side) -------
 
-export const PROFILE_UPDATE_FIELDS = [
-  'mobile_number',
-  'email',
-  'blood_group',
-  'abc_id',
-] as const
-export type ProfileUpdateField = (typeof PROFILE_UPDATE_FIELDS)[number]
-
-export const PROFILE_FIELD_LABELS: Record<ProfileUpdateField, string> = {
+/**
+ * Canonical labels for every profile wire key, mirroring the server's field
+ * registry — including the composite unit keys and the legacy 'email' key so
+ * old V1 payloads still render with a friendly name.
+ */
+export const PROFILE_FIELD_LABELS: Record<string, string> = {
+  full_name: 'Full name (as per Aadhaar)',
+  first_name: 'First name',
+  middle_name: 'Middle name',
+  last_name: 'Last name',
+  gender: 'Gender',
+  date_of_birth: 'Date of birth',
   mobile_number: 'Mobile number',
-  email: 'Email',
+  college_email: 'College email',
+  personal_email: 'Personal email',
   blood_group: 'Blood group',
   abc_id: 'ABC ID',
+  admission_year: 'Admission year',
+  pass_out_year: 'Pass-out year',
+  tenth_percentage: '10th mark (%)',
+  twelfth_percentage: '12th mark (%)',
+  diploma_percentage: 'Diploma mark (%)',
+  ug_cgpa: 'UG CGPA',
+  current_backlogs: 'Current backlogs',
+  backlog_history: 'Backlog history',
+  resume: 'Resume',
+  industry_certifications: 'Industry certifications',
+  parent_name: 'Parent name',
+  parent_mobile: 'Parent mobile number',
+  parent_email: 'Parent email',
+  guardian_name: 'Guardian name',
+  guardian_mobile: 'Guardian mobile number',
+  guardian_email: 'Guardian email',
+  home_address: 'Home address',
+  home_district: 'Home district',
+  home_pincode: 'Home pincode',
+  home_state: 'Home state',
+  home_country: 'Home country',
+  aadhaar_number: 'Aadhaar number',
+  pan_number: 'PAN number',
+  entrance_exam_rank: 'Entrance exam rank',
+  entrance_exam: 'Entrance exam',
+  entrance_exam_year: 'Entrance exam year',
+  year_of_gap: 'Years of gap',
+  reason_of_gap: 'Reason of gap',
+  tenth_board: '10th board',
+  tenth_institution: '10th institution',
+  tenth_year_of_pass: '10th year of pass',
+  tenth_state: '10th state',
+  twelfth_board: '12th board of study',
+  twelfth_institution: '12th institution',
+  twelfth_year_of_pass: '12th year of pass',
+  twelfth_state: '12th state',
+  diploma_board: 'Diploma board',
+  diploma_institution: 'Diploma institution',
+  diploma_year_of_pass: 'Diploma year of pass',
+  diploma_specialization: 'Diploma specialization',
+  diploma_state: 'Diploma state',
+  allowed_by_dept_for_placements: 'Allowed by department for placements',
+  interested_in_placements_self: 'Interested in placements',
+  gap: 'Education gap',
+  // Legacy key from the original 4-field request flow (college email is
+  // read-only now, but old requests still carry it).
+  email: 'Email',
 }
 
+/**
+ * One requested change (payload V2). `from`/`to` are raw values — FK ids,
+ * booleans, unit objects — so ALWAYS render via `display` when present and
+ * fall back to `String(...)` for legacy V1 payloads (see changeFromText /
+ * changeToText). Item keys are simple field keys plus the atomic units
+ * 'entrance_exam' / 'gap' and the dynamic 'certification:<id>'.
+ */
 export interface ProfileUpdateChange {
-  field: ProfileUpdateField
-  from: string | null
-  to: string
+  field: string
+  from: unknown
+  to: unknown
+  /** Human-readable rendering of from/to, present on V2 payloads. */
+  display?: { from: string; to: string }
   /** Per-field verdict, present once the request is decided. */
   outcome?: ItemOutcome
+}
+
+const CERTIFICATION_KEY_PREFIX = 'certification:'
+
+/** Label for a change item, handling the composite/dynamic keys. */
+export function labelForChange(change: ProfileUpdateChange): string {
+  if (change.field.startsWith(CERTIFICATION_KEY_PREFIX)) {
+    const to = change.to as { name?: unknown } | null
+    const name = to && typeof to.name === 'string' ? to.name : null
+    return name ? `Certification: ${name}` : 'Certification'
+  }
+  return PROFILE_FIELD_LABELS[change.field] ?? change.field
+}
+
+/** RENDER RULE: prefer `display.from`; fall back for legacy V1 payloads. */
+export function changeFromText(change: ProfileUpdateChange): string {
+  if (change.display) return change.display.from
+  return String(change.from ?? '—')
+}
+
+/** RENDER RULE: prefer `display.to`; fall back for legacy V1 payloads. */
+export function changeToText(change: ProfileUpdateChange): string {
+  if (change.display) return change.display.to
+  return String(change.to)
+}
+
+/**
+ * Presigned certificate URL of a 'certification:<id>' change — present ONLY
+ * in detail views (the server enriches the payload per view, never stores it).
+ */
+export function changeCertificateUrl(
+  change: ProfileUpdateChange,
+): string | null {
+  if (!change.field.startsWith(CERTIFICATION_KEY_PREFIX)) return null
+  const to = change.to as { certificate_file_url?: unknown } | null
+  return to && typeof to.certificate_file_url === 'string'
+    ? to.certificate_file_url
+    : null
 }
 
 export interface StudentRequest {
   id: number
   request_type: RequestType
   status: RequestStatus
-  payload: { changes?: ProfileUpdateChange[] }
+  payload: { v?: 2; changes?: ProfileUpdateChange[] }
   requester_note: string | null
   decision_note: string | null
   decided_at: string | null
@@ -176,23 +274,88 @@ export interface StudentRequestDetail extends StudentRequest {
   timeline: RequestEvent[]
 }
 
-export interface ProfileUpdateContext {
-  current: {
-    mobile_number: string
-    email: string
-    blood_group: string | null
-    abc_id: string | null
-  }
-  blood_groups: string[]
-  /**
-   * Fields locked by an OPEN request — pending, or sent back for changes.
-   * Warn + disable these; never block the rest.
-   */
-  pending_fields: ProfileUpdateField[]
+/** The entrance-exam trio + "not applicable" flag, always one atomic unit. */
+export interface EntranceExamValue {
+  na: boolean
+  entrance_exam_id: number | null
+  exam_name: string | null
+  entrance_exam_rank: number | null
+  entrance_exam_year: number | null
 }
 
+/** The education-gap pair, also one atomic unit. */
+export interface GapValue {
+  year_of_gap: number | null
+  reason_of_gap: string | null
+}
+
+export interface ProfileUpdateContext {
+  entry_type: number
+  /** Wire key → raw current value (FK fields carry the id). */
+  current: Record<string, unknown>
+  /** Wire key → resolved display text for FK fields (id would be opaque). */
+  display: Record<string, string | null>
+  entrance_exam: EntranceExamValue
+  gap: GapValue
+  blood_groups: string[]
+  genders: string[]
+  /**
+   * Item keys locked by an OPEN request — pending, or sent back for changes.
+   * Warn + disable these; never block the rest.
+   */
+  pending_fields: string[]
+  /** Certifications the student already holds — can't be re-requested. */
+  held_certification_ids: number[]
+  /**
+   * Every mandatory requestable key for this student's entry type. Units come
+   * as their unit keys ('entrance_exam', 'gap') — member fields never alone.
+   */
+  mandatory_fields: string[]
+  /**
+   * The BLOCKING subset of mandatory keys: still empty on the profile and not
+   * claimed by another open request. The server rejects create/resubmit unless
+   * every one of these is present in the submitted changes. Empty once the
+   * profile is complete — partial requests are allowed from then on.
+   */
+  required_now: string[]
+  /** The year the student actually joined (batch year, +1 for lateral). */
+  join_year: number
+  /**
+   * Auto-computed education gap: join_year minus the year of pass of 12th
+   * (regular) / diploma (lateral). Null when that year of pass is unknown.
+   */
+  suggested_gap: { years: number; basis: 'twelfth' | 'diploma' } | null
+}
+
+export interface EntranceExamGroupInput {
+  na: boolean
+  entrance_exam_id?: number | null
+  entrance_exam_rank?: number | null
+  entrance_exam_year?: number | null
+}
+
+export interface GapGroupInput {
+  year_of_gap: number
+  reason_of_gap?: string
+}
+
+export interface CertificationAddInput {
+  industry_certification_id: number
+  /** From POST /student/profile/certifications/files — required per entry. */
+  certificate_file_key: string
+}
+
+/**
+ * Create/resubmit body. `changes` carries only the touched simple keys (raw
+ * values; FK fields send the id number) plus the atomic units and the
+ * certifications add-list. NO `email` key — college email is read-only.
+ */
 export interface ProfileUpdateInput {
-  changes: Partial<Record<ProfileUpdateField, string>>
+  changes: Record<string, unknown> & {
+    entrance_exam?: EntranceExamGroupInput
+    gap?: GapGroupInput
+    certifications_add?: CertificationAddInput[]
+  }
   note?: string
 }
 

@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Check,
   CircleAlert,
+  ExternalLink,
   Inbox,
   RefreshCw,
   Undo2,
@@ -57,6 +58,10 @@ import {
   type Paginated,
 } from '@/lib/employee-requests'
 import {
+  changeCertificateUrl,
+  changeFromText,
+  changeToText,
+  labelForChange,
   PROFILE_FIELD_LABELS,
   REQUEST_STATUS_LABELS,
   requestStatusVariant,
@@ -252,7 +257,7 @@ function Approvals({ actions }: { actions: string[] }) {
                       </p>
                       <p className="max-w-52 truncate text-xs text-muted-foreground">
                         {(row.payload.changes ?? [])
-                          .map((c) => PROFILE_FIELD_LABELS[c.field] ?? c.field)
+                          .map((c) => labelForChange(c))
                           .join(', ')}
                       </p>
                     </TableCell>
@@ -299,7 +304,6 @@ function ApprovalDetail({
   onBack: () => void
   onDecided: () => void
 }) {
-  const changes = row.payload.changes ?? []
   const canApprove = actions.includes('approve')
   const canReject = actions.includes('reject')
   const canSendBack = actions.includes('send_back')
@@ -307,13 +311,19 @@ function ApprovalDetail({
   // Per-field verdicts — every field defaults to approve; the submit button
   // adapts to the split (approve all / reject all / mixed).
   const [verdicts, setVerdicts] = useState<Record<string, ItemOutcome>>(() =>
-    Object.fromEntries(changes.map((c) => [c.field, 'approved'])),
+    Object.fromEntries(
+      (row.payload.changes ?? []).map((c) => [c.field, 'approved']),
+    ),
   )
   const [confirming, setConfirming] = useState(false)
   const [sendingBack, setSendingBack] = useState(false)
   // The row from the list has no approvers/timeline — fetch the full view.
   // Rendering starts from `row` so the page doesn't flash a skeleton.
   const [detail, setDetail] = useState<ApprovalDetailData | null>(null)
+
+  // Prefer the detail payload once loaded: the server enriches it per view
+  // (presigned certificate links exist only there). Same item keys either way.
+  const changes = (detail ?? row).payload.changes ?? []
 
   useEffect(() => {
     let cancelled = false
@@ -433,38 +443,55 @@ function ApprovalDetail({
                 </p>
               )}
             </div>
-            <div className="space-y-1.5 p-3">
-              {changes.map((c) => (
-                <div
-                  key={c.field}
-                  className="flex flex-wrap items-center gap-2 rounded-md bg-muted/30 px-3 py-2 text-sm"
-                >
-                  <span className="w-32 shrink-0 text-xs font-medium text-muted-foreground">
-                    {PROFILE_FIELD_LABELS[c.field] ?? c.field}
-                  </span>
-                  <span className="text-muted-foreground line-through">
-                    {c.from ?? '—'}
-                  </span>
-                  <ArrowRight className="size-3.5 text-muted-foreground" />
-                  <span className="min-w-0 flex-1 font-medium">{c.to}</span>
-                  {decidable ? (
-                    <VerdictToggle
-                      value={verdicts[c.field] ?? 'approved'}
-                      onChange={(v) =>
-                        setVerdicts((prev) => ({ ...prev, [c.field]: v }))
-                      }
-                    />
-                  ) : c.outcome ? (
-                    <Badge
-                      variant={
-                        c.outcome === 'approved' ? 'success' : 'destructive'
-                      }
-                    >
-                      {c.outcome === 'approved' ? 'Approved' : 'Rejected'}
-                    </Badge>
-                  ) : null}
-                </div>
-              ))}
+            {/* The extended profile can put dozens of items on one request —
+                cap the list and scroll inside it. */}
+            <div className="max-h-[32rem] space-y-1.5 overflow-y-auto p-3">
+              {changes.map((c) => {
+                const certificateUrl = changeCertificateUrl(c)
+                return (
+                  <div
+                    key={c.field}
+                    className="flex flex-wrap items-center gap-2 rounded-md bg-muted/30 px-3 py-2 text-sm"
+                  >
+                    <span className="w-32 shrink-0 text-xs font-medium text-muted-foreground">
+                      {labelForChange(c)}
+                    </span>
+                    <span className="text-muted-foreground line-through">
+                      {changeFromText(c)}
+                    </span>
+                    <ArrowRight className="size-3.5 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 font-medium break-words">
+                      {changeToText(c)}
+                      {certificateUrl && (
+                        <a
+                          href={certificateUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                        >
+                          <ExternalLink className="size-3" /> View certificate
+                        </a>
+                      )}
+                    </span>
+                    {decidable ? (
+                      <VerdictToggle
+                        value={verdicts[c.field] ?? 'approved'}
+                        onChange={(v) =>
+                          setVerdicts((prev) => ({ ...prev, [c.field]: v }))
+                        }
+                      />
+                    ) : c.outcome ? (
+                      <Badge
+                        variant={
+                          c.outcome === 'approved' ? 'success' : 'destructive'
+                        }
+                      >
+                        {c.outcome === 'approved' ? 'Approved' : 'Rejected'}
+                      </Badge>
+                    ) : null}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
@@ -709,7 +736,8 @@ function DecisionDialog({
           .filter(([, v]) => v === 'rejected')
           .map(
             ([f]) =>
-              PROFILE_FIELD_LABELS[f as keyof typeof PROFILE_FIELD_LABELS] ?? f,
+              PROFILE_FIELD_LABELS[f] ??
+              (f.startsWith('certification:') ? 'a certification' : f),
           )
           .join(', ')
       : ''

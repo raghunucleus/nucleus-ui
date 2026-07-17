@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useSearch } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import {
   ArrowLeft,
   ChevronRight,
@@ -10,7 +10,6 @@ import {
 import { toast } from 'sonner'
 
 import { PageHeader } from '@/components/portal-layout'
-import { ProfileUpdateRequestDialog } from '@/components/profile-update-request-dialog'
 import { ApproversList } from '@/components/requests/approvers-list'
 import { RequestChanges } from '@/components/requests/request-changes'
 import {
@@ -33,8 +32,8 @@ import {
   fetchMyRequestCounts,
   fetchMyRequests,
   fetchRequestCatalog,
+  labelForChange,
   OPEN_REQUEST_STATUSES,
-  PROFILE_FIELD_LABELS,
   REQUEST_STATUS_LABELS,
   requestStatusVariant,
   typeLabel,
@@ -222,9 +221,7 @@ function RequestRow({
             </Badge>
           </span>
           <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-            {changes
-              .map((c) => PROFILE_FIELD_LABELS[c.field] ?? c.field)
-              .join(', ')}
+            {changes.map((c) => labelForChange(c)).join(', ')}
             {' · '}
             {formatDate(request.created_at)}
           </span>
@@ -250,11 +247,11 @@ function RequestDetail({
   onBack: () => void
   onChanged: () => void
 }) {
+  const navigate = useNavigate()
   const [detail, setDetail] = useState<StudentRequestDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmCancel, setConfirmCancel] = useState(false)
-  const [reviseOpen, setReviseOpen] = useState(false)
 
   const load = useCallback(async () => {
     setError(null)
@@ -346,7 +343,17 @@ function RequestDetail({
             {isOpen && (
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
                 {isSentBack && (
-                  <Button size="sm" onClick={() => setReviseOpen(true)}>
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      // Revising is a continuation of this request, actioned on
+                      // the profile module's full-screen form in edit mode.
+                      void navigate({
+                        to: '/profile/request-changes',
+                        search: { edit: detail.id },
+                      })
+                    }
+                  >
                     Revise &amp; resubmit
                   </Button>
                 )}
@@ -403,16 +410,6 @@ function RequestDetail({
           />
         </Card>
       </div>
-
-      <ProfileUpdateRequestDialog
-        open={reviseOpen}
-        onOpenChange={setReviseOpen}
-        editRequest={detail}
-        onSubmitted={() => {
-          void load()
-          onChanged()
-        }}
-      />
     </>
   )
 }
