@@ -44,6 +44,15 @@ These are the approved libraries for each concern. Use them; do **not** introduc
 ### Google OAuth — `@react-oauth/google`
 - Use `<GoogleOAuthProvider>` at the app root and the library's hooks/components for sign-in flows. Do not hand-roll the OAuth redirect or talk to Google's JS SDK directly.
 
+### Rich text — `lexical` + `@lexical/*`
+- All rich-text authoring uses Lexical through the wrappers in [src/components/ui/](src/components/ui/). Do **not** add a second editor (no tiptap, slate, quill, draft-js) or a markdown editor alongside it.
+- **Editing:** import `LazyRichTextEditor` from `@/components/ui/lazy-rich-text-editor`. Never import `rich-text-editor` directly — a static import pulls Lexical (the app's largest dependency) back into the initial bundle.
+- **Display:** use `RichTextView` from `@/components/ui/rich-text/rich-text-view`. It walks the stored JSON with no Lexical runtime; never mount an editor just to show content.
+- Values are Lexical's `SerializedEditorState` JSON, stored in `jsonb`. Empty is `null`, never an empty-paragraph blob.
+- The editor is **uncontrolled after mount** — `value` seeds it once. To show different content, remount with a `key`.
+- Keep every `@lexical/*` package on the same version as `lexical` itself; `@lexical/react` is a peer of the rest and a split version breaks at runtime.
+- The JSON is also read by `nucleus-mobile`'s React Native `RichTextView`. Adding a node type to `rich-text/nodes.ts` means teaching both renderers about it, or it degrades to plain text on read.
+
 ### Spreadsheets — `exceljs` and `xlsx`
 - **`xlsx` (SheetJS) for reading** user-uploaded spreadsheets — parsing rows from `.xlsx` / `.csv` uploads in bulk-import flows.
 - **`exceljs` for writing** generated exports — when the output needs styling, column widths, multiple sheets, or formulas.

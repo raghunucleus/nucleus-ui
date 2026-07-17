@@ -307,6 +307,232 @@ export function SearchableMultiSelect({
   )
 }
 
+/**
+ * Searchable single-select over a lookup list — the single-value sibling of
+ * {@link SearchableMultiSelect}. The trigger shows the chosen option's name (or
+ * the placeholder) and, when `clearable`, an inline ✕ to reset to nothing; the
+ * option list lives behind a search popover. Suits long lists (companies,
+ * designations, …) where a native `<select>` is hard to scan. Value is the
+ * option id, or `null` for "nothing selected".
+ */
+export function SearchableSelect({
+  options,
+  value,
+  onChange,
+  placeholder = 'Select…',
+  searchPlaceholder = 'Search…',
+  emptyMessage = 'No results',
+  noOptions = 'No options configured yet.',
+  clearable = true,
+  id,
+}: {
+  options: Chip[]
+  value: number | null
+  onChange: (id: number | null) => void
+  placeholder?: string
+  searchPlaceholder?: string
+  emptyMessage?: string
+  noOptions?: string
+  clearable?: boolean
+  id?: string
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [query, setQuery] = React.useState('')
+  const rootRef = React.useRef<HTMLDivElement>(null)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  const filtered = React.useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return options
+    return options.filter((o) => o.name.toLowerCase().includes(q))
+  }, [options, query])
+
+  const selected = React.useMemo(
+    () => options.find((o) => o.id === value) ?? null,
+    [options, value],
+  )
+
+  React.useEffect(() => {
+    if (open) {
+      setQuery('')
+      requestAnimationFrame(() => inputRef.current?.focus())
+    } else {
+      setQuery('')
+    }
+  }, [open])
+
+  // Close on outside mousedown.
+  React.useEffect(() => {
+    if (!open) return
+    function onDown(e: MouseEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [open])
+
+  if (options.length === 0) {
+    return <p className="text-xs text-muted-foreground">{noOptions}</p>
+  }
+
+  const pick = (optId: number) => {
+    onChange(optId)
+    setOpen(false)
+  }
+
+  const showClear = clearable && !!selected
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        id={id}
+        role="combobox"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          'flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background pl-3 text-sm shadow-xs outline-none transition',
+          'focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          'hover:bg-accent/40 hover:text-accent-foreground',
+          showClear ? 'pr-14' : 'pr-3',
+        )}
+      >
+        <span
+          className={cn('truncate text-left', !selected && 'text-muted-foreground')}
+        >
+          {selected ? selected.name : placeholder}
+        </span>
+        <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+      </button>
+
+      {/* Clear sits as a sibling, not a child of the trigger: a <button> may not
+          nest another interactive element. */}
+      {showClear && (
+        <button
+          type="button"
+          onClick={() => onChange(null)}
+          aria-label="Clear selection"
+          className="absolute right-8 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        >
+          <X className="size-3.5" />
+        </button>
+      )}
+
+      {open && (
+        <div
+          className={cn(
+            'absolute left-0 top-full z-50 mt-1 w-full min-w-[14rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg',
+            'animate-in fade-in-0 zoom-in-95 duration-150',
+          )}
+        >
+          <div className="flex items-center gap-2 border-b px-3 py-2">
+            <Search className="size-3.5 shrink-0 text-muted-foreground" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+              placeholder={searchPlaceholder}
+              className="h-7 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+            {query && (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setQuery('')
+                  inputRef.current?.focus()
+                }}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div role="listbox" className="max-h-64 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                {emptyMessage}
+              </div>
+            ) : (
+              filtered.map((o) => {
+                const on = o.id === value
+                return (
+                  <button
+                    key={o.id}
+                    type="button"
+                    role="option"
+                    aria-selected={on}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => pick(o.id)}
+                    className={cn(
+                      'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground',
+                      on && 'font-medium',
+                    )}
+                  >
+                    <span className="min-w-0 truncate">{o.name}</span>
+                    {on && <Check className="size-4 shrink-0 text-primary" />}
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** "Tata Consultancy Services" → "TC"; falls back to "?" for an unusable name. */
+export function companyInitials(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? '')
+      .join('') || '?'
+  )
+}
+
+/**
+ * A company's logo, with an initials fallback when it has none. Shared by the
+ * company lists and the drives screen so the two never drift apart.
+ */
+export function CompanyLogo({
+  name,
+  logoUrl,
+  className,
+}: {
+  name: string
+  logoUrl: string | null
+  className?: string
+}) {
+  if (logoUrl) {
+    return (
+      <img
+        src={logoUrl}
+        alt=""
+        className={cn('rounded-md border object-contain', className ?? 'size-8')}
+      />
+    )
+  }
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-center rounded-md border bg-muted text-[10px] font-semibold text-muted-foreground',
+        className ?? 'size-8',
+      )}
+    >
+      {companyInitials(name)}
+    </div>
+  )
+}
+
 /** Read-only chip row for the detail view. */
 export function ChipRow({ items }: { items: Chip[] | { id: number; name: string }[] }) {
   if (!items || items.length === 0) {

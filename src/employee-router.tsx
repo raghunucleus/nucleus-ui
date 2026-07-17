@@ -15,6 +15,10 @@ import EmployeeCompaniesPage from '@/pages/employee/corporate-relations-companie
 import EmployeeCompanyAttributesPage from '@/pages/employee/corporate-relations-company-attributes'
 import EmployeeCompanyFormPage from '@/pages/employee/corporate-relations-company-form'
 import EmployeeCompanyManagementPage from '@/pages/employee/corporate-relations-company-management'
+import EmployeeDriveAttributesPage from '@/pages/employee/drive-management-drive-attributes'
+import EmployeeDriveDetailPage from '@/pages/employee/drive-management-drive-detail'
+import EmployeeDriveFormPage from '@/pages/employee/drive-management-drive-form'
+import EmployeeDrivesPage from '@/pages/employee/drive-management-drives'
 import EmployeeHome from '@/pages/employee/home'
 import EmployeeIdCardPage from '@/pages/employee/id-card'
 import EmployeeMarksUploadPage from '@/pages/employee/marks-upload'
@@ -161,6 +165,40 @@ const companyAttributesRoute = createRoute({
   component: EmployeeCompanyAttributesPage,
 })
 
+const driveAttributesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/drive-management/drive-attributes',
+  component: EmployeeDriveAttributesPage,
+})
+
+const drivesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/drive-management/drives',
+  component: EmployeeDrivesPage,
+})
+
+// Declared before the `$driveId` route so the literal segment wins the match.
+const driveCreateRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/drive-management/drives/new',
+  component: EmployeeDriveFormPage,
+})
+
+// The detail screen (tabs: overview, eligibility). A row click lands here.
+const driveDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/drive-management/drives/$driveId',
+  component: EmployeeDriveDetailPage,
+})
+
+// The create/edit form now lives under `/edit`; the detail's "Edit" button
+// routes here.
+const driveEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/drive-management/drives/$driveId/edit',
+  component: EmployeeDriveFormPage,
+})
+
 // Paths must equal the RBAC catalog's `web_route` values for the two
 // derived Requests screens.
 const requestsApprovalsRoute = createRoute({
@@ -225,6 +263,11 @@ const routeTree = rootRoute.addChildren([
   companyEditRoute,
   companiesRoute,
   companyAttributesRoute,
+  driveAttributesRoute,
+  drivesRoute,
+  driveCreateRoute,
+  driveDetailRoute,
+  driveEditRoute,
   requestsApprovalsRoute,
   requestsMineRoute,
   profileRoute,

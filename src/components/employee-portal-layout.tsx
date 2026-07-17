@@ -3,6 +3,7 @@ import {
   Award,
   BookOpen,
   Briefcase,
+  CalendarDays,
   ChevronDown,
   ClipboardCheck,
   ClipboardList,
@@ -58,6 +59,7 @@ import { withGlobalLoader } from '@/stores/loader-store'
 
 const ICON_MAP: Record<string, LucideIcon> = {
   BookOpen,
+  CalendarDays,
   GraduationCap,
   ClipboardCheck,
   ClipboardList,
@@ -96,6 +98,7 @@ const MODULE_TONES: Record<ToneName, { bg: string; text: string }> = {
 
 const ICON_TONE: Record<string, ToneName> = {
   BookOpen: 'violet',
+  CalendarDays: 'cyan',
   GraduationCap: 'blue',
   ClipboardCheck: 'emerald',
   ClipboardList: 'amber',

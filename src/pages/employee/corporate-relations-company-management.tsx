@@ -37,6 +37,7 @@ import {
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { CompanyDetail } from '@/components/corporate-relations/company-detail'
 import {
+  CompanyLogo,
   NativeSelect,
   SearchableMultiSelect,
   formatDate,
@@ -198,17 +199,6 @@ function packageLabel(min: string | null, max: string | null): string {
   if (lo != null && hi != null)
     return lo === hi ? `${lo} LPA` : `${lo}–${hi} LPA`
   return `${(lo ?? hi) as number} LPA`
-}
-
-function companyInitials(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0]?.toUpperCase() ?? '')
-      .join('') || '?'
-  )
 }
 
 /** Small toggle-chip multi-select over a fixed string enum (tiers, …). */
@@ -977,17 +967,7 @@ export function CompanyList({
               {data.items.map((c) => (
                 <TableRow key={c.id}>
                     <TableCell>
-                      {c.logo_url ? (
-                        <img
-                          src={c.logo_url}
-                          alt=""
-                          className="size-8 rounded-md border object-contain"
-                        />
-                      ) : (
-                        <div className="flex size-8 items-center justify-center rounded-md border bg-muted text-[10px] font-semibold text-muted-foreground">
-                          {companyInitials(c.name)}
-                        </div>
-                      )}
+                      <CompanyLogo name={c.name} logoUrl={c.logo_url} />
                     </TableCell>
                     <TableCell>
                       <button

@@ -13,6 +13,11 @@ import { PageHeader } from '@/components/portal-layout'
 import { ApproversList } from '@/components/requests/approvers-list'
 import { RequestChanges } from '@/components/requests/request-changes'
 import {
+  RequestFilters,
+  type DateRange,
+  type SortDir,
+} from '@/components/requests/request-filters'
+import {
   RequestModulesPanel,
   type TypeFilter,
 } from '@/components/requests/request-modules-panel'
@@ -61,6 +66,16 @@ function formatDate(iso: string | null): string {
   })
 }
 
+/** Inclusive test against a local-date range; the `to` day counts to its end. */
+function inDateRange(iso: string, range: DateRange): boolean {
+  if (!range) return true
+  const t = new Date(iso).getTime()
+  return (
+    t >= new Date(`${range.from}T00:00:00`).getTime() &&
+    t <= new Date(`${range.to}T23:59:59.999`).getTime()
+  )
+}
+
 /**
  * My Requests is TRACKING-ONLY: requests are raised from the owning module's
  * screen (profile updates from the Profile screen; future types from theirs).
@@ -82,6 +97,8 @@ export default function MyRequests() {
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>(null)
+  const [dateRange, setDateRange] = useState<DateRange>(null)
+  const [sortDir, setSortDir] = useState<SortDir>('newest')
   // The notification deep-link (`?open=<id>`) opens that request on arrival.
   const [openId, setOpenId] = useState<number | null>(search.open ?? null)
 
@@ -131,11 +148,18 @@ export default function MyRequests() {
     )
   }
 
-  const visible = requests.filter(
-    (r) =>
-      (statusFilter === 'all' || r.status === statusFilter) &&
-      (typeFilter === null || r.request_type === typeFilter),
-  )
+  const visible = requests
+    .filter(
+      (r) =>
+        (statusFilter === 'all' || r.status === statusFilter) &&
+        (typeFilter === null || r.request_type === typeFilter) &&
+        inDateRange(r.created_at, dateRange),
+    )
+    .sort((a, b) => {
+      const diff =
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      return sortDir === 'newest' ? -diff : diff
+    })
 
   return (
     <>
@@ -153,39 +177,49 @@ export default function MyRequests() {
         onChange={setStatusFilter}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[16rem_1fr] lg:items-start">
+      <RequestFilters
+        className="mb-4"
+        value={dateRange}
+        onChange={setDateRange}
+        sort={sortDir}
+        onSortChange={setSortDir}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
         <RequestModulesPanel
           catalog={catalog}
           value={typeFilter}
           onChange={setTypeFilter}
         />
 
-        {visible.length === 0 ? (
-          <StateView
-            icon={ClipboardList}
-            title={
-              requests.length === 0
-                ? 'No requests yet'
-                : 'Nothing matches these filters'
-            }
-            description={
-              requests.length === 0
-                ? 'Requests you raise from other screens will show up here.'
-                : 'Try a different status or module.'
-            }
-          />
-        ) : (
-          <div className="space-y-2.5">
-            {visible.map((r) => (
-              <RequestRow
-                key={r.id}
-                request={r}
-                catalog={catalog}
-                onOpen={() => setOpenId(r.id)}
-              />
-            ))}
-          </div>
-        )}
+        <div className="min-w-0">
+          {visible.length === 0 ? (
+            <StateView
+              icon={ClipboardList}
+              title={
+                requests.length === 0
+                  ? 'No requests yet'
+                  : 'Nothing matches these filters'
+              }
+              description={
+                requests.length === 0
+                  ? 'Requests you raise from other screens will show up here.'
+                  : 'Try a different status, module or date.'
+              }
+            />
+          ) : (
+            <div className="space-y-2.5">
+              {visible.map((r) => (
+                <RequestRow
+                  key={r.id}
+                  request={r}
+                  catalog={catalog}
+                  onOpen={() => setOpenId(r.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </>
   )

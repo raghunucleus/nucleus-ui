@@ -17,6 +17,11 @@ import { formatDate, Textarea } from '@/components/corporate-relations/bits'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { ApproversList } from '@/components/requests/approvers-list'
 import {
+  RequestFilters,
+  type DateRange,
+  type SortDir,
+} from '@/components/requests/request-filters'
+import {
   RequestModulesPanel,
   type TypeFilter,
 } from '@/components/requests/request-modules-panel'
@@ -99,6 +104,8 @@ function Approvals({ actions }: { actions: string[] }) {
   // Defaults to the actionable slice — an approver opens this to work a queue.
   const [status, setStatus] = useState<StatusFilter>('pending')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>(null)
+  const [dateRange, setDateRange] = useState<DateRange>(null)
+  const [sortDir, setSortDir] = useState<SortDir>('newest')
   const [page, setPage] = useState(1)
   const [data, setData] = useState<Paginated<ApprovalRow> | null>(null)
   const [catalog, setCatalog] = useState<CatalogModule[]>([])
@@ -142,6 +149,9 @@ function Approvals({ actions }: { actions: string[] }) {
         fetchApprovals({
           status: status === 'all' ? 'all' : (status as RequestStatus),
           type: typeFilter ? (typeFilter as RequestType) : undefined,
+          from: dateRange?.from,
+          to: dateRange?.to,
+          sort: sortDir,
           page,
           limit: PAGE_SIZE,
         }),
@@ -154,7 +164,7 @@ function Approvals({ actions }: { actions: string[] }) {
     } finally {
       setLoading(false)
     }
-  }, [status, typeFilter, page])
+  }, [status, typeFilter, dateRange, sortDir, page])
 
   useEffect(() => {
     void load()
@@ -197,7 +207,20 @@ function Approvals({ actions }: { actions: string[] }) {
         }}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[16rem_1fr] lg:items-start">
+      <RequestFilters
+        value={dateRange}
+        onChange={(next) => {
+          setDateRange(next)
+          setPage(1)
+        }}
+        sort={sortDir}
+        onSortChange={(next) => {
+          setSortDir(next)
+          setPage(1)
+        }}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
         <RequestModulesPanel
           catalog={catalog}
           value={typeFilter}

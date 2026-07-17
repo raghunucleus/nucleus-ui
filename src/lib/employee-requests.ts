@@ -65,6 +65,10 @@ export interface EmployeeOwnRequest {
 export interface ApprovalsQuery {
   status?: RequestStatus | 'all'
   type?: RequestType
+  /** Inclusive local-date window on created_at (YYYY-MM-DD). */
+  from?: string
+  to?: string
+  sort?: 'newest' | 'oldest'
   page?: number
   limit?: number
 }

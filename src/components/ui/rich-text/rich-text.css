@@ -1,0 +1,58 @@
+/* Pseudo-element-heavy editor styles that can't be expressed as Tailwind
+   utilities. Colours use the app's CSS variables so they adapt to dark/light.
+   Ported from akrivia-central's central-ui, trimmed to the JD editor's needs
+   (no tables, no drag menu). Imported by both the editor and RichTextView. */
+
+/* Check list ------------------------------------------------------------- */
+.rte-checklist {
+  margin: 0.25rem 0;
+  padding: 0;
+  list-style: none;
+}
+.rte-listitem-checked,
+.rte-listitem-unchecked {
+  position: relative;
+  margin: 0 0 0.125rem 0;
+  padding-left: 1.5rem;
+  list-style: none;
+  outline: none;
+}
+.rte-listitem-checked {
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+}
+.rte-listitem-checked::before,
+.rte-listitem-unchecked::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.18em;
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+  background: var(--background);
+  cursor: pointer;
+}
+.rte-listitem-checked::before {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.rte-listitem-checked::after {
+  content: '';
+  position: absolute;
+  left: 0.36em;
+  top: 0.28em;
+  width: 0.3rem;
+  height: 0.55rem;
+  border: solid var(--primary-foreground);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  cursor: pointer;
+}
+
+/* Horizontal rule selected state ---------------------------------------- */
+.rte-hr.selected {
+  outline: 2px solid var(--ring);
+  user-select: none;
+}
