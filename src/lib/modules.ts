@@ -2,6 +2,7 @@ import {
   Award,
   Bell,
   BookOpen,
+  Briefcase,
   Cake,
   CalendarDays,
   CalendarOff,
@@ -28,6 +29,7 @@ export type ModuleRoute =
   | '/academic-holidays'
   | '/my-requests'
   | '/approvals'
+  | '/placements'
 
 /**
  * The icon accent palette — one hue per module. The actual colors live as
@@ -139,6 +141,13 @@ export const MODULES: Module[] = [
     description: 'College holidays and no-class days.',
     color: 'blue',
     to: '/academic-holidays',
+  },
+  {
+    icon: Briefcase,
+    title: 'Placements',
+    description: 'Drive invitations and your placement journey.',
+    color: 'blue',
+    to: '/placements',
   },
   {
     icon: ClipboardList,

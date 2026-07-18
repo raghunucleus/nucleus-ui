@@ -28,6 +28,7 @@ export type NotificationModuleKey =
   | 'profile'
   | 'requests'
   | 'announcements'
+  | 'placements'
 
 /** Route-independent pointer to the entity a notification is about. */
 export interface NotificationTarget {

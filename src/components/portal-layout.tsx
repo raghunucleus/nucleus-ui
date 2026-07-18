@@ -111,7 +111,7 @@ export function PortalLayout() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
+      <main className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6">
         <Outlet />
       </main>
     </div>
@@ -119,18 +119,22 @@ export function PortalLayout() {
 }
 
 /**
- * Page heading for the feature pages — a back link to the dashboard plus the
- * page title and an optional subtitle.
+ * Compact page heading for the feature pages — a back link to the dashboard
+ * plus a small icon badge and the page title. Kept deliberately short to
+ * preserve vertical space for the actual page content.
  */
 export function PageHeader({
   title,
-  subtitle,
   icon: Icon,
   accent,
   backTo = '/',
   backLabel = 'Back to dashboard',
 }: {
   title: string
+  /**
+   * @deprecated No longer rendered — the header is intentionally compact.
+   * Still accepted so existing call sites need no edit.
+   */
   subtitle?: string
   /** Optional decorative icon, rendered as a colored gradient badge. */
   icon?: LucideIcon
@@ -142,34 +146,26 @@ export function PageHeader({
   backLabel?: string
 }) {
   return (
-    <div className="space-y-3">
+    <div className="flex items-center gap-3">
       <Link
         to={backTo}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        aria-label={backLabel}
+        title={backLabel}
+        className="inline-grid size-9 shrink-0 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
       >
         <ArrowLeft className="size-4" />
-        {backLabel}
       </Link>
-      <div className="flex items-center gap-3.5">
-        {Icon && accent ? (
-          <div
-            className={cn(
-              'grid size-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-icon-on shadow-md ring-1 ring-inset ring-icon-on/15',
-              MODULE_GRADIENT[accent],
-            )}
-          >
-            <Icon className="size-6" />
-          </div>
-        ) : null}
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            {title}
-          </h1>
-          {subtitle ? (
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
-          ) : null}
+      {Icon && accent ? (
+        <div
+          className={cn(
+            'grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br text-icon-on shadow-md ring-1 ring-inset ring-icon-on/15',
+            MODULE_GRADIENT[accent],
+          )}
+        >
+          <Icon className="size-5" />
         </div>
-      </div>
+      ) : null}
+      <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
     </div>
   )
 }

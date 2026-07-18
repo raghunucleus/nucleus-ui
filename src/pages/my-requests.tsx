@@ -14,6 +14,7 @@ import { ApproversList } from '@/components/requests/approvers-list'
 import { RequestChanges } from '@/components/requests/request-changes'
 import {
   RequestFilters,
+  inDateRange,
   type DateRange,
   type SortDir,
 } from '@/components/requests/request-filters'
@@ -64,16 +65,6 @@ function formatDate(iso: string | null): string {
     month: 'short',
     day: 'numeric',
   })
-}
-
-/** Inclusive test against a local-date range; the `to` day counts to its end. */
-function inDateRange(iso: string, range: DateRange): boolean {
-  if (!range) return true
-  const t = new Date(iso).getTime()
-  return (
-    t >= new Date(`${range.from}T00:00:00`).getTime() &&
-    t <= new Date(`${range.to}T23:59:59.999`).getTime()
-  )
 }
 
 /**

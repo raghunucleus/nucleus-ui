@@ -21,6 +21,16 @@ import { cn } from '@/lib/utils'
 export type DateRange = { from: string; to: string } | null
 export type SortDir = 'newest' | 'oldest'
 
+/** Inclusive test against a local-date range; the `to` day counts to its end. */
+export function inDateRange(iso: string, range: DateRange): boolean {
+  if (!range) return true
+  const t = new Date(iso).getTime()
+  return (
+    t >= new Date(`${range.from}T00:00:00`).getTime() &&
+    t <= new Date(`${range.to}T23:59:59.999`).getTime()
+  )
+}
+
 /**
  * Date + sort controls shared by the student "My Requests" list and the
  * employee "Approvals" table. Presentational only: it emits a `DateRange`

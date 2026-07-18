@@ -95,6 +95,23 @@ function emptyProfile(): ProfileDraft {
 const numOrNull = (s: string): number | null =>
   s.trim() === '' ? null : Number(s)
 
+const pad2 = (n: number): string => String(n).padStart(2, '0')
+
+/** ISO instant → the `YYYY-MM-DDTHH:mm` a datetime-local input expects (local). */
+function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+}
+
+/** datetime-local value (local wall time) → an absolute ISO instant. */
+function localInputToIso(local: string): string | null {
+  if (!local) return null
+  const d = new Date(local)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
 export default function EmployeeDriveFormPage() {
   const access = useScreenAccess(SCREEN_KEY)
   const params = useParams({ strict: false }) as { driveId?: string }
@@ -244,7 +261,7 @@ export default function EmployeeDriveFormPage() {
         )
         setSpocEmail(d.spoc_email ?? '')
         setSpocContact(d.spoc_contact ?? '')
-        setRegistrationEnd(d.registration_end_date ?? '')
+        setRegistrationEnd(isoToLocalInput(d.registration_end_date))
         setDriveDate(d.drive_date ?? '')
         setLoadError(null)
       })
@@ -364,7 +381,7 @@ export default function EmployeeDriveFormPage() {
         company_category_ids: companyCategoryIds,
         spoc_email: spocEmail.trim() || null,
         spoc_contact: spocContact.trim() || null,
-        registration_end_date: registrationEnd || null,
+        registration_end_date: localInputToIso(registrationEnd),
         drive_date: driveDate || null,
         ...buildScopedPayload(driveScoped, 'drive'),
         profiles: profiles.map((p, i) => ({
@@ -642,10 +659,10 @@ export default function EmployeeDriveFormPage() {
               placeholder="Phone"
             />
           </Field>
-          <Field label="Registration end date" htmlFor="drive-reg-end">
+          <Field label="Registration end (date & time)" htmlFor="drive-reg-end">
             <Input
               id="drive-reg-end"
-              type="date"
+              type="datetime-local"
               value={registrationEnd}
               onChange={(e) => setRegistrationEnd(e.target.value)}
             />

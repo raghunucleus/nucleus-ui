@@ -3,6 +3,7 @@ import {
   ArrowUp,
   Award,
   Bell,
+  Briefcase,
   Cake,
   CalendarDays,
   CheckCheck,
@@ -57,6 +58,7 @@ const MODULE_META: Record<
   profile: { icon: UserRound, color: 'violet' },
   announcements: { icon: Megaphone, color: 'orange' },
   requests: { icon: ClipboardList, color: 'orange' },
+  placements: { icon: Briefcase, color: 'blue' },
 }
 
 export default function NotificationsPage() {

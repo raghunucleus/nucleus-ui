@@ -61,9 +61,13 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
 
 // --- catalog: the Modules tree (module → request types) ---------------------
 
-/** One request type as a leaf in the Modules tree. */
+/**
+ * One request type as a leaf in the Modules tree. `type` is a plain string so
+ * the same tree (and `RequestModulesPanel`) can describe any module's types —
+ * the requests framework's `profile_update`, the approvals inbox's leaves, etc.
+ */
 export interface CatalogType {
-  type: RequestType
+  type: string
   label: string
   order: number
 }

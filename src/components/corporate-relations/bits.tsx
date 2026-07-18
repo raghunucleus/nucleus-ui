@@ -604,6 +604,20 @@ export function formatDate(iso: string | null | undefined): string {
   })
 }
 
+/** Like `formatDate` but includes the time — for datetime fields (deadlines). */
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 export function titleCase(s: string): string {
   return s
     .replace(/[_-]/g, ' ')

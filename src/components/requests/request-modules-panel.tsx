@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  Briefcase,
   ChevronDown,
   ClipboardList,
   LayoutGrid,
@@ -18,6 +19,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   UserRound,
   ClipboardList,
   LayoutGrid,
+  Briefcase,
 }
 
 function iconFor(name: string): LucideIcon {

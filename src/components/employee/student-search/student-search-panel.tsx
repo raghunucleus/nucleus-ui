@@ -6,10 +6,13 @@ import {
   useState,
 } from 'react'
 import {
+  CheckCircle2,
   Download,
   Loader2,
   Maximize2,
   Search as SearchIcon,
+  UserPlus,
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -36,6 +39,8 @@ import type {
   FkOption,
   SearchGroup,
   SearchMeta,
+  StudentImportApi,
+  StudentImportSummary,
   StudentSearchApi,
   StudentSearchBody,
   StudentSearchResult,
@@ -67,6 +72,7 @@ export function StudentSearchPanel({
   api,
   initialFilters,
   lockedAttrs,
+  importApi,
 }: {
   api: StudentSearchApi
   initialFilters?: SearchGroup | null
@@ -75,6 +81,12 @@ export function StudentSearchPanel({
    * user is asked to confirm before changing or removing them.
    */
   lockedAttrs?: string[]
+  /**
+   * When set, the panel gains an import affordance: a per-row Import button and
+   * an "Import all matched" action, with a post-import summary. Omitted by
+   * search-only consumers.
+   */
+  importApi?: StudentImportApi
 }) {
   const [meta, setMeta] = useState<SearchMeta | null>(null)
   const [metaError, setMetaError] = useState<string | null>(null)
@@ -253,6 +265,61 @@ export function StudentSearchPanel({
     [api, buildBody, pageSize],
   )
 
+  // --- import (only wired when `importApi` is provided) --------------------
+  const [importingId, setImportingId] = useState<number | null>(null)
+  const [importingAll, setImportingAll] = useState(false)
+  const [confirmImportAll, setConfirmImportAll] = useState(false)
+  const [importSummary, setImportSummary] =
+    useState<StudentImportSummary | null>(null)
+
+  const afterImport = useCallback(
+    (summary: StudentImportSummary) => {
+      setImportSummary(summary)
+      const { imported, already_existed } = summary
+      toast.success(
+        `${imported} imported${
+          already_existed > 0 ? ` · ${already_existed} already in drive` : ''
+        }.`,
+      )
+      importApi?.onChanged?.()
+      // Refresh the current page so `in_drive` badges reflect the new members.
+      void runSearch(result?.page ?? 1, pageSize)
+    },
+    [importApi, runSearch, result?.page, pageSize],
+  )
+
+  const importRow = useCallback(
+    async (row: Record<string, unknown>) => {
+      if (!importApi || typeof row.id !== 'number') return
+      setImportingId(row.id)
+      try {
+        afterImport(await importApi.importSelected([row.id]))
+      } catch (err) {
+        toast.error(
+          err instanceof ApiError ? err.message : 'Could not import the student.',
+        )
+      } finally {
+        setImportingId(null)
+      }
+    },
+    [importApi, afterImport],
+  )
+
+  const importAll = useCallback(async () => {
+    if (!importApi) return
+    setConfirmImportAll(false)
+    setImportingAll(true)
+    try {
+      afterImport(await importApi.importAll(buildBody(1, pageSize)))
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : 'Could not import the students.',
+      )
+    } finally {
+      setImportingAll(false)
+    }
+  }, [importApi, afterImport, buildBody, pageSize])
+
   const modeTabs = useMemo(
     () =>
       [
@@ -382,6 +449,21 @@ export function StudentSearchPanel({
             />
           </div>
           <div className="ml-auto flex items-center gap-2">
+            {importApi && result ? (
+              <Button
+                variant="default"
+                size="sm"
+                disabled={importingAll || searching || result.total === 0}
+                onClick={() => setConfirmImportAll(true)}
+              >
+                {importingAll ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <UserPlus className="size-4" />
+                )}
+                Import all ({result.total.toLocaleString()})
+              </Button>
+            ) : null}
             <ColumnPicker
               meta={meta}
               columns={columns}
@@ -411,6 +493,36 @@ export function StudentSearchPanel({
           </div>
         </div>
 
+        {/* Post-import summary — dismissible, sits above the table. */}
+        {importSummary ? (
+          <div className="flex shrink-0 items-center gap-3 rounded-lg border border-success/30 bg-success/5 px-3 py-2 text-sm">
+            <CheckCircle2 className="size-4 shrink-0 text-success" />
+            <span>
+              <span className="font-semibold tabular-nums">
+                {importSummary.imported.toLocaleString()}
+              </span>{' '}
+              imported
+              {importSummary.already_existed > 0 ? (
+                <>
+                  {' · '}
+                  <span className="font-semibold tabular-nums">
+                    {importSummary.already_existed.toLocaleString()}
+                  </span>{' '}
+                  already in drive
+                </>
+              ) : null}
+            </span>
+            <button
+              type="button"
+              onClick={() => setImportSummary(null)}
+              className="ml-auto text-muted-foreground hover:text-foreground"
+              aria-label="Dismiss"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        ) : null}
+
         <div className="min-h-0 flex-1">
           {/* Shimmer whenever a search is in flight — including refetches after
               a column / filter change — so the stale table never sits there
@@ -430,6 +542,8 @@ export function StudentSearchPanel({
               onSort={toggleSort}
               onPage={(page) => void runSearch(page, pageSize)}
               onPageSize={setPageSize}
+              onImportRow={importApi ? (row) => void importRow(row) : undefined}
+              importingId={importingId}
             />
           ) : null}
         </div>
@@ -475,6 +589,40 @@ export function StudentSearchPanel({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {importApi ? (
+        <Dialog open={confirmImportAll} onOpenChange={setConfirmImportAll}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Import all matched students?</DialogTitle>
+              <DialogDescription>
+                This imports the{' '}
+                <span className="font-semibold">
+                  {result?.total.toLocaleString() ?? 0}
+                </span>{' '}
+                students currently matched into this drive. Students already in
+                the drive are skipped — nothing is duplicated.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmImportAll(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={() => void importAll()} disabled={importingAll}>
+                {importingAll ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <UserPlus className="size-4" />
+                )}
+                Import all
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      ) : null}
 
       <Dialog
         open={confirmOpen}

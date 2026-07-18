@@ -69,6 +69,29 @@ const REGISTRY: Partial<Record<NotificationModuleKey, ModuleResolver>> = {
       return null
     },
   },
+  placements: {
+    home: { to: '/placements' },
+    resolve: (t) => {
+      // An invite opens the Invites tab with that drive's detail; an outcome
+      // notification lands on the Drives tab.
+      if (t.type === 'drive-invite' && t.id != null) {
+        return {
+          to: '/placements',
+          search: { tab: 'invites', drive: Number(t.id) },
+        }
+      }
+      if (
+        (t.type === 'drive-outcome' || t.type === 'drive-revoked') &&
+        t.id != null
+      ) {
+        return {
+          to: '/placements',
+          search: { tab: 'drives', drive: Number(t.id) },
+        }
+      }
+      return null
+    },
+  },
   // 'announcements' and 'fees' intentionally absent — no live page yet (fees
   // is disabled / coming soon), so they resolve to null ("no screen to open")
   // until the modules ship.

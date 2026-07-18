@@ -197,6 +197,25 @@ export interface DriveEligibilityOptions {
 }
 
 /**
+ * A drive's eligibility with ids/codes resolved to human labels — the read-only
+ * shape rendered on the employee Overview and the student drive view. Empty
+ * arrays / null thresholds mean "no restriction on that axis";
+ * `has_restrictions` is false only when the drive is open to everyone.
+ */
+export interface EligibilitySummary {
+  programmes: string[]
+  entry_types: string[]
+  genders: string[]
+  passout_years: number[]
+  allow_backlog_history: boolean
+  max_current_backlogs: number | null
+  min_tenth_percentage: number | null
+  min_twelfth_or_diploma_percentage: number | null
+  min_btech_cgpa: number | null
+  has_restrictions: boolean
+}
+
+/**
  * The switchable fields, shared by the drive and by each profile. Exactly one
  * side carries them, per the drive's `*_scope`.
  *
@@ -282,7 +301,7 @@ export interface DriveDetail extends DriveScopedRead {
   drive_name: string
   profile_type: DriveProfileType
   status: DriveStatus
-  company: { id: number; name: string; logo_url: string | null }
+  company: { id: number; name: string; website: string | null; logo_url: string | null }
   company_categories: Chip[]
   offer_type_scope: DriveFieldScope
   job_location_scope: DriveFieldScope
@@ -295,6 +314,16 @@ export interface DriveDetail extends DriveScopedRead {
   profiles: DriveProfileRead[]
   created_at: string
   updated_at: string
+}
+
+/** A company website as a browser-openable href (adds a scheme when missing). */
+export function companyWebsiteHref(website: string): string {
+  return /^https?:\/\//i.test(website) ? website : `https://${website}`
+}
+
+/** The same website trimmed to a compact display label (no scheme, no trailing slash). */
+export function companyWebsiteLabel(website: string): string {
+  return website.replace(/^https?:\/\//i, '').replace(/\/$/, '')
 }
 
 export interface DriveWrite extends DriveScopedWrite {
@@ -432,6 +461,15 @@ export function getDriveEligibility(id: number): Promise<DriveEligibility> {
   )
 }
 
+/** A drive's eligibility, ids resolved to labels — for the read-only Overview. */
+export function getDriveEligibilitySummary(
+  id: number,
+): Promise<EligibilitySummary> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${id}/eligibility/summary`, { token }),
+  )
+}
+
 /** Replace a drive's eligibility. */
 export function saveDriveEligibility(
   id: number,
@@ -491,6 +529,302 @@ export function getDriveStudentsFilterPrefill(
 ): Promise<{ filters: SearchGroup | null }> {
   return withEmployeeAuth((token) =>
     apiFetch(`${DRIVES_ROOT}/${driveId}/students/filter-prefill`, { token }),
+  )
+}
+
+// --- Students tab (the drive's persisted shortlist + lifecycle) ------------
+
+/**
+ * The drive-student lifecycle codes — a frozen mirror of the server's
+ * drive-student-status.ts. Numeric with gaps of 10 on purpose (user-confirmed)
+ * so states can be inserted later without renumbering.
+ */
+export const DRIVE_STUDENT_STATUS = {
+  IMPORTED: 10,
+  INVITED: 20,
+  ACCEPTED: 30,
+  DENIED: 40,
+  NOT_ATTENDED: 50,
+  SELECTED: 60,
+  NOT_SELECTED: 70,
+  REVOKED: 80,
+} as const
+
+export type DriveStudentStatus =
+  (typeof DRIVE_STUDENT_STATUS)[keyof typeof DRIVE_STUDENT_STATUS]
+
+/** Statuses an employee may revoke from (Invited/Accepted). */
+export const REVOCABLE_STATUSES: number[] = [
+  DRIVE_STUDENT_STATUS.INVITED,
+  DRIVE_STUDENT_STATUS.ACCEPTED,
+]
+
+export const DRIVE_STUDENT_STATUS_LABELS: Record<number, string> = {
+  10: 'Imported',
+  20: 'Invited',
+  30: 'Accepted',
+  40: 'Denied',
+  50: 'Not Attended',
+  60: 'Selected',
+  70: 'Not Selected',
+  80: 'Revoked',
+}
+
+export type DriveStudentBadgeVariant =
+  | 'secondary'
+  | 'warning'
+  | 'success'
+  | 'destructive'
+  | 'muted'
+  | 'default'
+
+export const DRIVE_STUDENT_STATUS_BADGE: Record<
+  number,
+  DriveStudentBadgeVariant
+> = {
+  10: 'muted',
+  20: 'warning',
+  30: 'default',
+  40: 'destructive',
+  50: 'secondary',
+  60: 'success',
+  70: 'destructive',
+  80: 'muted',
+}
+
+/** The outcomes an employee can set on an Accepted row. */
+export const DRIVE_OUTCOME_OPTIONS: { value: 50 | 60 | 70; label: string }[] = [
+  { value: 60, label: 'Selected' },
+  { value: 70, label: 'Not Selected' },
+  { value: 50, label: 'Not Attended' },
+]
+
+/** Human labels for the audit-log action verbs (the track view). */
+export const DRIVE_STUDENT_ACTION_LABELS: Record<string, string> = {
+  imported: 'Imported',
+  invited: 'Invited',
+  reminded: 'Reminded',
+  accepted: 'Accepted',
+  denied: 'Denied',
+  outcome: 'Outcome recorded',
+  revoked: 'Revoked',
+}
+
+/** One entry in a student's drive track (audit trail). */
+export interface DriveStudentEvent {
+  id: number
+  action: string
+  from_status: number | null
+  to_status: number
+  reason: string | null
+  actor_type: string
+  actor_name: string | null
+  created_at: string
+}
+
+export interface DriveStudentTrack {
+  student: { id: number; roll_no: string; display_name: string }
+  current_status: number
+  events: DriveStudentEvent[]
+}
+
+export interface DriveRevokeSummary {
+  revoked: number
+  skipped: number
+  requested: number
+}
+
+export interface DriveRemindSummary {
+  reminded: number
+  skipped: number
+  requested: number
+}
+
+/** Result of an import call — new rows vs. those already in the drive. */
+export interface DriveStudentImportSummary {
+  imported: number
+  already_existed: number
+  requested: number
+}
+
+/** Result of an invite call — rows moved 10 → 20 vs. skipped. */
+export interface DriveInviteSummary {
+  invited: number
+  skipped: number
+  requested: number
+}
+
+/** Result of an outcome call — rows moved 30 → outcome vs. skipped. */
+export interface DriveOutcomeSummary {
+  updated: number
+  skipped: number
+  requested: number
+}
+
+/** One imported student, as the Students tab lists them. */
+export interface DriveStudentRow {
+  /** Student PK — the id used to remove/invite/mark. */
+  id: number
+  roll_no: string
+  display_name: string
+  programme: string | null
+  imported_at: string
+  imported_by: string | null
+  status: number
+  invited_at: string | null
+  responded_at: string | null
+  rejection_reason: string | null
+  outcome_marked_at: string | null
+}
+
+export interface DriveStudentsPage {
+  rows: DriveStudentRow[]
+  total: number
+  page: number
+  pageSize: number
+  pageCount: number
+}
+
+/** Import explicit student ids (record-level or small batch). */
+export function importDriveStudents(
+  driveId: number,
+  studentIds: number[],
+): Promise<DriveStudentImportSummary> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/import`, {
+      method: 'POST',
+      body: { student_ids: studentIds },
+      token,
+    }),
+  )
+}
+
+/** Import every student matching the current Filter query. */
+export function importAllDriveStudents(
+  driveId: number,
+  body: StudentSearchBody,
+): Promise<DriveStudentImportSummary> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/import-all`, {
+      method: 'POST',
+      body,
+      token,
+    }),
+  )
+}
+
+/** The drive's imported students (paginated, optionally by status). */
+export function listDriveStudents(
+  driveId: number,
+  opts: {
+    page?: number
+    pageSize?: number
+    search?: string
+    status?: number
+  } = {},
+): Promise<DriveStudentsPage> {
+  const qs = new URLSearchParams()
+  if (opts.page) qs.set('page', String(opts.page))
+  if (opts.pageSize) qs.set('pageSize', String(opts.pageSize))
+  if (opts.search?.trim()) qs.set('search', opts.search.trim())
+  if (opts.status !== undefined) qs.set('status', String(opts.status))
+  const suffix = qs.toString() ? `?${qs}` : ''
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students${suffix}`, { token }),
+  )
+}
+
+/** Invite explicit students (10 → 20 + notification). Drive must be published. */
+export function inviteDriveStudents(
+  driveId: number,
+  studentIds: number[],
+): Promise<DriveInviteSummary> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/invite`, {
+      method: 'POST',
+      body: { student_ids: studentIds },
+      token,
+    }),
+  )
+}
+
+/** Invite every still-Imported student in the drive. */
+export function inviteAllDriveStudents(
+  driveId: number,
+): Promise<DriveInviteSummary> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/invite-all`, {
+      method: 'POST',
+      token,
+    }),
+  )
+}
+
+/** Nudge Invited students who haven't responded (re-sends the notification). */
+export function remindDriveStudents(
+  driveId: number,
+  studentIds: number[],
+): Promise<DriveRemindSummary> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/remind`, {
+      method: 'POST',
+      body: { student_ids: studentIds },
+      token,
+    }),
+  )
+}
+
+/** Record the drive-day outcome for Accepted students. */
+export function markDriveStudentOutcome(
+  driveId: number,
+  studentIds: number[],
+  status: 50 | 60 | 70,
+): Promise<DriveOutcomeSummary> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/outcome`, {
+      method: 'POST',
+      body: { student_ids: studentIds, status },
+      token,
+    }),
+  )
+}
+
+/** Revoke Invited/Accepted students (20/30 → 80) with a required reason. */
+export function revokeDriveStudents(
+  driveId: number,
+  studentIds: number[],
+  reason: string,
+  notify: boolean,
+): Promise<DriveRevokeSummary> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/revoke`, {
+      method: 'POST',
+      body: { student_ids: studentIds, reason, notify },
+      token,
+    }),
+  )
+}
+
+/** One student's full audit trail in the drive (the track view). */
+export function getDriveStudentTrack(
+  driveId: number,
+  studentId: number,
+): Promise<DriveStudentTrack> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/${studentId}/track`, { token }),
+  )
+}
+
+/** Hard-delete a student from the drive (Imported rows only, server-enforced). */
+export function removeDriveStudent(
+  driveId: number,
+  studentId: number,
+): Promise<void> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/${studentId}`, {
+      method: 'DELETE',
+      token,
+    }),
   )
 }
 

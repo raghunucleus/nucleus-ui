@@ -1,6 +1,15 @@
-import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  ChevronsUpDown,
+  Loader2,
+  Plus,
+} from 'lucide-react'
 
 import { NativeSelect } from '@/components/corporate-relations/bits'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/ui/pagination'
 import {
   Table,
@@ -76,6 +85,8 @@ export function ResultsTable({
   onSort,
   onPage,
   onPageSize,
+  onImportRow,
+  importingId,
 }: {
   meta: SearchMeta
   result: StudentSearchResult
@@ -83,8 +94,18 @@ export function ResultsTable({
   onSort: (by: string) => void
   onPage: (page: number) => void
   onPageSize: (size: number) => void
+  /**
+   * When set, a leading action column renders per row: an Import button, or a
+   * disabled "In drive" badge when the row's `in_drive` flag is true. Omitted
+   * by the plain search consumers (e.g. the student directory).
+   */
+  onImportRow?: (row: Record<string, unknown>) => void
+  /** Student id currently being imported (its button spins). */
+  importingId?: number | null
 }) {
   const byKey = new Map(meta.attributes.map((a) => [a.key, a]))
+  const showImport = !!onImportRow
+  const colSpan = result.columns.length + (showImport ? 1 : 0)
 
   const labelOf = (key: string) =>
     IMPLICIT_COLUMN_LABELS[key] ?? byKey.get(key)?.label ?? key
@@ -142,6 +163,9 @@ export function ResultsTable({
         <Table containerClassName="h-full max-h-[62vh] overflow-y-auto scrollbar-themed lg:max-h-none">
           <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow>
+              {showImport ? (
+                <TableHead className="w-24 whitespace-nowrap" />
+              ) : null}
               {result.columns.map((key) => {
                 const canSort = sortable(key)
                 const active = sort?.by === key
@@ -179,22 +203,50 @@ export function ResultsTable({
             {result.rows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={result.columns.length}
+                  colSpan={colSpan}
                   className="py-10 text-center text-sm text-muted-foreground"
                 >
                   No students match these filters.
                 </TableCell>
               </TableRow>
             ) : (
-              result.rows.map((row, i) => (
-                <TableRow key={typeof row.id === 'number' ? row.id : i}>
-                  {result.columns.map((key) => (
-                    <TableCell key={key} className="whitespace-nowrap text-sm">
-                      {renderCell(key, row[key])}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              result.rows.map((row, i) => {
+                const rowId = typeof row.id === 'number' ? row.id : undefined
+                const inDrive = row.in_drive === true
+                return (
+                  <TableRow key={rowId ?? i}>
+                    {showImport ? (
+                      <TableCell className="whitespace-nowrap">
+                        {inDrive ? (
+                          <Badge variant="secondary" className="gap-1">
+                            <Check className="size-3" /> In drive
+                          </Badge>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7"
+                            disabled={importingId != null}
+                            onClick={() => onImportRow?.(row)}
+                          >
+                            {importingId === rowId ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <Plus className="size-3.5" />
+                            )}
+                            Import
+                          </Button>
+                        )}
+                      </TableCell>
+                    ) : null}
+                    {result.columns.map((key) => (
+                      <TableCell key={key} className="whitespace-nowrap text-sm">
+                        {renderCell(key, row[key])}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>

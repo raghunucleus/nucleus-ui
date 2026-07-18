@@ -21,6 +21,13 @@ import Notifications from '@/pages/notifications'
 import AcademicHolidays from '@/pages/academic-holidays'
 import MyRequests from '@/pages/my-requests'
 import Approvals from '@/pages/approvals'
+import Placements from '@/pages/placements'
+import {
+  DRIVE_FILTERS,
+  INVITE_FILTERS,
+  type DriveFilter,
+  type InviteFilter,
+} from '@/lib/student-placements'
 
 /** The signed-in student/parent portal. `PortalLayout` renders the chrome. */
 const rootRoute = createRootRoute({ component: PortalLayout })
@@ -129,6 +136,39 @@ const approvalsRoute = createRoute({
   component: Approvals,
 })
 
+const placementsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/placements',
+  component: Placements,
+  // `?tab=` picks Invites/Drives; `?drive=<id>` opens that drive's detail
+  // (used by the invite/outcome notification deep-links). The two filter
+  // params keep each tab's chip selection in the URL; the page applies the
+  // defaults (pending / accepted) when they are absent.
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): {
+    tab?: 'invites' | 'drives'
+    drive?: number
+    invitesFilter?: InviteFilter
+    drivesFilter?: DriveFilter
+  } => ({
+    tab:
+      search.tab === 'invites' || search.tab === 'drives'
+        ? search.tab
+        : undefined,
+    drive:
+      search.drive != null && Number.isFinite(Number(search.drive))
+        ? Number(search.drive)
+        : undefined,
+    invitesFilter: INVITE_FILTERS.includes(search.invitesFilter as InviteFilter)
+      ? (search.invitesFilter as InviteFilter)
+      : undefined,
+    drivesFilter: DRIVE_FILTERS.includes(search.drivesFilter as DriveFilter)
+      ? (search.drivesFilter as DriveFilter)
+      : undefined,
+  }),
+})
+
 const connectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/connect',
@@ -164,6 +204,7 @@ const routeTree = rootRoute.addChildren([
   academicHolidaysRoute,
   myRequestsRoute,
   approvalsRoute,
+  placementsRoute,
 ])
 
 export const router = createRouter({

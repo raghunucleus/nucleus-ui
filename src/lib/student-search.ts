@@ -129,3 +129,27 @@ export const IMPLICIT_COLUMN_LABELS: Record<string, string> = {
   student_id: 'Roll number',
   display_name: 'Full name',
 }
+
+// --- optional import capability ---------------------------------------------
+
+/** Outcome of importing a set of students into whatever mount owns the panel. */
+export interface StudentImportSummary {
+  imported: number
+  already_existed: number
+  requested: number
+}
+
+/**
+ * Passed to {@link StudentSearchPanel} to turn on import: a leading per-row
+ * Import button plus an "Import all matched" action. Optional — the plain
+ * search consumers (e.g. the student directory) omit it and the panel renders
+ * search-only. The drive Filter tab binds these to the drive's endpoints.
+ */
+export interface StudentImportApi {
+  /** Import the given student ids (record-level or small batch). */
+  importSelected(ids: number[]): Promise<StudentImportSummary>
+  /** Import every student matching the current query. */
+  importAll(body: StudentSearchBody): Promise<StudentImportSummary>
+  /** Called after any successful import (e.g. to refresh a sibling list). */
+  onChanged?(): void
+}

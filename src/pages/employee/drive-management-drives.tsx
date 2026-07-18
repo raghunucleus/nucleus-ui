@@ -13,7 +13,11 @@ import {
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
-import { CompanyLogo, formatDate } from '@/components/corporate-relations/bits'
+import {
+  CompanyLogo,
+  formatDate,
+  formatDateTime,
+} from '@/components/corporate-relations/bits'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -392,7 +396,7 @@ function DriveTable({
                 </Badge>
               </TableCell>
               <TableCell>{formatDate(d.drive_date)}</TableCell>
-              <TableCell>{formatDate(d.registration_end_date)}</TableCell>
+              <TableCell>{formatDateTime(d.registration_end_date)}</TableCell>
               <TableCell className="text-right">
                 <RowActions
                   onEdit={() => onEdit(d.id)}
@@ -506,7 +510,7 @@ function DriveCards({
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">Registration ends</dt>
-              <dd>{formatDate(d.registration_end_date)}</dd>
+              <dd>{formatDateTime(d.registration_end_date)}</dd>
             </div>
           </dl>
 
