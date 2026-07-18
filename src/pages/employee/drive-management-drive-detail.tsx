@@ -2,6 +2,7 @@ import { useParams } from '@tanstack/react-router'
 import {
   ArrowLeft,
   Ban,
+  BarChart3,
   BellRing,
   Filter,
   Globe,
@@ -24,6 +25,7 @@ import {
   TabBar,
   type TabDef,
 } from '@/components/corporate-relations/bits'
+import { DriveAnalyticsTab } from '@/components/drive-management/drive-analytics'
 import { DriveEligibilitySummary } from '@/components/drive-management/drive-eligibility-summary'
 import { BondFact, Fact, MoneyFact } from '@/components/drive-management/facts'
 import {
@@ -115,6 +117,7 @@ const TABS: TabDef[] = [
   { key: 'eligibility', label: 'Eligibility', icon: GraduationCap },
   { key: 'filter', label: 'Filter', icon: Filter },
   { key: 'students', label: 'Students', icon: Users },
+  { key: 'analytics', label: 'Analytics', icon: BarChart3 },
 ]
 
 export default function EmployeeDriveDetailPage() {
@@ -272,6 +275,7 @@ export default function EmployeeDriveDetailPage() {
 
       <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto">
         {tab === 'overview' && <OverviewTab drive={drive} />}
+        {tab === 'analytics' && <DriveAnalyticsTab driveId={drive.id} />}
         {tab === 'eligibility' && (
           <EligibilityTab driveId={drive.id} canEdit={canEdit} />
         )}

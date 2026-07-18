@@ -369,6 +369,96 @@ export interface DriveListResponse {
   limit: number
 }
 
+// ---------------------------------------------------------------------------
+// Analytics — the drive detail page's read-only "Analytics" tab.
+// Mirrors the server's `DriveAnalytics` shape (drive-analytics.service.ts).
+// ---------------------------------------------------------------------------
+
+export interface DriveAnalyticsTotals {
+  total: number
+  imported: number
+  invited: number
+  accepted: number
+  denied: number
+  not_attended: number
+  selected: number
+  not_selected: number
+  revoked: number
+}
+
+export interface DriveFunnelStage {
+  key: 'imported' | 'invited' | 'accepted' | 'selected'
+  label: string
+  count: number
+}
+
+export interface DriveAnalyticsRates {
+  invite_rate: number | null
+  response_rate: number | null
+  acceptance_rate: number | null
+  no_show_rate: number | null
+  selection_rate: number | null
+  offer_yield: number | null
+}
+
+export interface DriveStatusSlice {
+  status: number
+  label: string
+  count: number
+}
+
+export interface DriveBreakdownRow {
+  label: string
+  imported: number
+  accepted: number
+  selected: number
+}
+
+export interface DriveCgpaBandRow {
+  label: string
+  imported: number
+  selected: number
+  avg_cgpa: number | null
+}
+
+export interface DriveReasonRow {
+  reason: string
+  count: number
+}
+
+export interface DriveAnalytics {
+  totals: DriveAnalyticsTotals
+  funnel: DriveFunnelStage[]
+  rates: DriveAnalyticsRates
+  status_distribution: DriveStatusSlice[]
+  breakdowns: {
+    programme: DriveBreakdownRow[]
+    gender: DriveBreakdownRow[]
+    entry_type: DriveBreakdownRow[]
+    passout_year: DriveBreakdownRow[]
+    cgpa_band: DriveCgpaBandRow[]
+  }
+  cgpa: { avg_pool: number | null; avg_selected: number | null }
+  response_time: {
+    avg_hours: number | null
+    buckets: { label: string; count: number }[]
+  }
+  reasons: { denied: DriveReasonRow[]; revoked: DriveReasonRow[] }
+  attention: {
+    not_invited: number
+    awaiting_response: number
+    stale_invites: number
+    awaiting_outcome: number
+  }
+}
+
+/** The drive's funnel, conversion rates and demographic breakdowns. */
+export function getDriveAnalytics(id: number): Promise<DriveAnalytics> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${id}/analytics`, { token }),
+  )
+}
+
 export function listDrives(query: DriveListQuery): Promise<DriveListResponse> {
   const qs = new URLSearchParams()
   for (const [k, v] of Object.entries(query)) {

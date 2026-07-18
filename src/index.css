@@ -447,3 +447,13 @@ body[data-portal="employee"] [data-slot="sheet-overlay"] {
   border-color: var(--border) !important;
   color: var(--muted-foreground) !important;
 }
+
+/* Recharts 3 makes chart surfaces focusable (accessibilityLayer); clicking a
+   chart would otherwise paint a browser focus ring that reads as a stray white
+   line. Hide the visual outline while keeping the element focusable for a11y. */
+.recharts-wrapper:focus,
+.recharts-wrapper:focus-visible,
+.recharts-surface:focus,
+.recharts-surface:focus-visible {
+  outline: none;
+}
