@@ -53,20 +53,6 @@ function standingFor(pct: number): Standing {
   return 'low'
 }
 
-function marginHint(t: TFunction, held: number, attended: number): string {
-  if (held === 0) return t('attendance.marginNoHeld')
-  const pct = (attended / held) * 100
-  const ratio = ATTENDANCE_THRESHOLD / 100
-  if (pct >= ATTENDANCE_THRESHOLD) {
-    const canSkip = Math.floor(attended / ratio - held)
-    return canSkip > 0
-      ? t('attendance.canMiss', { count: canSkip })
-      : t('attendance.noBuffer')
-  }
-  const need = Math.ceil((ratio * held - attended) / (1 - ratio))
-  return t('attendance.need', { n: need, threshold: ATTENDANCE_THRESHOLD })
-}
-
 export default function ParentAttendance() {
   const { t } = useTranslation()
   const signOut = useParentAuthStore((s) => s.signOut)
@@ -207,14 +193,7 @@ function OverallCard({
         ? TriangleAlert
         : CircleAlert
 
-  const summaryKey =
-    held === 0
-      ? 'attendance.summaryNone'
-      : standing === 'low'
-        ? 'attendance.summaryLow'
-        : standing === 'warning'
-          ? 'attendance.summaryWarn'
-          : 'attendance.summaryGood'
+  const summaryKey = 'attendance.summaryNone'
 
   return (
     <Card className="p-5 sm:p-6">
@@ -278,8 +257,8 @@ function SubjectCard({ subject }: { subject: SubjectAttendanceRow }) {
           <span className="text-muted-foreground">
             {t('attendance.classes', { a: subject.attended, h: subject.held })}
           </span>
-          <span className={cn('font-medium', meta.text)}>
-            {marginHint(t, subject.held, subject.attended)}
+          <span className="text-muted-foreground">
+            {t('attendance.missed', { n: subject.held - subject.attended })}
           </span>
         </div>
 

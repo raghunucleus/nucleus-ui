@@ -46,20 +46,6 @@ function standingFor(pct: number): Standing {
   return 'low'
 }
 
-function marginHint(held: number, attended: number): string {
-  if (held === 0) return 'No classes held yet'
-  const pct = (attended / held) * 100
-  const ratio = ATTENDANCE_THRESHOLD / 100
-  if (pct >= ATTENDANCE_THRESHOLD) {
-    const canSkip = Math.floor(attended / ratio - held)
-    return canSkip > 0
-      ? `Can miss ${canSkip} more class${canSkip === 1 ? '' : 'es'}`
-      : 'No buffer left — stay regular'
-  }
-  const need = Math.ceil((ratio * held - attended) / (1 - ratio))
-  return `Attend ${need} in a row to reach ${ATTENDANCE_THRESHOLD}%`
-}
-
 export default function Attendance() {
   const signOut = useAuthStore((state) => state.signOut)
   const [profile, setProfile] = useState<StudentProfile | null>(null)
@@ -231,14 +217,7 @@ function OverallCard({
           <div className="flex items-start gap-2 text-sm text-muted-foreground">
             <Icon className={cn('mt-0.5 size-4 shrink-0', meta.text)} />
             <p>
-              {attended} of {held} classes attended
-              {held === 0
-                ? '.'
-                : standing === 'low'
-                  ? ' — currently below the minimum requirement.'
-                  : standing === 'warning'
-                    ? ' — keep it above 85% for a comfortable margin.'
-                    : ' — comfortably above the requirement.'}
+              {attended} of {held} classes attended.
             </p>
           </div>
         </div>
@@ -277,8 +256,8 @@ function SubjectCard({ subject }: { subject: SubjectAttendanceRow }) {
           <span className="text-muted-foreground">
             {subject.attended} / {subject.held} classes
           </span>
-          <span className={cn('font-medium', meta.text)}>
-            {marginHint(subject.held, subject.attended)}
+          <span className="text-muted-foreground">
+            {subject.held - subject.attended} missed
           </span>
         </div>
 

@@ -19,6 +19,7 @@ import EmployeeDriveAttributesPage from '@/pages/employee/drive-management-drive
 import EmployeeDriveDetailPage from '@/pages/employee/drive-management-drive-detail'
 import EmployeeDriveFormPage from '@/pages/employee/drive-management-drive-form'
 import EmployeeDrivesPage from '@/pages/employee/drive-management-drives'
+import EmployeeEligibilityCheckPage from '@/pages/employee/drive-management-eligibility-check'
 import EmployeeHome from '@/pages/employee/home'
 import EmployeeIdCardPage from '@/pages/employee/id-card'
 import EmployeeMarksUploadPage from '@/pages/employee/marks-upload'
@@ -200,6 +201,13 @@ const driveEditRoute = createRoute({
   component: EmployeeDriveFormPage,
 })
 
+// The standalone institution-wide student search (drive filter set, no drive).
+const eligibilityCheckRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/drive-management/eligibility-check',
+  component: EmployeeEligibilityCheckPage,
+})
+
 // Paths must equal the RBAC catalog's `web_route` values for the two
 // derived Requests screens.
 const requestsApprovalsRoute = createRoute({
@@ -277,6 +285,7 @@ const routeTree = rootRoute.addChildren([
   driveCreateRoute,
   driveDetailRoute,
   driveEditRoute,
+  eligibilityCheckRoute,
   requestsApprovalsRoute,
   requestsMineRoute,
   profileRoute,

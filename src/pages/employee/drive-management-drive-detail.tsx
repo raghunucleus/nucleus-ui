@@ -138,6 +138,9 @@ export default function EmployeeDriveDetailPage() {
   const [filterVisited, setFilterVisited] = useState(false)
   // Bumped after an import so the Students tab refetches next time it opens.
   const [studentsRefreshKey, setStudentsRefreshKey] = useState(0)
+  // Bumped after an eligibility save so the Filter tab remounts and re-seeds
+  // its prefill from the freshly saved criteria.
+  const [filterSeedKey, setFilterSeedKey] = useState(0)
 
   useEffect(() => {
     if (tab === 'filter') setFilterVisited(true)
@@ -277,11 +280,16 @@ export default function EmployeeDriveDetailPage() {
         {tab === 'overview' && <OverviewTab drive={drive} />}
         {tab === 'analytics' && <DriveAnalyticsTab driveId={drive.id} />}
         {tab === 'eligibility' && (
-          <EligibilityTab driveId={drive.id} canEdit={canEdit} />
+          <EligibilityTab
+            driveId={drive.id}
+            canEdit={canEdit}
+            onEligibilitySaved={() => setFilterSeedKey((k) => k + 1)}
+          />
         )}
         {filterVisited && (
           <div className={tab === 'filter' ? 'h-full' : 'hidden'}>
             <DriveFilterTab
+              key={filterSeedKey}
               driveId={drive.id}
               canEdit={canEdit}
               onImported={() => setStudentsRefreshKey((k) => k + 1)}
@@ -534,6 +542,7 @@ function DriveFilterTab({
       initialFilters={seeded}
       lockedAttrs={LOCKED_ATTRS}
       importApi={importApi}
+      showFilterHelp
     />
   )
 }
@@ -1324,9 +1333,11 @@ function toForm(e: DriveEligibility): EligibilityForm {
 function EligibilityTab({
   driveId,
   canEdit,
+  onEligibilitySaved,
 }: {
   driveId: number
   canEdit: boolean
+  onEligibilitySaved?: () => void
 }) {
   const [form, setForm] = useState<EligibilityForm | null>(null)
   const [options, setOptions] = useState<DriveEligibilityOptions | null>(null)
@@ -1368,7 +1379,9 @@ function EligibilityTab({
         genders: form.genders,
         passout_years: form.passout_years,
         allow_backlog_history: form.allow_backlog_history,
-        max_current_backlogs: numOrNull(form.max_current_backlogs),
+        max_current_backlogs: form.allow_backlog_history
+          ? numOrNull(form.max_current_backlogs)
+          : null,
         min_tenth_percentage: numOrNull(form.min_tenth_percentage),
         min_twelfth_or_diploma_percentage: numOrNull(
           form.min_twelfth_or_diploma_percentage,
@@ -1376,6 +1389,7 @@ function EligibilityTab({
         min_btech_cgpa: numOrNull(form.min_btech_cgpa),
       })
       toast.success('Eligibility saved.')
+      onEligibilitySaved?.()
     } catch (e) {
       toast.error(errMsg(e, 'Could not save eligibility.'))
     } finally {
@@ -1443,28 +1457,32 @@ function EligibilityTab({
         <Field label="Allow with history of backlogs">
           <NativeSelect
             value={form.allow_backlog_history ? 'yes' : 'no'}
-            onChange={(e) =>
-              patch({ allow_backlog_history: e.target.value === 'yes' })
-            }
+            onChange={(e) => {
+              const yes = e.target.value === 'yes'
+              patch(
+                yes
+                  ? { allow_backlog_history: true }
+                  : { allow_backlog_history: false, max_current_backlogs: '' },
+              )
+            }}
           >
             <option value="no">No</option>
             <option value="yes">Yes</option>
           </NativeSelect>
         </Field>
 
-        <Field
-          label="Allow current backlogs upto"
-          hint="Blank = no limit."
-        >
-          <Input
-            type="number"
-            min={0}
-            max={99}
-            value={form.max_current_backlogs}
-            onChange={(e) => patch({ max_current_backlogs: e.target.value })}
-            placeholder="No limit"
-          />
-        </Field>
+        {form.allow_backlog_history && (
+          <Field label="Allow current backlogs upto" hint="Blank = no limit.">
+            <Input
+              type="number"
+              min={0}
+              max={99}
+              value={form.max_current_backlogs}
+              onChange={(e) => patch({ max_current_backlogs: e.target.value })}
+              placeholder="No limit"
+            />
+          </Field>
+        )}
       </div>
 
       <div className="space-y-1.5">

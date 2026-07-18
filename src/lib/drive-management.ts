@@ -4,6 +4,7 @@ import { getEmployeeAccessToken, withEmployeeAuth } from './employee-auth'
 import type {
   ExportFormat,
   FkOption,
+  ParsedNql,
   SearchGroup,
   SearchMeta,
   StudentSearchApi,
@@ -602,6 +603,64 @@ export function driveStudentsSearchApi(driveId: number): StudentSearchApi {
         apiFetch<FkOption[]>(`${root}/search/options?${qs}`, { token }),
       )
     },
+    parseNql: (nql: string) =>
+      withEmployeeAuth((token) =>
+        apiFetch<ParsedNql>(`${root}/search/parse-nql`, {
+          method: 'POST',
+          body: { nql },
+          token,
+        }),
+      ),
+    createExport: (body: StudentSearchBody, format: ExportFormat) =>
+      withEmployeeAuth((token) =>
+        apiFetch<{ job_id: number }>(`${root}/export`, {
+          method: 'POST',
+          body: { ...body, format },
+          token,
+        }),
+      ),
+  }
+}
+
+// --- Eligibility check (standalone student search, no drive) ---------------
+
+const ELIGIBILITY_CHECK_ROOT =
+  '/employee/drive-management/eligibility-check/students'
+
+/**
+ * The Eligibility check screen's {@link StudentSearchApi} — the same engine as
+ * the drive Filter tab, bound to the standalone institution-wide endpoints.
+ */
+export function eligibilityCheckSearchApi(): StudentSearchApi {
+  const root = ELIGIBILITY_CHECK_ROOT
+  return {
+    meta: () =>
+      withEmployeeAuth((token) =>
+        apiFetch<SearchMeta>(`${root}/search/meta`, { token }),
+      ),
+    search: (body: StudentSearchBody) =>
+      withEmployeeAuth((token) =>
+        apiFetch<StudentSearchResult>(`${root}/search`, {
+          method: 'POST',
+          body,
+          token,
+        }),
+      ),
+    options: (lookup: string, q?: string) => {
+      const qs = new URLSearchParams({ lookup })
+      if (q) qs.set('q', q)
+      return withEmployeeAuth((token) =>
+        apiFetch<FkOption[]>(`${root}/search/options?${qs}`, { token }),
+      )
+    },
+    parseNql: (nql: string) =>
+      withEmployeeAuth((token) =>
+        apiFetch<ParsedNql>(`${root}/search/parse-nql`, {
+          method: 'POST',
+          body: { nql },
+          token,
+        }),
+      ),
     createExport: (body: StudentSearchBody, format: ExportFormat) =>
       withEmployeeAuth((token) =>
         apiFetch<{ job_id: number }>(`${root}/export`, {

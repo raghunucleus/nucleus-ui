@@ -8,6 +8,7 @@ import {
 import {
   CheckCircle2,
   Download,
+  Info,
   Loader2,
   Maximize2,
   Search as SearchIcon,
@@ -39,20 +40,25 @@ import type {
   FkOption,
   SearchGroup,
   SearchMeta,
+  SearchNode,
   StudentImportApi,
   StudentImportSummary,
   StudentSearchApi,
   StudentSearchBody,
   StudentSearchResult,
 } from '@/lib/student-search'
+import { isGroupNode } from '@/lib/student-search'
 import { cn } from '@/lib/utils'
 
 import { ColumnPicker } from './column-picker'
 import { FilterBuilder } from './filter-builder'
+import { FilterHelpButton } from './filter-help'
 import {
   type BuilderRow,
   composeFilters,
   decomposeFilters,
+  explainFilters,
+  filtersToNql,
 } from './filter-model'
 import { NqlEditor } from './nql-editor'
 import { ResultsSkeleton, ResultsTable } from './results-table'
@@ -73,6 +79,7 @@ export function StudentSearchPanel({
   initialFilters,
   lockedAttrs,
   importApi,
+  showFilterHelp,
 }: {
   api: StudentSearchApi
   initialFilters?: SearchGroup | null
@@ -87,6 +94,8 @@ export function StudentSearchPanel({
    * search-only consumers.
    */
   importApi?: StudentImportApi
+  /** Renders the "Help with filters" documentation button in the filter rail. */
+  showFilterHelp?: boolean
 }) {
   const [meta, setMeta] = useState<SearchMeta | null>(null)
   const [metaError, setMetaError] = useState<string | null>(null)
@@ -94,6 +103,18 @@ export function StudentSearchPanel({
   const [mode, setMode] = useState<Mode>('builder')
   const [rows, setRows] = useState<BuilderRow[]>([])
   const [nql, setNql] = useState('')
+  // Switching Filters <-> NQL translates one into the other. `switchNote`
+  // holds why a switch to the builder was blocked (query too advanced / a
+  // parser error); `switching` guards the async NQL->builder round-trip.
+  const [switchNote, setSwitchNote] = useState<string | null>(null)
+  const [switching, setSwitching] = useState(false)
+  // "Explain" panel (expanded editor only): the current filters read back as
+  // plain-English lines. Builder rows explain live; NQL is parsed on demand.
+  const [explainOpen, setExplainOpen] = useState(false)
+  const [nqlExplainAst, setNqlExplainAst] = useState<SearchGroup | undefined>(
+    undefined,
+  )
+  const [nqlExplainErr, setNqlExplainErr] = useState<string | null>(null)
   const [freeText, setFreeText] = useState('')
   const [columns, setColumns] = useState<string[]>([])
   const [sort, setSort] = useState<
@@ -183,6 +204,122 @@ export function StudentSearchPanel({
       }
     },
     [api, buildBody],
+  )
+
+  // Toggle Filters <-> NQL, keeping the two in sync. builder -> nql serializes
+  // the current rows into query text (instant); nql -> builder parses the text
+  // server-side (one authoritative grammar) and rebuilds the rows. A query the
+  // shallow builder can't represent — or one that won't parse — leaves us on
+  // the NQL tab with an explanatory note instead of silently dropping parts.
+  const switchMode = useCallback(
+    async (next: Mode) => {
+      if (next === mode || switching) return
+      setSwitchNote(null)
+      if (next === 'nql') {
+        setNql(filtersToNql(composeFilters(rows)))
+        setMode('nql')
+        return
+      }
+      const text = nql.trim()
+      if (!text) {
+        setRows([])
+        setMode('builder')
+        return
+      }
+      setSwitching(true)
+      try {
+        const parsed = await api.parseNql(text)
+        if (parsed.sort) setSort(parsed.sort)
+        if (!parsed.filters) {
+          setRows([])
+          setMode('builder')
+          return
+        }
+        const decomposed = decomposeFilters(parsed.filters, lockedAttrs)
+        if (!decomposed) {
+          setSwitchNote(
+            "This query is too advanced for the visual builder — keep editing it here.",
+          )
+          return
+        }
+        setRows(decomposed)
+        setMode('builder')
+      } catch (err) {
+        setSwitchNote(
+          err instanceof ApiError
+            ? err.message
+            : 'Could not read this query. Fix it, then switch.',
+        )
+      } finally {
+        setSwitching(false)
+      }
+    },
+    [mode, switching, rows, nql, api, lockedAttrs],
+  )
+
+  // --- Explain: current filters -> plain-English lines --------------------
+  const attrByKey = useMemo(
+    () => new Map((meta?.attributes ?? []).map((a) => [a.key, a] as const)),
+    [meta],
+  )
+
+  // Builder rows explain live; NQL is parsed (debounced) while the panel is open.
+  const builderAst = useMemo(() => composeFilters(rows), [rows])
+
+  useEffect(() => {
+    if (!explainOpen || mode !== 'nql') return
+    const text = nql.trim()
+    let cancelled = false
+    // All state writes happen inside the timer (async), never synchronously in
+    // the effect body. Empty query clears immediately; a query is debounced.
+    const t = setTimeout(
+      () => {
+        if (cancelled) return
+        if (!text) {
+          setNqlExplainAst(undefined)
+          setNqlExplainErr(null)
+          return
+        }
+        api.parseNql(text).then(
+          (parsed) => {
+            if (cancelled) return
+            setNqlExplainAst(parsed.filters)
+            setNqlExplainErr(null)
+          },
+          () => {
+            if (!cancelled)
+              setNqlExplainErr('Fix the query to see the explanation.')
+          },
+        )
+      },
+      text ? 400 : 0,
+    )
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [explainOpen, mode, nql, api])
+
+  const explainAst = mode === 'builder' ? builderAst : nqlExplainAst
+
+  // Load fk option lists the breakdown references so ids resolve to labels
+  // (an NQL-derived AST may name lookups the chips never triggered).
+  useEffect(() => {
+    if (!explainOpen || !explainAst) return
+    const visit = (node: SearchNode) => {
+      if (isGroupNode(node)) {
+        ;(node.and ?? node.or ?? []).forEach(visit)
+        return
+      }
+      const attr = attrByKey.get(node.attr)
+      if (attr?.kind === 'fk' && attr.fkLookup) ensureFkOptions(attr.fkLookup)
+    }
+    visit(explainAst)
+  }, [explainOpen, explainAst, attrByKey, ensureFkOptions])
+
+  const explainLines = useMemo(
+    () => explainFilters(explainAst, attrByKey, fkOptions),
+    [explainAst, attrByKey, fkOptions],
   )
 
   // Boot: load meta, seed the builder from the prefill, run the first search.
@@ -360,7 +497,14 @@ export function StudentSearchPanel({
         confirmProtectedChange={confirmProtectedChange}
       />
     ) : (
-      <NqlEditor meta={meta} value={nql} onChange={setNql} />
+      <NqlEditor
+        meta={meta}
+        value={nql}
+        onChange={(v) => {
+          setNql(v)
+          if (switchNote) setSwitchNote(null)
+        }}
+      />
     )
 
   // The Search button + inline error, shared by the rail footer and the modal.
@@ -386,10 +530,11 @@ export function StudentSearchPanel({
         <button
           key={t.key}
           type="button"
-          onClick={() => setMode(t.key)}
+          onClick={() => void switchMode(t.key)}
+          disabled={switching}
           aria-pressed={mode === t.key}
           className={cn(
-            'flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+            'flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-60',
             mode === t.key
               ? 'bg-primary text-primary-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',
@@ -401,6 +546,55 @@ export function StudentSearchPanel({
     </div>
   )
 
+  // Shown under the toggle when a switch to the builder was blocked — the NQL
+  // stays put so nothing is lost.
+  const switchNoteBanner = switchNote ? (
+    <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+      {switchNote}
+    </p>
+  ) : null
+
+  // "Explain" affordance — expanded editor only. The button toggles a panel
+  // that reads the current filters back as plain-English lines.
+  const explainToggle = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="shrink-0"
+      onClick={() => setExplainOpen((v) => !v)}
+      aria-pressed={explainOpen}
+    >
+      <Info className="size-4" />
+      Explain
+    </Button>
+  )
+
+  const explainPanel = explainOpen ? (
+    <div className="scrollbar-themed max-h-48 overflow-y-auto rounded-lg border bg-muted/30 p-3 text-sm">
+      {mode === 'nql' && nqlExplainErr ? (
+        <p className="text-muted-foreground">{nqlExplainErr}</p>
+      ) : explainLines.length === 0 ? (
+        <p className="text-muted-foreground">
+          No filters yet — every student matches.
+        </p>
+      ) : (
+        <>
+          {explainLines.length > 1 ? (
+            <p className="mb-2 font-medium text-foreground">
+              All of the following must be true:
+            </p>
+          ) : null}
+          <ol className="list-decimal space-y-1 pl-5 text-foreground">
+            {explainLines.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ol>
+        </>
+      )}
+    </div>
+  ) : null
+
   return (
     <div className="grid min-h-0 gap-4 py-1 lg:h-full lg:grid-cols-[20rem_minmax(0,1fr)]">
       {/* LEFT: filter editor — a self-contained column that matches the results
@@ -408,6 +602,7 @@ export function StudentSearchPanel({
       <aside className="flex min-h-0 flex-col gap-3 lg:h-full">
         <div className="flex shrink-0 items-center gap-2">
           {modeToggle}
+          {showFilterHelp ? <FilterHelpButton meta={meta} /> : null}
           <Button
             type="button"
             variant="outline"
@@ -420,6 +615,10 @@ export function StudentSearchPanel({
             <Maximize2 className="size-4" />
           </Button>
         </div>
+
+        {switchNoteBanner ? (
+          <div className="shrink-0">{switchNoteBanner}</div>
+        ) : null}
 
         <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-card">
           <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto p-3">
@@ -559,7 +758,14 @@ export function StudentSearchPanel({
               filter panel.
             </DialogDescription>
           </DialogHeader>
-          <div className="shrink-0 px-6 pt-4">{modeToggle}</div>
+          <div className="shrink-0 space-y-2 px-6 pt-4">
+            <div className="flex items-center gap-2">
+              <div className="flex-1">{modeToggle}</div>
+              {explainToggle}
+            </div>
+            {switchNoteBanner}
+            {explainPanel}
+          </div>
           <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto px-6 py-4">
             {editor}
           </div>

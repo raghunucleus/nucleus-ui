@@ -161,18 +161,8 @@ export const en = {
     subjectWise: 'Subject-wise attendance',
     subjectsReq: '{{n}} subjects · {{threshold}}% required for exam eligibility',
     summaryNone: '{{a}} of {{h}} classes attended.',
-    summaryLow:
-      '{{a}} of {{h}} classes attended — currently below the minimum requirement.',
-    summaryWarn:
-      '{{a}} of {{h}} classes attended — keep it above 85% for a comfortable margin.',
-    summaryGood:
-      '{{a}} of {{h}} classes attended — comfortably above the requirement.',
-    marginNoHeld: 'No classes held yet',
-    canMiss_one: 'Can miss {{count}} more class',
-    canMiss_other: 'Can miss {{count}} more classes',
-    noBuffer: 'No buffer left — stay regular',
-    need: 'Attend {{n}} in a row to reach {{threshold}}%',
     classes: '{{a}} / {{h}} classes',
+    missed: '{{n}} missed',
     viewHistory: 'View class history',
     noDataTitle: 'No attendance yet',
     noDataDesc:

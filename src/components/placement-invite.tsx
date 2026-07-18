@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Briefcase, Check, ChevronRight, Loader2, X } from 'lucide-react'
+import { Check, ChevronRight, Goal, Loader2, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
@@ -75,7 +75,7 @@ export function CompanyBadge({
   }
   return (
     <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-icon-blue/10 text-sm font-semibold text-icon-blue">
-      {name.charAt(0).toUpperCase() || <Briefcase className="size-4.5" />}
+      {name.charAt(0).toUpperCase() || <Goal className="size-4.5" />}
     </span>
   )
 }

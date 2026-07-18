@@ -2,10 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import {
   ArrowLeft,
-  Briefcase,
   Check,
   CircleAlert,
   Globe,
+  Goal,
   Loader2,
   Mailbox,
   RefreshCw,
@@ -248,7 +248,7 @@ export default function Placements() {
       <PageHeader
         title="Placements"
         subtitle="Drive invitations and your placement journey"
-        icon={Briefcase}
+        icon={Goal}
         accent="blue"
       />
 
@@ -345,7 +345,7 @@ export default function Placements() {
           />
           {driveRows.length === 0 ? (
             <StateView
-              icon={Briefcase}
+              icon={Goal}
               title={DRIVE_EMPTY[driveFilter].title}
               description={DRIVE_EMPTY[driveFilter].description}
             />

@@ -18,6 +18,7 @@ import {
   type BuilderCondition,
   OPERATOR_LABELS,
   conditionComplete,
+  formatValueLabel,
 } from './filter-model'
 import { ValueInput } from './value-input'
 
@@ -215,16 +216,7 @@ function summarizeValue(
   if (op === 'is_null' || op === 'not_null') return ''
   if (value === null || value === undefined || value === '') return '…'
 
-  const opts = attr?.fkLookup ? fkOptions[attr.fkLookup] : undefined
-  const one = (v: unknown): string => {
-    if (v === null || v === undefined || v === '') return '…'
-    if (typeof v === 'boolean') return v ? 'Yes' : 'No'
-    if (attr?.kind === 'fk') {
-      return opts?.find((o) => o.id === v)?.label ?? String(v)
-    }
-    return attr?.enumLabels?.[String(v)] ?? String(v)
-  }
-
+  const one = (v: unknown) => formatValueLabel(attr, v, fkOptions)
   if (Array.isArray(value)) {
     if (op === 'between') return `${one(value[0])}–${one(value[1])}`
     return value.map(one).join(', ')

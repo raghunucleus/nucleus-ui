@@ -108,6 +108,12 @@ export interface FkOption {
 
 export type ExportFormat = 'csv' | 'xlsx'
 
+/** Result of compiling an NQL string to the shared filter AST (server-side). */
+export interface ParsedNql {
+  filters?: SearchGroup
+  sort?: { by: string; dir: 'asc' | 'desc' }
+}
+
 /**
  * How the search components reach the server — one implementation per mount
  * point (the drive Filter tab binds these to the drive-scoped endpoints).
@@ -116,6 +122,12 @@ export interface StudentSearchApi {
   meta(): Promise<SearchMeta>
   search(body: StudentSearchBody): Promise<StudentSearchResult>
   options(lookup: string, q?: string): Promise<FkOption[]>
+  /**
+   * Compile an NQL string to the filter AST so the Filters tab can rebuild its
+   * visual rows from a query. Reuses the server's parser (no second grammar);
+   * rejects with an ApiError on a syntax error.
+   */
+  parseNql(nql: string): Promise<ParsedNql>
   /** Starts an async export job; completion arrives as a notification. */
   createExport(
     body: StudentSearchBody,
