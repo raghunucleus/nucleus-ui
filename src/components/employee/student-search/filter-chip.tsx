@@ -87,31 +87,45 @@ export function FilterChip({
   const opLabel = OPERATOR_LABELS[condition.op]
   const hasValue = condition.op !== 'is_null' && condition.op !== 'not_null'
   const complete = conditionComplete(condition)
-  const valueText = summarizeValue(attr, condition, fkOptions)
+  const {
+    preview: valueText,
+    hiddenCount,
+    full: valueFull,
+  } = summarizeValue(attr, condition, fkOptions)
+  // Full, untruncated filter text — the pill itself only ever shows as much as
+  // fits on one line.
+  const fullText = [label, opLabel, valueFull].filter(Boolean).join(' ')
 
   // --- Locked / recommended default: read-only pill, click to unlock. --------
   if (locked) {
     return (
-      <div className="inline-flex items-center rounded-full border border-primary/30 bg-primary/5 pr-1 text-xs">
+      <div className="inline-flex h-7 max-w-full items-center rounded-full border border-primary/30 bg-primary/5 pr-1 text-xs">
         <button
           type="button"
           onClick={onUnlock}
-          title="Recommended placement filter — click to change"
-          className="flex items-center gap-1 rounded-full py-1 pl-2.5 pr-1 font-medium"
+          title={`${fullText} — recommended placement filter, click to change`}
+          className="flex min-w-0 max-w-[24rem] items-center gap-1 rounded-full py-1 pl-2.5 pr-1 font-medium"
         >
           <Lock className="size-3 shrink-0 text-primary" />
-          <span className="truncate">{label}</span>
+          <span className="max-w-[10rem] shrink-0 truncate">{label}</span>
           {hasValue ? (
-            <span className="text-muted-foreground">{valueText}</span>
+            <>
+              <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                {valueText}
+              </span>
+              <OverflowCount count={hiddenCount} />
+            </>
           ) : (
-            <span className="text-muted-foreground">{opLabel}</span>
+            <span className="shrink-0 whitespace-nowrap text-muted-foreground">
+              {opLabel}
+            </span>
           )}
         </button>
         <button
           type="button"
           onClick={onRemove}
           aria-label={`Remove ${label} filter`}
-          className="rounded-full p-0.5 text-muted-foreground hover:text-destructive"
+          className="shrink-0 rounded-full p-0.5 text-muted-foreground hover:text-destructive"
         >
           <X className="size-3.5" />
         </button>
@@ -124,7 +138,7 @@ export function FilterChip({
     <>
       <div
         className={cn(
-          'inline-flex items-center rounded-full border bg-card pr-1 text-xs transition-colors',
+          'inline-flex h-7 max-w-full items-center rounded-full border bg-card pr-1 text-xs transition-colors',
           open && 'ring-2 ring-ring/50',
           !complete && 'border-dashed',
         )}
@@ -134,17 +148,27 @@ export function FilterChip({
           onClick={() => setOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className="flex max-w-[16rem] items-center gap-1 rounded-full py-1 pl-2.5 pr-1"
+          title={fullText}
+          className="flex min-w-0 max-w-[24rem] items-center gap-1 rounded-full py-1 pl-2.5 pr-1"
         >
-          <span className="truncate font-medium">{label}</span>
-          <span className="text-muted-foreground">{opLabel}</span>
+          <span className="max-w-[10rem] shrink-0 truncate font-medium">
+            {label}
+          </span>
+          <span className="shrink-0 whitespace-nowrap text-muted-foreground">
+            {opLabel}
+          </span>
           {hasValue ? (
             complete ? (
-              <span className="truncate font-medium text-foreground">
-                {valueText}
-              </span>
+              <>
+                <span className="min-w-0 flex-1 truncate font-medium text-foreground">
+                  {valueText}
+                </span>
+                <OverflowCount count={hiddenCount} />
+              </>
             ) : (
-              <span className="italic text-muted-foreground">set value…</span>
+              <span className="shrink-0 whitespace-nowrap italic text-muted-foreground">
+                set value…
+              </span>
             )
           ) : null}
         </button>
@@ -152,7 +176,7 @@ export function FilterChip({
           type="button"
           onClick={onRemove}
           aria-label={`Remove ${label} filter`}
-          className="rounded-full p-0.5 text-muted-foreground hover:text-destructive"
+          className="shrink-0 rounded-full p-0.5 text-muted-foreground hover:text-destructive"
         >
           <X className="size-3.5" />
         </button>
@@ -206,20 +230,58 @@ export function FilterChip({
   )
 }
 
-/** Compact human summary of a condition's value, resolving fk / enum labels. */
+/**
+ * "+2" badge for a multi-select chip's unshown values.
+ *
+ * `shrink-0` is load-bearing: the value text beside it is a truncating flex
+ * child, so without this the count would be the first thing clipped — exactly
+ * when a long value makes it most useful.
+ */
+function OverflowCount({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className="shrink-0 rounded-full bg-muted px-1.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+      +{count}
+    </span>
+  )
+}
+
+/**
+ * Human summary of a condition's value, resolving fk / enum labels.
+ *
+ * A multi-select is split into the first value's `preview` plus a `hiddenCount`
+ * of the rest, rather than one pre-joined string: the chip renders the count as
+ * a non-shrinking badge beside the truncating preview, so "+2" stays visible
+ * even when the value name itself is clipped. `full` carries the complete list
+ * for the hover title.
+ */
 function summarizeValue(
   attr: MetaAttribute | undefined,
   condition: BuilderCondition,
   fkOptions: Record<string, FkOption[] | undefined>,
-): string {
+): { preview: string; hiddenCount: number; rest: string[]; full: string } {
   const { op, value } = condition
-  if (op === 'is_null' || op === 'not_null') return ''
-  if (value === null || value === undefined || value === '') return '…'
+  const plain = (text: string) => ({
+    preview: text,
+    hiddenCount: 0,
+    rest: [],
+    full: text,
+  })
+
+  if (op === 'is_null' || op === 'not_null') return plain('')
+  if (value === null || value === undefined || value === '') return plain('…')
 
   const one = (v: unknown) => formatValueLabel(attr, v, fkOptions)
   if (Array.isArray(value)) {
-    if (op === 'between') return `${one(value[0])}–${one(value[1])}`
-    return value.map(one).join(', ')
+    if (op === 'between') return plain(`${one(value[0])}–${one(value[1])}`)
+    const labels = value.map(one)
+    const rest = labels.slice(1)
+    return {
+      preview: labels[0] ?? '…',
+      hiddenCount: rest.length,
+      rest,
+      full: labels.join(', '),
+    }
   }
-  return one(value)
+  return plain(one(value))
 }
