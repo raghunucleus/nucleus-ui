@@ -49,6 +49,13 @@ import {
   formatPlacementDateTime,
 } from '@/components/placement-invite'
 import { DriveStudentTrackSheet } from '@/components/employee/drive-student-track'
+import {
+  SelectionFields,
+  prefillSelectionDraft,
+  selectionDraftToWrite,
+  selectionDraftValid,
+  type SelectionDraft,
+} from '@/components/drive-management/selection-fields'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { StudentSearchPanel } from '@/components/employee/student-search/student-search-panel'
 import { Badge } from '@/components/ui/badge'
@@ -78,8 +85,8 @@ import { ApiError } from '@/lib/api'
 import { employeeNavigateTo } from '@/lib/employee-navigate'
 import {
   DRIVE_OUTCOME_OPTIONS,
-  DRIVE_STATUSES,
   DRIVE_STATUS_LABELS,
+  driveStatusOptions,
   DRIVE_STUDENT_STATUS,
   DRIVE_STUDENT_STATUS_BADGE,
   DRIVE_STUDENT_STATUS_LABELS,
@@ -106,6 +113,7 @@ import {
   revokeDriveStudents,
   saveDriveEligibility,
   updateDriveStatus,
+  updateDriveStudentSelection,
   type Chip,
   type DriveDetail,
   type DriveEligibility,
@@ -276,11 +284,13 @@ export default function EmployeeDriveDetailPage() {
               <NativeSelect
                 aria-label="Drive status"
                 value={drive.status}
-                disabled={savingStatus}
+                disabled={savingStatus || drive.status === 'archived'}
                 onChange={(e) => onStatusChange(e.target.value as DriveStatus)}
                 className="w-44"
               >
-                {DRIVE_STATUSES.map((s) => (
+                {/* Only the current status + its legal next states, so illegal
+                    moves are unreachable (the server also enforces this). */}
+                {driveStatusOptions(drive.status).map((s) => (
                   <option key={s} value={s}>
                     {DRIVE_STATUS_LABELS[s]}
                   </option>
@@ -326,7 +336,7 @@ export default function EmployeeDriveDetailPage() {
         )}
         {tab === 'students' && (
           <DriveStudentsTab
-            driveId={drive.id}
+            drive={drive}
             canEdit={canEdit}
             drivePublished={drive.status === 'published'}
             refreshKey={studentsRefreshKey}
@@ -613,6 +623,20 @@ function DriveFilterTab({
 // Students tab — the drive's imported shortlist
 // ---------------------------------------------------------------------------
 
+/** "Designation · CTC ₹6,00,000 LPA · Stipend ₹25,000 – ₹30,000/month" for a
+ *  Selected row; null when nothing was recorded (legacy selections). */
+function selectionSummary(r: DriveStudentRow): string | null {
+  const fmt = (v: string) => `₹${Number(v).toLocaleString('en-IN')}`
+  const band = (main: string, min: string | null) =>
+    min != null ? `${fmt(min)} – ${fmt(main)}` : fmt(main)
+  const parts: string[] = []
+  if (r.selected_designation) parts.push(r.selected_designation)
+  if (r.ctc != null) parts.push(`CTC ${band(r.ctc, r.ctc_min)} LPA`)
+  if (r.stipend != null)
+    parts.push(`Stipend ${band(r.stipend, r.stipend_min)}/month`)
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
 const STATUS_FILTERS: { value: number | null; label: string }[] = [
   { value: null, label: 'All' },
   ...Object.entries(DRIVE_STUDENT_STATUS_LABELS).map(([v, label]) => ({
@@ -622,16 +646,17 @@ const STATUS_FILTERS: { value: number | null; label: string }[] = [
 ]
 
 function DriveStudentsTab({
-  driveId,
+  drive,
   canEdit,
   drivePublished,
   refreshKey,
 }: {
-  driveId: number
+  drive: DriveDetail
   canEdit: boolean
   drivePublished: boolean
   refreshKey: number
 }) {
+  const driveId = drive.id
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<number | null>(null)
@@ -658,6 +683,20 @@ function DriveStudentsTab({
   const [outcomeIds, setOutcomeIds] = useState<number[] | null>(null)
   const [outcomeChoice, setOutcomeChoice] = useState<50 | 60 | 70>(60)
   const [markingOutcome, setMarkingOutcome] = useState(false)
+  // The designation + package captured with a Selected outcome (one set per
+  // batch), prefilled from the drive/designation package when the dialog opens.
+  const [selDraft, setSelDraft] = useState<SelectionDraft>({
+    drive_profile_id: null,
+    ctc: '',
+    ctc_min: '',
+    stipend: '',
+    stipend_min: '',
+  })
+  // The Selected row whose recorded selection is being edited, if any.
+  const [editSelectionRow, setEditSelectionRow] =
+    useState<DriveStudentRow | null>(null)
+  const [editDraft, setEditDraft] = useState<SelectionDraft | null>(null)
+  const [savingSelection, setSavingSelection] = useState(false)
   // Revoke (single row or bulk): a reason + a notify toggle.
   const [revokeIds, setRevokeIds] = useState<number[] | null>(null)
   const [revokeReason, setRevokeReason] = useState('')
@@ -784,11 +823,32 @@ function DriveStudentsTab({
     }
   }, [driveId, refetch])
 
+  // Opens the outcome dialog defaulting to Selected, with the selection draft
+  // prefilled from the drive/designation package (auto-picks a lone profile).
+  const openOutcome = useCallback(
+    (ids: number[]) => {
+      setOutcomeChoice(60)
+      setSelDraft(
+        prefillSelectionDraft(
+          drive,
+          drive.profiles.length === 1 ? drive.profiles[0].id : null,
+        ),
+      )
+      setOutcomeIds(ids)
+    },
+    [drive],
+  )
+
   const onMarkOutcome = useCallback(async () => {
     if (!outcomeIds || outcomeIds.length === 0) return
     setMarkingOutcome(true)
     try {
-      const s = await markDriveStudentOutcome(driveId, outcomeIds, outcomeChoice)
+      const s = await markDriveStudentOutcome(
+        driveId,
+        outcomeIds,
+        outcomeChoice,
+        outcomeChoice === 60 ? selectionDraftToWrite(selDraft) : undefined,
+      )
       setOutcomeIds(null)
       setSelected(new Set())
       toast.success(
@@ -802,7 +862,38 @@ function DriveStudentsTab({
     } finally {
       setMarkingOutcome(false)
     }
-  }, [driveId, outcomeIds, outcomeChoice, refetch])
+  }, [driveId, outcomeIds, outcomeChoice, selDraft, refetch])
+
+  const openEditSelection = useCallback((r: DriveStudentRow) => {
+    setEditDraft({
+      drive_profile_id: r.selected_drive_profile_id,
+      ctc: r.ctc ?? '',
+      ctc_min: r.ctc_min ?? '',
+      stipend: r.stipend ?? '',
+      stipend_min: r.stipend_min ?? '',
+    })
+    setEditSelectionRow(r)
+  }, [])
+
+  const onSaveSelection = useCallback(async () => {
+    if (!editSelectionRow || !editDraft) return
+    setSavingSelection(true)
+    try {
+      await updateDriveStudentSelection(
+        driveId,
+        editSelectionRow.id,
+        selectionDraftToWrite(editDraft),
+      )
+      toast.success(`Selection updated for ${editSelectionRow.display_name}.`)
+      setEditSelectionRow(null)
+      setEditDraft(null)
+      refetch()
+    } catch (e) {
+      toast.error(errMsg(e, 'Could not update the selection.'))
+    } finally {
+      setSavingSelection(false)
+    }
+  }, [driveId, editSelectionRow, editDraft, refetch])
 
   const openRevoke = useCallback((ids: number[]) => {
     setRevokeReason('')
@@ -859,10 +950,20 @@ function DriveStudentsTab({
     selectedRows.length > 0 &&
     selectedRows.every((r) => r.status === DRIVE_STUDENT_STATUS.ACCEPTED)
 
-  const showSelection = canEdit
+  // An archived drive is closed: student records are frozen and no lifecycle
+  // action is allowed (the server enforces this too). Hide the selection
+  // checkboxes and every per-row action.
+  const driveArchived = drive.status === 'archived'
+  const showSelection = canEdit && !driveArchived
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 py-1">
+      {driveArchived && (
+        <div className="shrink-0 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+          This drive is archived — student records are read-only and no further
+          actions can be taken.
+        </div>
+      )}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
         <div className="flex items-baseline gap-2">
           <span className="text-base font-semibold">
@@ -929,7 +1030,7 @@ function DriveStudentsTab({
       </div>
 
       {/* Bulk-action bar */}
-      {selected.size > 0 && (
+      {selected.size > 0 && !driveArchived && (
         <div className="flex shrink-0 items-center gap-3 rounded-lg border bg-card px-3 py-2 text-sm">
           <span className="font-medium tabular-nums">
             {selected.size} selected
@@ -942,10 +1043,7 @@ function DriveStudentsTab({
                 ? undefined
                 : 'Only Accepted students can be given an outcome.'
             }
-            onClick={() => {
-              setOutcomeChoice(60)
-              setOutcomeIds([...selected])
-            }}
+            onClick={() => openOutcome([...selected])}
           >
             Mark outcome
           </Button>
@@ -1053,6 +1151,15 @@ function DriveStudentsTab({
                         {r.rejection_reason}
                       </p>
                     ) : null}
+                    {r.status === DRIVE_STUDENT_STATUS.SELECTED &&
+                    (r.ctc != null || r.stipend != null) ? (
+                      <p
+                        className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground"
+                        title={selectionSummary(r) ?? undefined}
+                      >
+                        {selectionSummary(r)}
+                      </p>
+                    ) : null}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
                     {new Date(r.imported_at).toLocaleDateString()}
@@ -1065,7 +1172,12 @@ function DriveStudentsTab({
                       className="whitespace-nowrap"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="flex items-center justify-end gap-1">
+                      <div
+                        className={cn(
+                          'flex items-center justify-end gap-1',
+                          driveArchived && 'hidden',
+                        )}
+                      >
                         {r.status === DRIVE_STUDENT_STATUS.IMPORTED && (
                           <Button
                             variant="outline"
@@ -1130,12 +1242,20 @@ function DriveStudentsTab({
                             variant="outline"
                             size="sm"
                             className="h-7"
-                            onClick={() => {
-                              setOutcomeChoice(60)
-                              setOutcomeIds([r.id])
-                            }}
+                            onClick={() => openOutcome([r.id])}
                           >
                             Mark outcome
+                          </Button>
+                        )}
+                        {r.status === DRIVE_STUDENT_STATUS.SELECTED && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7"
+                            onClick={() => openEditSelection(r)}
+                          >
+                            <Pencil className="size-3.5" />
+                            Edit selection
                           </Button>
                         )}
                         {REVOCABLE_STATUSES.includes(r.status) && (
@@ -1248,7 +1368,9 @@ function DriveStudentsTab({
             </DialogTitle>
             <DialogDescription>
               Records the drive-day result. Selected students are notified;
-              other outcomes stay in-app only. This cannot be changed later.
+              other outcomes stay in-app only. The outcome itself cannot be
+              changed later, but a Selected student's designation and package
+              can be edited.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -1273,18 +1395,91 @@ function DriveStudentsTab({
               </label>
             ))}
           </div>
+          {outcomeChoice === 60 && (
+            <div className="space-y-3 rounded-lg border p-3">
+              <SelectionFields
+                drive={drive}
+                draft={selDraft}
+                onChange={setSelDraft}
+                idPrefix="outcome-selection"
+              />
+              {(outcomeIds?.length ?? 0) > 1 && (
+                <p className="text-xs text-muted-foreground">
+                  Applied to all {outcomeIds?.length} students in this batch.
+                </p>
+              )}
+            </div>
+          )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setOutcomeIds(null)}>
               Cancel
             </Button>
             <Button
               onClick={() => void onMarkOutcome()}
-              disabled={markingOutcome}
+              disabled={
+                markingOutcome ||
+                (outcomeChoice === 60 && !selectionDraftValid(drive, selDraft))
+              }
             >
               {markingOutcome ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : null}
               Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit the designation/package recorded on a Selected student */}
+      <Dialog
+        open={!!editSelectionRow}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditSelectionRow(null)
+            setEditDraft(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Edit selection — {editSelectionRow?.display_name}
+            </DialogTitle>
+            <DialogDescription>
+              Replaces the recorded designation and package. The change is
+              saved to the student's track.
+            </DialogDescription>
+          </DialogHeader>
+          {editDraft && (
+            <SelectionFields
+              drive={drive}
+              draft={editDraft}
+              onChange={setEditDraft}
+              idPrefix="edit-selection"
+            />
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditSelectionRow(null)
+                setEditDraft(null)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void onSaveSelection()}
+              disabled={
+                savingSelection ||
+                !editDraft ||
+                !selectionDraftValid(drive, editDraft)
+              }
+            >
+              {savingSelection ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1476,26 +1671,34 @@ function EligibilityTab({
   return (
     <div className="mx-auto max-w-3xl space-y-5 pb-6">
       <p className="text-sm text-muted-foreground">
-        Who this drive is open to. Leave an axis empty for "no restriction".
+        Who this drive is open to. Passout year and programme are required before
+        the drive can be marked Ready to publish; leave any other axis empty for
+        "no restriction".
       </p>
 
-      <Field label="Passout year" hint="Graduating batches this drive accepts.">
+      <Field
+        label="Passout year"
+        hint="Graduating batches this drive accepts."
+        required
+      >
         <SearchableMultiSelect
           options={yearChips}
           selected={form.passout_years}
           onChange={(ids) => patch({ passout_years: ids })}
-          placeholder="Any passout year"
+          placeholder="Select passout years"
           searchPlaceholder="Search years…"
+          showSelectAll
         />
       </Field>
 
-      <Field label="Programs" hint="Programmes eligible to apply.">
+      <Field label="Programs" hint="Programmes eligible to apply." required>
         <SearchableMultiSelect
           options={options.programmes}
           selected={form.programme_ids}
           onChange={(ids) => patch({ programme_ids: ids })}
-          placeholder="Any programme"
+          placeholder="Select programmes"
           searchPlaceholder="Search programmes…"
+          showSelectAll
         />
       </Field>
 

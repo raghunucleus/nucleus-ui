@@ -123,7 +123,7 @@ export type DriveFieldScope = 'drive' | 'designation'
 /** Whether a package is a single figure or a min–max band. */
 export type DriveAmountMode = 'fixed' | 'range'
 
-/** A drive's lifecycle state — freely set from the detail screen. */
+/** A drive's lifecycle state — moved through a guarded machine (see server). */
 export type DriveStatus =
   | 'draft'
   | 'ready_to_publish'
@@ -142,6 +142,24 @@ export const DRIVE_STATUS_LABELS: Record<DriveStatus, string> = {
   ready_to_publish: 'Ready to publish',
   published: 'Published',
   archived: 'Archived',
+}
+
+/**
+ * Allowed lifecycle transitions, mirroring `DRIVE_STATUS_TRANSITIONS` on the
+ * server. Used to restrict the status dropdown to legal next states; the server
+ * is the source of truth and also enforces the preconditions (complete
+ * eligibility to reach `ready_to_publish`, all students final to `archived`).
+ */
+export const DRIVE_STATUS_TRANSITIONS: Record<DriveStatus, DriveStatus[]> = {
+  draft: ['ready_to_publish'],
+  ready_to_publish: ['draft', 'published'],
+  published: ['archived'],
+  archived: [],
+}
+
+/** The current status plus the statuses it may legally move to. */
+export function driveStatusOptions(current: DriveStatus): DriveStatus[] {
+  return [current, ...DRIVE_STATUS_TRANSITIONS[current]]
 }
 
 type BadgeVariant = 'default' | 'secondary' | 'success' | 'warning' | 'muted'
@@ -790,6 +808,7 @@ export const DRIVE_STUDENT_ACTION_LABELS: Record<string, string> = {
   denied: 'Denied',
   outcome: 'Outcome recorded',
   revoked: 'Revoked',
+  selection_updated: 'Selection updated',
 }
 
 /** One entry in a student's drive track (audit trail). */
@@ -857,6 +876,26 @@ export interface DriveStudentRow {
   responded_at: string | null
   rejection_reason: string | null
   outcome_marked_at: string | null
+  /** Selection details — set only on Selected (60) rows marked after
+   *  designation/amount capture shipped; null on legacy selections. `ctc` /
+   *  `stipend` are the fixed value or range max; `_min` only for a range. */
+  selected_drive_profile_id: number | null
+  selected_designation: string | null
+  ctc: string | null
+  ctc_min: string | null
+  stipend: string | null
+  stipend_min: string | null
+}
+
+/** The designation + package recorded when marking Selected (one set per batch). */
+export interface DriveSelectionWrite {
+  drive_profile_id: number
+  /** CTC in LPA — fixed value or range max. */
+  ctc?: number | null
+  ctc_min?: number | null
+  /** Stipend in ₹/month — fixed value or range max. */
+  stipend?: number | null
+  stipend_min?: number | null
 }
 
 export interface DriveStudentsPage {
@@ -956,16 +995,37 @@ export function remindDriveStudents(
   )
 }
 
-/** Record the drive-day outcome for Accepted students. */
+/** Record the drive-day outcome for Accepted students. Selected (60) also
+ *  carries the designation + package, applied to every student in the batch. */
 export function markDriveStudentOutcome(
   driveId: number,
   studentIds: number[],
   status: 50 | 60 | 70,
+  selection?: DriveSelectionWrite,
 ): Promise<DriveOutcomeSummary> {
   return withEmployeeAuth((token) =>
     apiFetch(`${DRIVES_ROOT}/${driveId}/students/outcome`, {
       method: 'POST',
-      body: { student_ids: studentIds, status },
+      body: {
+        student_ids: studentIds,
+        status,
+        ...(status === 60 && selection ? selection : {}),
+      },
+      token,
+    }),
+  )
+}
+
+/** Edit the designation/package recorded on a Selected (60) student. */
+export function updateDriveStudentSelection(
+  driveId: number,
+  studentId: number,
+  selection: DriveSelectionWrite,
+): Promise<{ updated: number }> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/${studentId}/selection`, {
+      method: 'PATCH',
+      body: selection,
       token,
     }),
   )

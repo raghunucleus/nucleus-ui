@@ -517,11 +517,11 @@ export const FILTER_HELP: Record<string, FilterHelpEntry> = {
     summary: 'The CTC (in LPA) of a full-time offer the student holds.',
     semantics:
       PLACED_SEMANTICS +
-      ' The figure compared is the offering drive’s headline CTC in LPA — ' +
-      'the designation-specific band where one was set, otherwise the drive-' +
-      'wide figure; for a min–max band the maximum is used. Unplaced students ' +
-      'have no CTC at all, so they never match any numeric comparison on this ' +
-      'field.',
+      ' The figure compared is the CTC recorded on the student’s selection ' +
+      'itself — captured when they were marked Selected; where a range was ' +
+      'recorded, its maximum is used. Unplaced students have no CTC at all, ' +
+      'and selections recorded before designation/package capture existed ' +
+      'have no figure either — neither ever matches a numeric comparison.',
     examples: [
       {
         title: 'Placed below 6 LPA — dream-offer eligible',
@@ -590,10 +590,11 @@ export const FILTER_HELP: Record<string, FilterHelpEntry> = {
     summary: 'The stipend (₹ per month) of an internship selection.',
     semantics:
       INTERNSHIP_SEMANTICS +
-      ' The figure compared is the offering drive’s headline stipend in ' +
-      'rupees per month — the designation-specific band where one was set, ' +
-      'otherwise the drive-wide figure; for a min–max band the maximum is ' +
-      'used. Students with no internship never match a numeric comparison.',
+      ' The figure compared is the stipend recorded on the student’s ' +
+      'selection itself — captured when they were marked Selected; where a ' +
+      'range was recorded, its maximum is used. Students with no internship ' +
+      'never match a numeric comparison, and neither do selections recorded ' +
+      'before designation/package capture existed (they have no figure).',
     examples: [
       {
         title: 'Interned at ₹20,000/month or more',

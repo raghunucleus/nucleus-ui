@@ -3,6 +3,7 @@ import {
   Ban,
   Check,
   CirclePlus,
+  Pencil,
   Send,
   Trophy,
   X,
@@ -33,6 +34,7 @@ const ACTION_STYLE: Record<string, { icon: LucideIcon; tone: string }> = {
   denied: { icon: X, tone: 'bg-destructive/10 text-destructive' },
   outcome: { icon: Trophy, tone: 'bg-primary/10 text-primary' },
   revoked: { icon: Ban, tone: 'bg-muted text-muted-foreground' },
+  selection_updated: { icon: Pencil, tone: 'bg-primary/10 text-primary' },
 }
 
 function formatWhen(iso: string): string {
@@ -46,8 +48,11 @@ function formatWhen(iso: string): string {
 function subline(e: DriveStudentEvent): string {
   const to = DRIVE_STUDENT_STATUS_LABELS[e.to_status] ?? String(e.to_status)
   const actor = e.actor_name ? ` · ${e.actor_name}` : ''
-  // For outcome, the "to" status IS the meaningful label (Selected, etc.).
-  return e.action === 'outcome' ? `${to}${actor}` : `→ ${to}${actor}`
+  // For outcome (and a selection edit, which stays Selected), the "to" status
+  // IS the meaningful label — an arrow would just say "→ Selected" noise.
+  return e.action === 'outcome' || e.action === 'selection_updated'
+    ? `${to}${actor}`
+    : `→ ${to}${actor}`
 }
 
 /**

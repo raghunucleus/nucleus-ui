@@ -50,16 +50,21 @@ export function Field({
   hint,
   children,
   className,
+  required = false,
 }: {
   label: string
   htmlFor?: string
   hint?: string
   children: React.ReactNode
   className?: string
+  required?: boolean
 }) {
   return (
     <div className={cn('space-y-1.5', className)}>
-      <Label htmlFor={htmlFor}>{label}</Label>
+      <Label htmlFor={htmlFor}>
+        {label}
+        {required ? <span className="text-destructive"> *</span> : null}
+      </Label>
       {children}
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
@@ -128,6 +133,7 @@ export function SearchableMultiSelect({
   searchPlaceholder = 'Search…',
   emptyMessage = 'No results',
   noOptions = 'No options configured yet.',
+  showSelectAll = false,
   id,
 }: {
   options: Chip[]
@@ -137,6 +143,8 @@ export function SearchableMultiSelect({
   searchPlaceholder?: string
   emptyMessage?: string
   noOptions?: string
+  /** Show a "Select all / Clear" row above the option list. */
+  showSelectAll?: boolean
   id?: string
 }) {
   const [open, setOpen] = React.useState(false)
@@ -184,6 +192,11 @@ export function SearchableMultiSelect({
         ? selected.filter((x) => x !== optId)
         : [...selected, optId],
     )
+
+  // Union the currently-filtered ids into the selection so a search + "Select
+  // all" adds the matches without dropping selections outside the filter.
+  const selectAllFiltered = () =>
+    onChange(Array.from(new Set([...selected, ...filtered.map((o) => o.id)])))
 
   const triggerLabel =
     selected.length === 0
@@ -250,6 +263,28 @@ export function SearchableMultiSelect({
                 </button>
               )}
             </div>
+
+            {showSelectAll && filtered.length > 0 && (
+              <div className="flex items-center justify-between border-b px-3 py-1.5 text-xs">
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={selectAllFiltered}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {query ? 'Select all matching' : 'Select all'}
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => onChange([])}
+                  disabled={selected.length === 0}
+                  className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
 
             <div role="listbox" className="max-h-64 overflow-y-auto py-1">
               {filtered.length === 0 ? (
