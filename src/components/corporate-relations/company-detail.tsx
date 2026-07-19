@@ -1692,11 +1692,13 @@ function ActivityTab({
                             className="flex flex-wrap items-baseline gap-1.5"
                           >
                             <span className="font-medium">{c.field}:</span>
-                            <span className="text-muted-foreground line-through">
+                            <span className="min-w-0 text-muted-foreground line-through break-words">
                               {displayValue(c.from)}
                             </span>
                             <span className="text-muted-foreground">→</span>
-                            <span>{displayValue(c.to)}</span>
+                            <span className="min-w-0 break-words">
+                              {displayValue(c.to)}
+                            </span>
                           </li>
                         ))}
                       </ul>

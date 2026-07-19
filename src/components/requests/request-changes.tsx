@@ -63,11 +63,13 @@ export function RequestChanges({
               )}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <span className="text-muted-foreground line-through">
+              <span className="min-w-0 text-muted-foreground line-through break-words">
                 {changeFromText(c)}
               </span>
               <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
-              <span className="font-medium break-all">{changeToText(c)}</span>
+              <span className="min-w-0 font-medium break-words">
+                {changeToText(c)}
+              </span>
             </div>
             {certificateUrl && (
               <a
