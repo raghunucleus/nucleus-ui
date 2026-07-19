@@ -547,23 +547,35 @@ export function CompanyLogo({
   logoUrl: string | null
   className?: string
 }) {
-  if (logoUrl) {
-    return (
-      <img
-        src={logoUrl}
-        alt=""
-        className={cn('rounded-md border object-contain', className ?? 'size-8')}
-      />
-    )
-  }
+  // A broken/unreachable presigned URL should degrade to the initials box, not
+  // leave the browser's broken-image glyph in the row.
+  const [failed, setFailed] = React.useState(false)
+  React.useEffect(() => setFailed(false), [logoUrl])
+
+  // The image fills a fixed-size, overflow-hidden box with `object-cover` (the
+  // same treatment as the company-detail header). Using `object-cover` on a
+  // sized wrapper — rather than `object-contain` on the <img> itself — keeps
+  // non-square logos (wide wordmarks) filling the box instead of collapsing to
+  // an invisible sliver.
   return (
     <div
       className={cn(
-        'flex items-center justify-center rounded-md border bg-muted text-[10px] font-semibold text-muted-foreground',
+        'flex items-center justify-center overflow-hidden rounded-md border bg-muted',
         className ?? 'size-8',
       )}
     >
-      {companyInitials(name)}
+      {logoUrl && !failed ? (
+        <img
+          src={logoUrl}
+          alt=""
+          onError={() => setFailed(true)}
+          className="size-full object-cover"
+        />
+      ) : (
+        <span className="text-[10px] font-semibold text-muted-foreground">
+          {companyInitials(name)}
+        </span>
+      )}
     </div>
   )
 }

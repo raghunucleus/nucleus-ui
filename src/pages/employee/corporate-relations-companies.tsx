@@ -65,7 +65,7 @@ export default function EmployeeCompaniesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="mx-auto max-w-7xl space-y-5">
       <div>
         <h1 className="text-lg font-semibold tracking-tight">My Companies</h1>
         <p className="text-sm text-muted-foreground">

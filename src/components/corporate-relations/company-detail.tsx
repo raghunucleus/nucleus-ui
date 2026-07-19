@@ -254,6 +254,9 @@ function CompanyHeader({
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+  // Fall back to the Building2 icon if the presigned logo URL fails to load.
+  const [logoFailed, setLogoFailed] = useState(false)
+  useEffect(() => setLogoFailed(false), [company.logo_url])
 
   async function onLogoPicked(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -289,10 +292,11 @@ function CompanyHeader({
       <BackButton label="Back to companies" onClick={onBack} />
       <div className="flex flex-wrap items-start gap-3 rounded-xl border bg-card p-3">
         <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted">
-          {company.logo_url ? (
+          {company.logo_url && !logoFailed ? (
             <img
               src={company.logo_url}
               alt=""
+              onError={() => setLogoFailed(true)}
               className="size-full object-cover"
             />
           ) : (
@@ -363,7 +367,7 @@ function CompanyHeader({
 
 function DL({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-0.5">
+    <div className="min-w-0 space-y-0.5">
       <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
       <dd className="text-sm">{children ?? '—'}</dd>
     </div>
@@ -433,7 +437,8 @@ function OverviewTab({
         href={url.startsWith('http') ? url : `https://${url}`}
         target="_blank"
         rel="noreferrer"
-        className="text-primary hover:underline"
+        title={url}
+        className="block truncate text-primary hover:underline"
       >
         {url}
       </a>
