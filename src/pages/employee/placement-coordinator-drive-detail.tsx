@@ -16,7 +16,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import {
   CompanyLogo,
@@ -25,6 +25,12 @@ import {
 } from '@/components/corporate-relations/bits'
 import { DriveEligibilitySummary } from '@/components/drive-management/drive-eligibility-summary'
 import { DriveStatusHistory } from '@/components/drive-management/drive-status-history'
+import {
+  DriveStudentGroupHeaderRow,
+  DriveStudentsFilterPanel,
+  DriveStudentsFilterToggle,
+  DriveStudentsGroupBySelect,
+} from '@/components/drive-management/drive-students-filter-bar'
 import {
   IconBondFact,
   IconFact,
@@ -57,11 +63,18 @@ import {
   DRIVE_STUDENT_STATUS,
   DRIVE_STUDENT_STATUS_BADGE,
   DRIVE_STUDENT_STATUS_LABELS,
+  EMPTY_DRIVE_STUDENTS_FILTERS,
+  buildDriveStudentDisplayItems,
+  countDriveStudentsFilters,
+  readDriveStudentsFiltersOpen,
+  writeDriveStudentsFiltersOpen,
   companyWebsiteHref,
   companyWebsiteLabel,
   driveStatusVariant,
   type DriveDetail,
   type DriveStudentRow,
+  type DriveStudentsFilterOptions,
+  type DriveStudentsFilters,
   type EligibilitySummary,
 } from '@/lib/drive-management'
 import {
@@ -70,6 +83,7 @@ import {
   getCoordinatorDriveStudentActivity,
   getCoordinatorDriveStudentProfile,
   getCoordinatorDriveStudentTrack,
+  getCoordinatorDriveStudentsFilterOptions,
   listCoordinatorDriveStudents,
 } from '@/lib/placement-coordinator'
 import {
@@ -433,6 +447,15 @@ function StudentsTab({ driveId }: { driveId: number }) {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<number | null>(null)
+  const [filters, setFilters] = useState<DriveStudentsFilters>(
+    EMPTY_DRIVE_STUDENTS_FILTERS,
+  )
+  const [filterOptions, setFilterOptions] =
+    useState<DriveStudentsFilterOptions | null>(null)
+  // The left filter rail — remembered across visits.
+  const [filtersOpen, setFiltersOpen] = useState(readDriveStudentsFiltersOpen)
+  // Collapsed group keys of the grouped view.
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [rows, setRows] = useState<DriveStudentRow[] | null>(null)
   const [total, setTotal] = useState(0)
   const [pageCount, setPageCount] = useState(1)
@@ -442,19 +465,39 @@ function StudentsTab({ driveId }: { driveId: number }) {
     null,
   )
 
-  // Reset to the first page whenever the search/filter changes.
+  // Reset to the first page (and re-expand groups) whenever a filter changes.
   useEffect(() => {
     setPage(1)
-  }, [search, statusFilter])
+    setCollapsed(new Set())
+  }, [search, statusFilter, filters])
+
+  // Filter dropdown options (scope-trimmed server-side). Errors are non-fatal.
+  useEffect(() => {
+    let cancelled = false
+    getCoordinatorDriveStudentsFilterOptions(driveId)
+      .then((opts) => {
+        if (!cancelled) setFilterOptions(opts)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [driveId])
+
+  const grouped = filters.groupBy !== 'none'
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     listCoordinatorDriveStudents(driveId, {
-      page,
+      page: grouped ? 1 : page,
       pageSize: 25,
       search,
       status: statusFilter ?? undefined,
+      programme_ids: filters.programmeIds,
+      passout_years: filters.passoutYears,
+      entry_type: filters.entryType ?? undefined,
+      all: grouped || undefined,
     })
       .then((res) => {
         if (cancelled) return
@@ -472,7 +515,31 @@ function StudentsTab({ driveId }: { driveId: number }) {
     return () => {
       cancelled = true
     }
-  }, [driveId, page, search, statusFilter])
+  }, [driveId, page, search, statusFilter, filters, grouped])
+
+  const anyFilterActive =
+    statusFilter !== null ||
+    search.trim() !== '' ||
+    filters.programmeIds.length > 0 ||
+    filters.passoutYears.length > 0 ||
+    filters.entryType !== null
+  const displayItems = useMemo(
+    () => buildDriveStudentDisplayItems(rows ?? [], filters.groupBy, collapsed),
+    [rows, filters.groupBy, collapsed],
+  )
+  const toggleGroup = (key: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  const activeFilterCount = countDriveStudentsFilters(filters)
+  const toggleFilters = () => {
+    const next = !filtersOpen
+    setFiltersOpen(next)
+    writeDriveStudentsFiltersOpen(next)
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 py-1">
@@ -488,121 +555,170 @@ function StudentsTab({ driveId }: { driveId: number }) {
               : ' in your scope'}
           </span>
         </div>
-        <div className="min-w-52 max-w-xs">
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name or roll no…"
+        <div className="flex items-center gap-2">
+          <DriveStudentsFilterToggle
+            open={filtersOpen}
+            activeCount={activeFilterCount}
+            onToggle={toggleFilters}
+          />
+          <div className="min-w-52 max-w-xs">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name or roll no…"
+            />
+          </div>
+          <DriveStudentsGroupBySelect
+            value={filters.groupBy}
+            onChange={(groupBy) => setFilters({ ...filters, groupBy })}
           />
         </div>
       </div>
 
-      {/* Status filter chips */}
-      <div className="flex shrink-0 flex-wrap gap-1.5">
-        {STATUS_FILTERS.map((f) => {
-          const on = statusFilter === f.value
-          return (
-            <button
-              key={f.label}
-              type="button"
-              aria-pressed={on}
-              onClick={() => setStatusFilter(f.value)}
-              className={cn(
-                'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-                on
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'bg-card hover:bg-accent hover:text-accent-foreground',
-              )}
-            >
-              {f.label}
-            </button>
-          )
-        })}
-      </div>
+      <div
+        className={cn(
+          'grid min-h-0 flex-1 gap-4',
+          filtersOpen && 'lg:grid-cols-[20rem_minmax(0,1fr)]',
+        )}
+      >
+        {filtersOpen ? (
+          <DriveStudentsFilterPanel
+            options={filterOptions}
+            value={filters}
+            onChange={setFilters}
+          />
+        ) : null}
 
-      {error ? (
-        <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
-          {error}
-        </div>
-      ) : loading && rows === null ? (
-        <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
-          Loading…
-        </div>
-      ) : rows && rows.length === 0 ? (
-        <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
-          {statusFilter !== null
-            ? 'No students in this status.'
-            : 'No students from your programmes and passout years in this drive yet.'}
-        </div>
-      ) : (
-        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border">
-          <Table containerClassName="h-full max-h-[62vh] overflow-y-auto scrollbar-themed lg:max-h-none">
-            <TableHeader className="sticky top-0 z-10 bg-card">
-              <TableRow>
-                <TableHead>Roll number</TableHead>
-                <TableHead>Full name</TableHead>
-                <TableHead>Programme</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Imported</TableHead>
-                <TableHead>Imported by</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(rows ?? []).map((r) => (
-                <TableRow
-                  key={r.id}
-                  className="cursor-pointer"
-                  onClick={() => setDetailStudent(r)}
+        <div className="flex min-h-0 min-w-0 flex-col gap-3">
+          {/* Status filter chips */}
+          <div className="flex shrink-0 flex-wrap gap-1.5">
+            {STATUS_FILTERS.map((f) => {
+              const on = statusFilter === f.value
+              return (
+                <button
+                  key={f.label}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setStatusFilter(f.value)}
+                  className={cn(
+                    'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                    on
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'bg-card hover:bg-accent hover:text-accent-foreground',
+                  )}
                 >
-                  <TableCell className="whitespace-nowrap text-sm font-medium">
-                    {r.roll_no}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-sm">
-                    {r.display_name}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-sm">
-                    {r.programme ?? '—'}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <Badge variant={DRIVE_STUDENT_STATUS_BADGE[r.status]}>
-                      {DRIVE_STUDENT_STATUS_LABELS[r.status] ?? r.status}
-                    </Badge>
-                    {(r.status === DRIVE_STUDENT_STATUS.DENIED ||
-                      r.status === DRIVE_STUDENT_STATUS.REVOKED) &&
-                    r.rejection_reason ? (
-                      <p
-                        className="mt-0.5 max-w-56 truncate text-xs text-muted-foreground"
-                        title={r.rejection_reason}
-                      >
-                        {r.rejection_reason}
-                      </p>
-                    ) : null}
-                    {r.status === DRIVE_STUDENT_STATUS.SELECTED &&
-                    (r.ctc != null || r.stipend != null) ? (
-                      <p
-                        className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground"
-                        title={selectionSummary(r) ?? undefined}
-                      >
-                        {selectionSummary(r)}
-                      </p>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                    {new Date(r.imported_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                    {r.imported_by ?? '—'}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                  {f.label}
+                </button>
+              )
+            })}
+          </div>
 
-      {!loading && !error && pageCount > 1 && (
-        <Pagination page={page} totalPages={pageCount} onPage={setPage} />
-      )}
+          {error ? (
+            <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+              {error}
+            </div>
+          ) : loading && rows === null ? (
+            <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+              Loading…
+            </div>
+          ) : rows && rows.length === 0 ? (
+            <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
+              {anyFilterActive
+                ? 'No students match the current filters.'
+                : 'No students from your programmes and passout years in this drive yet.'}
+            </div>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-hidden rounded-lg border">
+              <Table containerClassName="h-full max-h-[62vh] overflow-y-auto scrollbar-themed lg:max-h-none">
+                <TableHeader className="sticky top-0 z-10 bg-card">
+                  <TableRow>
+                    <TableHead>Roll number</TableHead>
+                    <TableHead>Full name</TableHead>
+                    <TableHead>Programme</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Imported</TableHead>
+                    <TableHead>Imported by</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {displayItems.map((item) => {
+                    if (item.kind === 'header') {
+                      return (
+                        <DriveStudentGroupHeaderRow
+                          key={`group:${item.key}`}
+                          item={item}
+                          colSpan={6}
+                          onToggle={() => toggleGroup(item.key)}
+                        />
+                      )
+                    }
+                    const r = item.row
+                    return (
+                    <TableRow
+                      key={r.id}
+                      className="cursor-pointer"
+                      onClick={() => setDetailStudent(r)}
+                    >
+                      <TableCell className="whitespace-nowrap text-sm font-medium">
+                        {r.roll_no}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {r.display_name}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {r.programme ?? '—'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <Badge variant={DRIVE_STUDENT_STATUS_BADGE[r.status]}>
+                          {DRIVE_STUDENT_STATUS_LABELS[r.status] ?? r.status}
+                        </Badge>
+                        {(r.status === DRIVE_STUDENT_STATUS.DENIED ||
+                          r.status === DRIVE_STUDENT_STATUS.REVOKED) &&
+                        r.rejection_reason ? (
+                          <p
+                            className="mt-0.5 max-w-56 truncate text-xs text-muted-foreground"
+                            title={r.rejection_reason}
+                          >
+                            {r.rejection_reason}
+                          </p>
+                        ) : null}
+                        {r.status === DRIVE_STUDENT_STATUS.SELECTED &&
+                        (r.ctc != null || r.stipend != null) ? (
+                          <p
+                            className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground"
+                            title={selectionSummary(r) ?? undefined}
+                          >
+                            {selectionSummary(r)}
+                          </p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                        {new Date(r.imported_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                        {r.imported_by ?? '—'}
+                      </TableCell>
+                    </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {grouped && rows && total > rows.length ? (
+            <p className="shrink-0 text-xs text-muted-foreground">
+              Showing the first {rows.length.toLocaleString()} of{' '}
+              {total.toLocaleString()} students — narrow the filters to group
+              everything.
+            </p>
+          ) : null}
+
+          {!grouped && !loading && !error && pageCount > 1 && (
+            <Pagination page={page} totalPages={pageCount} onPage={setPage} />
+          )}
+        </div>
+      </div>
 
       {/* Per-student detail (profile / drive activity / this drive's trail) */}
       <DriveStudentDetailSheet

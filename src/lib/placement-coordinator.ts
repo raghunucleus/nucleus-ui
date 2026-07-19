@@ -1,5 +1,6 @@
 import { apiFetch } from './api'
 import { withEmployeeAuth } from './employee-auth'
+import { driveStudentsQs } from './drive-management'
 import type {
   Chip,
   DriveDetail,
@@ -8,6 +9,8 @@ import type {
   DriveStudentActivityRow,
   DriveStudentProfile,
   DriveStudentTrack,
+  DriveStudentsFilterOptions,
+  DriveStudentsListOpts,
   DriveStudentsPage,
   EligibilitySummary,
 } from './drive-management'
@@ -83,21 +86,19 @@ export function getCoordinatorDriveEligibilitySummary(
 /** The drive's shortlist, limited server-side to in-scope students. */
 export function listCoordinatorDriveStudents(
   driveId: number,
-  opts: {
-    page?: number
-    pageSize?: number
-    search?: string
-    status?: number
-  } = {},
+  opts: DriveStudentsListOpts = {},
 ): Promise<DriveStudentsPage> {
-  const qs = new URLSearchParams()
-  if (opts.page) qs.set('page', String(opts.page))
-  if (opts.pageSize) qs.set('pageSize', String(opts.pageSize))
-  if (opts.search?.trim()) qs.set('search', opts.search.trim())
-  if (opts.status !== undefined) qs.set('status', String(opts.status))
-  const suffix = qs.toString() ? `?${qs}` : ''
   return withEmployeeAuth((token) =>
-    apiFetch(`${ROOT}/${driveId}/students${suffix}`, { token }),
+    apiFetch(`${ROOT}/${driveId}/students${driveStudentsQs(opts)}`, { token }),
+  )
+}
+
+/** Filter dropdown options, trimmed to the coordinator's scope. */
+export function getCoordinatorDriveStudentsFilterOptions(
+  driveId: number,
+): Promise<DriveStudentsFilterOptions> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${ROOT}/${driveId}/students/filter-options`, { token }),
   )
 }
 

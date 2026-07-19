@@ -40,6 +40,12 @@ import { DriveAnalyticsTab } from '@/components/drive-management/drive-analytics
 import { DriveEligibilitySummary } from '@/components/drive-management/drive-eligibility-summary'
 import { DriveStatusHistory } from '@/components/drive-management/drive-status-history'
 import {
+  DriveStudentGroupHeaderRow,
+  DriveStudentsFilterPanel,
+  DriveStudentsFilterToggle,
+  DriveStudentsGroupBySelect,
+} from '@/components/drive-management/drive-students-filter-bar'
+import {
   IconBondFact,
   IconFact,
   IconMoneyFact,
@@ -96,6 +102,11 @@ import {
   REVOCABLE_STATUSES,
   ENTRY_TYPE_OPTIONS,
   GENDER_OPTIONS,
+  EMPTY_DRIVE_STUDENTS_FILTERS,
+  buildDriveStudentDisplayItems,
+  countDriveStudentsFilters,
+  readDriveStudentsFiltersOpen,
+  writeDriveStudentsFiltersOpen,
   companyWebsiteHref,
   companyWebsiteLabel,
   driveStatusVariant,
@@ -106,6 +117,7 @@ import {
   getDriveStudentActivity,
   getDriveStudentProfile,
   getDriveStudentTrack,
+  getDriveStudentsFilterOptions,
   getDriveStudentsFilterPrefill,
   importAllDriveStudents,
   importDriveStudents,
@@ -127,6 +139,8 @@ import {
   type EligibilitySummary,
   type DriveStatus,
   type DriveStudentRow,
+  type DriveStudentsFilterOptions,
+  type DriveStudentsFilters,
 } from '@/lib/drive-management'
 import type {
   SearchCondition,
@@ -673,6 +687,16 @@ function DriveStudentsTab({
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<number | null>(null)
+  const [filters, setFilters] = useState<DriveStudentsFilters>(
+    EMPTY_DRIVE_STUDENTS_FILTERS,
+  )
+  const [filterOptions, setFilterOptions] =
+    useState<DriveStudentsFilterOptions | null>(null)
+  // The left filter rail — remembered across visits.
+  const [filtersOpen, setFiltersOpen] = useState(readDriveStudentsFiltersOpen)
+  // Collapsed group keys of the grouped view (visual only — selection keeps
+  // ids inside collapsed groups).
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [rows, setRows] = useState<DriveStudentRow[] | null>(null)
   const [total, setTotal] = useState(0)
   const [pageCount, setPageCount] = useState(1)
@@ -718,19 +742,41 @@ function DriveStudentsTab({
   // The student whose track sheet is open.
   const [trackStudent, setTrackStudent] = useState<DriveStudentRow | null>(null)
 
-  // Reset to the first page whenever the search/filter changes.
+  // Reset to the first page (and re-expand groups) whenever a filter changes.
   useEffect(() => {
     setPage(1)
-  }, [search, statusFilter])
+    setCollapsed(new Set())
+  }, [search, statusFilter, filters])
+
+  // Filter dropdown options — re-derived on refresh since imports/removals
+  // change the membership the options are computed from. Errors are non-fatal:
+  // the bar just keeps its last options.
+  useEffect(() => {
+    let cancelled = false
+    getDriveStudentsFilterOptions(driveId)
+      .then((opts) => {
+        if (!cancelled) setFilterOptions(opts)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [driveId, refreshKey, localKey])
+
+  const grouped = filters.groupBy !== 'none'
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     listDriveStudents(driveId, {
-      page,
+      page: grouped ? 1 : page,
       pageSize: 25,
       search,
       status: statusFilter ?? undefined,
+      programme_ids: filters.programmeIds,
+      passout_years: filters.passoutYears,
+      entry_type: filters.entryType ?? undefined,
+      all: grouped || undefined,
     })
       .then((res) => {
         if (cancelled) return
@@ -758,7 +804,16 @@ function DriveStudentsTab({
     return () => {
       cancelled = true
     }
-  }, [driveId, page, search, statusFilter, refreshKey, localKey])
+  }, [
+    driveId,
+    page,
+    search,
+    statusFilter,
+    filters,
+    grouped,
+    refreshKey,
+    localKey,
+  ])
 
   const refetch = useCallback(() => setLocalKey((k) => k + 1), [])
 
@@ -969,6 +1024,31 @@ function DriveStudentsTab({
   const driveArchived = drive.status === 'archived'
   const showSelection = canEdit && !driveArchived
 
+  const anyFilterActive =
+    statusFilter !== null ||
+    search.trim() !== '' ||
+    filters.programmeIds.length > 0 ||
+    filters.passoutYears.length > 0 ||
+    filters.entryType !== null
+  const colCount = 6 + (showSelection ? 1 : 0) + (canEdit ? 1 : 0)
+  const activeFilterCount = countDriveStudentsFilters(filters)
+  const toggleFilters = () => {
+    const next = !filtersOpen
+    setFiltersOpen(next)
+    writeDriveStudentsFiltersOpen(next)
+  }
+  const displayItems = useMemo(
+    () => buildDriveStudentDisplayItems(rows ?? [], filters.groupBy, collapsed),
+    [rows, filters.groupBy, collapsed],
+  )
+  const toggleGroup = (key: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-3 py-1">
       {driveArchived && (
@@ -1009,6 +1089,11 @@ function DriveStudentsTab({
               Invite all imported
             </Button>
           )}
+          <DriveStudentsFilterToggle
+            open={filtersOpen}
+            activeCount={activeFilterCount}
+            onToggle={toggleFilters}
+          />
           <div className="min-w-52 max-w-xs">
             <Input
               value={search}
@@ -1016,298 +1101,340 @@ function DriveStudentsTab({
               placeholder="Search name or roll no…"
             />
           </div>
+          <DriveStudentsGroupBySelect
+            value={filters.groupBy}
+            onChange={(groupBy) => setFilters({ ...filters, groupBy })}
+          />
         </div>
       </div>
 
-      {/* Status filter chips */}
-      <div className="flex shrink-0 flex-wrap gap-1.5">
-        {STATUS_FILTERS.map((f) => {
-          const on = statusFilter === f.value
-          return (
-            <button
-              key={f.label}
-              type="button"
-              aria-pressed={on}
-              onClick={() => setStatusFilter(f.value)}
-              className={cn(
-                'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-                on
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'bg-card hover:bg-accent hover:text-accent-foreground',
-              )}
-            >
-              {f.label}
-            </button>
-          )
-        })}
-      </div>
+      <div
+        className={cn(
+          'grid min-h-0 flex-1 gap-4',
+          filtersOpen && 'lg:grid-cols-[20rem_minmax(0,1fr)]',
+        )}
+      >
+        {filtersOpen ? (
+          <DriveStudentsFilterPanel
+            options={filterOptions}
+            value={filters}
+            onChange={setFilters}
+          />
+        ) : null}
 
-      {/* Bulk-action bar */}
-      {selected.size > 0 && !driveArchived && (
-        <div className="flex shrink-0 items-center gap-3 rounded-lg border bg-card px-3 py-2 text-sm">
-          <span className="font-medium tabular-nums">
-            {selected.size} selected
-          </span>
-          <Button
-            size="sm"
-            disabled={!canBulkOutcome}
-            title={
-              canBulkOutcome
-                ? undefined
-                : 'Only Accepted students can be given an outcome.'
-            }
-            onClick={() => openOutcome([...selected])}
-          >
-            Mark outcome
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-destructive hover:text-destructive"
-            onClick={() => openRevoke([...selected])}
-          >
-            Revoke
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelected(new Set())}
-          >
-            Clear
-          </Button>
-        </div>
-      )}
-
-      {error ? (
-        <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
-          {error}
-        </div>
-      ) : loading && rows === null ? (
-        <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
-          Loading…
-        </div>
-      ) : rows && rows.length === 0 ? (
-        <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
-          {statusFilter !== null
-            ? 'No students in this status.'
-            : 'No students imported yet — use the Filter tab to add candidates.'}
-        </div>
-      ) : (
-        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border">
-          <Table containerClassName="h-full max-h-[62vh] overflow-y-auto scrollbar-themed lg:max-h-none">
-            <TableHeader className="sticky top-0 z-10 bg-card">
-              <TableRow>
-                {showSelection ? (
-                  <TableHead className="w-8">
-                    <input
-                      type="checkbox"
-                      className="accent-primary"
-                      checked={allRevocableSelected}
-                      disabled={revocableOnPage.length === 0}
-                      onChange={toggleSelectAll}
-                      aria-label="Select all revocable students on this page"
-                    />
-                  </TableHead>
-                ) : null}
-                <TableHead>Roll number</TableHead>
-                <TableHead>Full name</TableHead>
-                <TableHead>Programme</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Imported</TableHead>
-                <TableHead>Imported by</TableHead>
-                {canEdit ? <TableHead className="w-40" /> : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(rows ?? []).map((r) => (
-                <TableRow
-                  key={r.id}
-                  className="cursor-pointer"
-                  onClick={() => setTrackStudent(r)}
+        <div className="flex min-h-0 min-w-0 flex-col gap-3">
+          {/* Status filter chips */}
+          <div className="flex shrink-0 flex-wrap gap-1.5">
+            {STATUS_FILTERS.map((f) => {
+              const on = statusFilter === f.value
+              return (
+                <button
+                  key={f.label}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setStatusFilter(f.value)}
+                  className={cn(
+                    'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                    on
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'bg-card hover:bg-accent hover:text-accent-foreground',
+                  )}
                 >
-                  {showSelection ? (
-                    <TableCell
-                      className="w-8"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {REVOCABLE_STATUSES.includes(r.status) ? (
+                  {f.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Bulk-action bar */}
+          {selected.size > 0 && !driveArchived && (
+            <div className="flex shrink-0 items-center gap-3 rounded-lg border bg-card px-3 py-2 text-sm">
+              <span className="font-medium tabular-nums">
+                {selected.size} selected
+              </span>
+              <Button
+                size="sm"
+                disabled={!canBulkOutcome}
+                title={
+                  canBulkOutcome
+                    ? undefined
+                    : 'Only Accepted students can be given an outcome.'
+                }
+                onClick={() => openOutcome([...selected])}
+              >
+                Mark outcome
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-destructive hover:text-destructive"
+                onClick={() => openRevoke([...selected])}
+              >
+                Revoke
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelected(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
+
+          {error ? (
+            <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+              {error}
+            </div>
+          ) : loading && rows === null ? (
+            <div className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+              Loading…
+            </div>
+          ) : rows && rows.length === 0 ? (
+            <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
+              {anyFilterActive
+                ? 'No students match the current filters.'
+                : 'No students imported yet — use the Filter tab to add candidates.'}
+            </div>
+          ) : (
+            <div className="min-h-0 flex-1 overflow-hidden rounded-lg border">
+              <Table containerClassName="h-full max-h-[62vh] overflow-y-auto scrollbar-themed lg:max-h-none">
+                <TableHeader className="sticky top-0 z-10 bg-card">
+                  <TableRow>
+                    {showSelection ? (
+                      <TableHead className="w-8">
                         <input
                           type="checkbox"
                           className="accent-primary"
-                          checked={selected.has(r.id)}
-                          onChange={() => toggleSelect(r.id)}
-                          aria-label={`Select ${r.display_name}`}
+                          checked={allRevocableSelected}
+                          disabled={revocableOnPage.length === 0}
+                          onChange={toggleSelectAll}
+                          aria-label="Select all loaded revocable students"
                         />
-                      ) : null}
-                    </TableCell>
-                  ) : null}
-                  <TableCell className="whitespace-nowrap text-sm font-medium">
-                    {r.roll_no}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-sm">
-                    {r.display_name}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-sm">
-                    {r.programme ?? '—'}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    <Badge variant={DRIVE_STUDENT_STATUS_BADGE[r.status]}>
-                      {DRIVE_STUDENT_STATUS_LABELS[r.status] ?? r.status}
-                    </Badge>
-                    {(r.status === DRIVE_STUDENT_STATUS.DENIED ||
-                      r.status === DRIVE_STUDENT_STATUS.REVOKED) &&
-                    r.rejection_reason ? (
-                      <p
-                        className="mt-0.5 max-w-56 truncate text-xs text-muted-foreground"
-                        title={r.rejection_reason}
-                      >
-                        {r.rejection_reason}
-                      </p>
+                      </TableHead>
                     ) : null}
-                    {r.status === DRIVE_STUDENT_STATUS.SELECTED &&
-                    (r.ctc != null || r.stipend != null) ? (
-                      <p
-                        className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground"
-                        title={selectionSummary(r) ?? undefined}
-                      >
-                        {selectionSummary(r)}
-                      </p>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                    {new Date(r.imported_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                    {r.imported_by ?? '—'}
-                  </TableCell>
-                  {canEdit ? (
-                    <TableCell
-                      className="whitespace-nowrap"
-                      onClick={(e) => e.stopPropagation()}
+                    <TableHead>Roll number</TableHead>
+                    <TableHead>Full name</TableHead>
+                    <TableHead>Programme</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Imported</TableHead>
+                    <TableHead>Imported by</TableHead>
+                    {canEdit ? <TableHead className="w-40" /> : null}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {displayItems.map((item) => {
+                    if (item.kind === 'header') {
+                      return (
+                        <DriveStudentGroupHeaderRow
+                          key={`group:${item.key}`}
+                          item={item}
+                          colSpan={colCount}
+                          onToggle={() => toggleGroup(item.key)}
+                        />
+                      )
+                    }
+                    const r = item.row
+                    return (
+                    <TableRow
+                      key={r.id}
+                      className="cursor-pointer"
+                      onClick={() => setTrackStudent(r)}
                     >
-                      <div
-                        className={cn(
-                          'flex items-center justify-end gap-1',
-                          driveArchived && 'hidden',
-                        )}
-                      >
-                        {r.status === DRIVE_STUDENT_STATUS.IMPORTED && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7"
-                            disabled={invitingId !== null || !drivePublished}
-                            title={
-                              drivePublished
-                                ? undefined
-                                : 'Publish the drive to send invites.'
-                            }
-                            onClick={() => void onInviteRow(r)}
+                      {showSelection ? (
+                        <TableCell
+                          className="w-8"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {REVOCABLE_STATUSES.includes(r.status) ? (
+                            <input
+                              type="checkbox"
+                              className="accent-primary"
+                              checked={selected.has(r.id)}
+                              onChange={() => toggleSelect(r.id)}
+                              aria-label={`Select ${r.display_name}`}
+                            />
+                          ) : null}
+                        </TableCell>
+                      ) : null}
+                      <TableCell className="whitespace-nowrap text-sm font-medium">
+                        {r.roll_no}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {r.display_name}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {r.programme ?? '—'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <Badge variant={DRIVE_STUDENT_STATUS_BADGE[r.status]}>
+                          {DRIVE_STUDENT_STATUS_LABELS[r.status] ?? r.status}
+                        </Badge>
+                        {(r.status === DRIVE_STUDENT_STATUS.DENIED ||
+                          r.status === DRIVE_STUDENT_STATUS.REVOKED) &&
+                        r.rejection_reason ? (
+                          <p
+                            className="mt-0.5 max-w-56 truncate text-xs text-muted-foreground"
+                            title={r.rejection_reason}
                           >
-                            {invitingId === r.id ? (
-                              <Loader2 className="size-3.5 animate-spin" />
-                            ) : (
-                              <Send className="size-3.5" />
+                            {r.rejection_reason}
+                          </p>
+                        ) : null}
+                        {r.status === DRIVE_STUDENT_STATUS.SELECTED &&
+                        (r.ctc != null || r.stipend != null) ? (
+                          <p
+                            className="mt-0.5 max-w-64 truncate text-xs text-muted-foreground"
+                            title={selectionSummary(r) ?? undefined}
+                          >
+                            {selectionSummary(r)}
+                          </p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                        {new Date(r.imported_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                        {r.imported_by ?? '—'}
+                      </TableCell>
+                      {canEdit ? (
+                        <TableCell
+                          className="whitespace-nowrap"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div
+                            className={cn(
+                              'flex items-center justify-end gap-1',
+                              driveArchived && 'hidden',
                             )}
-                            Invite
-                          </Button>
-                        )}
-                        {r.status === DRIVE_STUDENT_STATUS.INVITED && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7"
-                            disabled={remindingId !== null}
-                            onClick={() => void onRemindRow(r)}
                           >
-                            {remindingId === r.id ? (
-                              <Loader2 className="size-3.5 animate-spin" />
-                            ) : (
-                              <BellRing className="size-3.5" />
+                            {r.status === DRIVE_STUDENT_STATUS.IMPORTED && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7"
+                                disabled={invitingId !== null || !drivePublished}
+                                title={
+                                  drivePublished
+                                    ? undefined
+                                    : 'Publish the drive to send invites.'
+                                }
+                                onClick={() => void onInviteRow(r)}
+                              >
+                                {invitingId === r.id ? (
+                                  <Loader2 className="size-3.5 animate-spin" />
+                                ) : (
+                                  <Send className="size-3.5" />
+                                )}
+                                Invite
+                              </Button>
                             )}
-                            Remind
-                          </Button>
-                        )}
-                        {(r.status === DRIVE_STUDENT_STATUS.REVOKED ||
-                          r.status === DRIVE_STUDENT_STATUS.DENIED) && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7"
-                            disabled={invitingId !== null || !drivePublished}
-                            title={
-                              drivePublished
-                                ? undefined
-                                : 'Publish the drive to send invites.'
-                            }
-                            onClick={() => void onInviteRow(r)}
-                          >
-                            {invitingId === r.id ? (
-                              <Loader2 className="size-3.5 animate-spin" />
-                            ) : (
-                              <Send className="size-3.5" />
+                            {r.status === DRIVE_STUDENT_STATUS.INVITED && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7"
+                                disabled={remindingId !== null}
+                                onClick={() => void onRemindRow(r)}
+                              >
+                                {remindingId === r.id ? (
+                                  <Loader2 className="size-3.5 animate-spin" />
+                                ) : (
+                                  <BellRing className="size-3.5" />
+                                )}
+                                Remind
+                              </Button>
                             )}
-                            Reinvite
-                          </Button>
-                        )}
-                        {r.status === DRIVE_STUDENT_STATUS.ACCEPTED && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7"
-                            onClick={() => openOutcome([r.id])}
-                          >
-                            Mark outcome
-                          </Button>
-                        )}
-                        {r.status === DRIVE_STUDENT_STATUS.SELECTED && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7"
-                            onClick={() => openEditSelection(r)}
-                          >
-                            <Pencil className="size-3.5" />
-                            Edit selection
-                          </Button>
-                        )}
-                        {REVOCABLE_STATUSES.includes(r.status) && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 text-destructive hover:text-destructive"
-                            onClick={() => openRevoke([r.id])}
-                          >
-                            <Ban className="size-3.5" />
-                            Revoke
-                          </Button>
-                        )}
-                        {r.status === DRIVE_STUDENT_STATUS.IMPORTED && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="size-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => setPendingRemove(r)}
-                            aria-label={`Delete ${r.display_name}`}
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  ) : null}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
+                            {(r.status === DRIVE_STUDENT_STATUS.REVOKED ||
+                              r.status === DRIVE_STUDENT_STATUS.DENIED) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7"
+                                disabled={invitingId !== null || !drivePublished}
+                                title={
+                                  drivePublished
+                                    ? undefined
+                                    : 'Publish the drive to send invites.'
+                                }
+                                onClick={() => void onInviteRow(r)}
+                              >
+                                {invitingId === r.id ? (
+                                  <Loader2 className="size-3.5 animate-spin" />
+                                ) : (
+                                  <Send className="size-3.5" />
+                                )}
+                                Reinvite
+                              </Button>
+                            )}
+                            {r.status === DRIVE_STUDENT_STATUS.ACCEPTED && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7"
+                                onClick={() => openOutcome([r.id])}
+                              >
+                                Mark outcome
+                              </Button>
+                            )}
+                            {r.status === DRIVE_STUDENT_STATUS.SELECTED && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7"
+                                onClick={() => openEditSelection(r)}
+                              >
+                                <Pencil className="size-3.5" />
+                                Edit selection
+                              </Button>
+                            )}
+                            {REVOCABLE_STATUSES.includes(r.status) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-destructive hover:text-destructive"
+                                onClick={() => openRevoke([r.id])}
+                              >
+                                <Ban className="size-3.5" />
+                                Revoke
+                              </Button>
+                            )}
+                            {r.status === DRIVE_STUDENT_STATUS.IMPORTED && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-muted-foreground hover:text-destructive"
+                                onClick={() => setPendingRemove(r)}
+                                aria-label={`Delete ${r.display_name}`}
+                              >
+                                <Trash2 className="size-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
 
-      {pageCount > 1 ? (
-        <div className="flex shrink-0 justify-end">
-          <Pagination page={page} totalPages={pageCount} onPage={setPage} />
+          {grouped && rows && total > rows.length ? (
+            <p className="shrink-0 text-xs text-muted-foreground">
+              Showing the first {rows.length.toLocaleString()} of{' '}
+              {total.toLocaleString()} students — narrow the filters to group
+              everything.
+            </p>
+          ) : null}
+
+          {!grouped && pageCount > 1 ? (
+            <div className="flex shrink-0 justify-end">
+              <Pagination page={page} totalPages={pageCount} onPage={setPage} />
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </div>
 
       {/* Delete confirm — only reachable from Imported rows. */}
       <Dialog

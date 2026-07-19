@@ -869,6 +869,10 @@ export interface DriveStudentRow {
   roll_no: string
   display_name: string
   programme: string | null
+  programme_id: number | null
+  pass_out_year: number | null
+  /** 1 = Regular, 2 = Lateral — see STUDENT_ENTRY_TYPE_LABELS. */
+  entry_type: number
   imported_at: string
   imported_by: string | null
   status: number
@@ -934,25 +938,194 @@ export function importAllDriveStudents(
   )
 }
 
-/** The drive's imported students (paginated, optionally by status). */
-export function listDriveStudents(
-  driveId: number,
-  opts: {
-    page?: number
-    pageSize?: number
-    search?: string
-    status?: number
-  } = {},
-): Promise<DriveStudentsPage> {
+/** The query knobs shared by both drive-students list endpoints. */
+export interface DriveStudentsListOpts {
+  page?: number
+  pageSize?: number
+  search?: string
+  status?: number
+  programme_ids?: number[]
+  passout_years?: number[]
+  entry_type?: number
+  /** Load-all mode (grouped view) — skips pagination, server-capped. */
+  all?: boolean
+}
+
+/** Serialize the shared list opts — reused by the coordinator lib. */
+export function driveStudentsQs(opts: DriveStudentsListOpts): string {
   const qs = new URLSearchParams()
   if (opts.page) qs.set('page', String(opts.page))
   if (opts.pageSize) qs.set('pageSize', String(opts.pageSize))
   if (opts.search?.trim()) qs.set('search', opts.search.trim())
   if (opts.status !== undefined) qs.set('status', String(opts.status))
-  const suffix = qs.toString() ? `?${qs}` : ''
+  if (opts.programme_ids?.length)
+    qs.set('programme_ids', opts.programme_ids.join(','))
+  if (opts.passout_years?.length)
+    qs.set('passout_years', opts.passout_years.join(','))
+  if (opts.entry_type !== undefined)
+    qs.set('entry_type', String(opts.entry_type))
+  if (opts.all) qs.set('all', '1')
+  return qs.toString() ? `?${qs}` : ''
+}
+
+/** The drive's imported students (paginated, optionally filtered). */
+export function listDriveStudents(
+  driveId: number,
+  opts: DriveStudentsListOpts = {},
+): Promise<DriveStudentsPage> {
   return withEmployeeAuth((token) =>
-    apiFetch(`${DRIVES_ROOT}/${driveId}/students${suffix}`, { token }),
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students${driveStudentsQs(opts)}`, {
+      token,
+    }),
   )
+}
+
+/** Distinct filterable values present among the drive's students. */
+export interface DriveStudentsFilterOptions {
+  programmes: { id: number; name: string }[]
+  passout_years: number[]
+  entry_types: number[]
+}
+
+export function getDriveStudentsFilterOptions(
+  driveId: number,
+): Promise<DriveStudentsFilterOptions> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/filter-options`, { token }),
+  )
+}
+
+export const STUDENT_ENTRY_TYPE_LABELS: Record<number, string> = {
+  1: 'Regular',
+  2: 'Lateral',
+}
+
+export type DriveStudentsGroupBy =
+  'none' | 'programme' | 'passout_year' | 'entry_type'
+
+export interface DriveStudentGroup {
+  key: string
+  label: string
+  rows: DriveStudentRow[]
+}
+
+/**
+ * Bucket a load-all row set into labeled groups for the grouped Students
+ * view. Server order (imported_at DESC) is preserved within each group;
+ * groups are ordered programme-name asc / year desc / entry-type asc, with
+ * the null bucket ("No programme" / "Unknown") always last.
+ */
+export function groupDriveStudents(
+  rows: DriveStudentRow[],
+  groupBy: Exclude<DriveStudentsGroupBy, 'none'>,
+): DriveStudentGroup[] {
+  const buckets = new Map<string, DriveStudentGroup>()
+  for (const r of rows) {
+    let key: string
+    let label: string
+    if (groupBy === 'programme') {
+      key = r.programme_id == null ? 'null' : String(r.programme_id)
+      label = r.programme ?? 'No programme'
+    } else if (groupBy === 'passout_year') {
+      key = r.pass_out_year == null ? 'null' : String(r.pass_out_year)
+      label = r.pass_out_year == null ? 'Unknown' : String(r.pass_out_year)
+    } else {
+      key = String(r.entry_type)
+      label = STUDENT_ENTRY_TYPE_LABELS[r.entry_type] ?? String(r.entry_type)
+    }
+    const bucket = buckets.get(key)
+    if (bucket) bucket.rows.push(r)
+    else buckets.set(key, { key, label, rows: [r] })
+  }
+  return [...buckets.values()].sort((a, b) => {
+    if (a.key === 'null') return 1
+    if (b.key === 'null') return -1
+    if (groupBy === 'programme') return a.label.localeCompare(b.label)
+    if (groupBy === 'passout_year') return Number(b.key) - Number(a.key)
+    return Number(a.key) - Number(b.key)
+  })
+}
+
+/** The Students tab's attribute filters + group-by, shared by the manage and
+ *  coordinator drive-detail pages (status chips + search stay per-page). */
+export interface DriveStudentsFilters {
+  programmeIds: number[]
+  passoutYears: number[]
+  entryType: number | null
+  groupBy: DriveStudentsGroupBy
+}
+
+export const EMPTY_DRIVE_STUDENTS_FILTERS: DriveStudentsFilters = {
+  programmeIds: [],
+  passoutYears: [],
+  entryType: null,
+  groupBy: 'none',
+}
+
+/** How many attribute dimensions are narrowing the list — the count shown on
+ *  the filter toggle while the panel is closed. `groupBy` isn't a filter. */
+export function countDriveStudentsFilters(f: DriveStudentsFilters): number {
+  return (
+    (f.programmeIds.length > 0 ? 1 : 0) +
+    (f.passoutYears.length > 0 ? 1 : 0) +
+    (f.entryType !== null ? 1 : 0)
+  )
+}
+
+const DRIVE_STUDENTS_FILTERS_OPEN_KEY = 'nucleus.drive-students.filters-open'
+
+/** The remembered open/closed state of the Students tab's filter panel. */
+export function readDriveStudentsFiltersOpen(): boolean {
+  try {
+    return localStorage.getItem(DRIVE_STUDENTS_FILTERS_OPEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function writeDriveStudentsFiltersOpen(open: boolean): void {
+  try {
+    localStorage.setItem(DRIVE_STUDENTS_FILTERS_OPEN_KEY, open ? '1' : '0')
+  } catch {
+    /* private mode / storage disabled — the panel just won't be remembered */
+  }
+}
+
+/** A flattened grouped table body: header sentinels + the rows of every
+ *  expanded group, in render order. */
+export type DriveStudentDisplayItem =
+  | {
+      kind: 'header'
+      key: string
+      label: string
+      count: number
+      open: boolean
+    }
+  | { kind: 'row'; row: DriveStudentRow }
+
+export function buildDriveStudentDisplayItems(
+  rows: DriveStudentRow[],
+  groupBy: DriveStudentsGroupBy,
+  collapsed: ReadonlySet<string>,
+): DriveStudentDisplayItem[] {
+  if (groupBy === 'none') {
+    return rows.map((row) => ({ kind: 'row' as const, row }))
+  }
+  const items: DriveStudentDisplayItem[] = []
+  for (const g of groupDriveStudents(rows, groupBy)) {
+    const open = !collapsed.has(g.key)
+    items.push({
+      kind: 'header',
+      key: g.key,
+      label: g.label,
+      count: g.rows.length,
+      open,
+    })
+    if (open) {
+      items.push(...g.rows.map((row) => ({ kind: 'row' as const, row })))
+    }
+  }
+  return items
 }
 
 /** Invite explicit students (10 → 20 + notification). Drive must be published. */
