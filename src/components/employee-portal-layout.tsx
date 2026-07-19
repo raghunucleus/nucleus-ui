@@ -21,6 +21,7 @@ import {
   Search,
   SearchX,
   Settings,
+  UserCheck,
   Users,
   Wallet,
   X,
@@ -70,6 +71,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Wallet,
   IdCard,
   Briefcase,
+  UserCheck,
   LayoutGrid,
 }
 
@@ -109,6 +111,7 @@ const ICON_TONE: Record<string, ToneName> = {
   Wallet: 'amber',
   IdCard: 'rose',
   Briefcase: 'orange',
+  UserCheck: 'rose',
   LayoutGrid: 'blue',
 }
 

@@ -20,6 +20,8 @@ import EmployeeDriveDetailPage from '@/pages/employee/drive-management-drive-det
 import EmployeeDriveFormPage from '@/pages/employee/drive-management-drive-form'
 import EmployeeDrivesPage from '@/pages/employee/drive-management-drives'
 import EmployeeEligibilityCheckPage from '@/pages/employee/drive-management-eligibility-check'
+import EmployeePlacementCoordinatorDriveDetailPage from '@/pages/employee/placement-coordinator-drive-detail'
+import EmployeePlacementCoordinatorDrivesPage from '@/pages/employee/placement-coordinator-drives'
 import EmployeeHome from '@/pages/employee/home'
 import EmployeeIdCardPage from '@/pages/employee/id-card'
 import EmployeeMarksUploadPage from '@/pages/employee/marks-upload'
@@ -208,6 +210,20 @@ const eligibilityCheckRoute = createRoute({
   component: EmployeeEligibilityCheckPage,
 })
 
+// The read-only, RBAC-scoped coordinator surface. The list path must equal
+// the catalog's `web_route` for `placement_coordinator.drives.view`.
+const placementCoordinatorDrivesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/placement-coordinator/drives',
+  component: EmployeePlacementCoordinatorDrivesPage,
+})
+
+const placementCoordinatorDriveDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/placement-coordinator/drives/$driveId',
+  component: EmployeePlacementCoordinatorDriveDetailPage,
+})
+
 // Paths must equal the RBAC catalog's `web_route` values for the two
 // derived Requests screens.
 const requestsApprovalsRoute = createRoute({
@@ -285,6 +301,8 @@ const routeTree = rootRoute.addChildren([
   driveCreateRoute,
   driveDetailRoute,
   driveEditRoute,
+  placementCoordinatorDrivesRoute,
+  placementCoordinatorDriveDetailRoute,
   eligibilityCheckRoute,
   requestsApprovalsRoute,
   requestsMineRoute,
