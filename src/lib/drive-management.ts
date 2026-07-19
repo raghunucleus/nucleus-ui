@@ -297,11 +297,21 @@ export interface DriveListItem {
   updated_at: string
 }
 
+/** One entry in a drive's status audit trail, oldest first. */
+export interface DriveStatusChange {
+  id: number
+  from_status: DriveStatus | null
+  to_status: DriveStatus
+  actor_name: string | null
+  created_at: string
+}
+
 export interface DriveDetail extends DriveScopedRead {
   id: number
   drive_name: string
   profile_type: DriveProfileType
   status: DriveStatus
+  status_history: DriveStatusChange[]
   company: { id: number; name: string; website: string | null; logo_url: string | null }
   company_categories: Chip[]
   offer_type_scope: DriveFieldScope

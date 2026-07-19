@@ -29,6 +29,7 @@ import { studentLogout } from '@/lib/student-auth'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 import { withGlobalLoader } from '@/stores/loader-store'
+import { useNetworkStore } from '@/stores/network-store'
 
 /**
  * Shared chrome for every signed-in student page: a sticky header and a
@@ -37,6 +38,7 @@ import { withGlobalLoader } from '@/stores/loader-store'
  */
 export function PortalLayout() {
   const signOut = useAuthStore((state) => state.signOut)
+  const reconnectNonce = useNetworkStore((s) => s.reconnectNonce)
   const [signingOut, setSigningOut] = useState(false)
 
   async function handleSignOut() {
@@ -112,7 +114,9 @@ export function PortalLayout() {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6">
-        <Outlet />
+        {/* Keyed on the reconnect nonce: on recovery the active page remounts
+            and its data-loading effects re-run, clearing stale empty states. */}
+        <Outlet key={reconnectNonce} />
       </main>
     </div>
   )

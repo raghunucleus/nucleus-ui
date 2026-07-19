@@ -4,15 +4,26 @@ import {
   Ban,
   BarChart3,
   BellRing,
+  Briefcase,
+  Building2,
+  CalendarDays,
+  Clock,
   Filter,
   Globe,
   GraduationCap,
+  IndianRupee,
   LayoutDashboard,
   Loader2,
+  Mail,
+  MapPin,
   Pencil,
+  Phone,
+  ScrollText,
   Send,
+  Tags,
   Trash2,
   Users,
+  Wallet,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -27,7 +38,12 @@ import {
 } from '@/components/corporate-relations/bits'
 import { DriveAnalyticsTab } from '@/components/drive-management/drive-analytics'
 import { DriveEligibilitySummary } from '@/components/drive-management/drive-eligibility-summary'
-import { BondFact, Fact, MoneyFact } from '@/components/drive-management/facts'
+import { DriveStatusHistory } from '@/components/drive-management/drive-status-history'
+import {
+  IconBondFact,
+  IconFact,
+  IconMoneyFact,
+} from '@/components/drive-management/facts'
 import {
   formatPlacementDate,
   formatPlacementDateTime,
@@ -183,6 +199,14 @@ export default function EmployeeDriveDetailPage() {
     try {
       await updateDriveStatus(drive.id, status)
       toast.success(`Status set to ${DRIVE_STATUS_LABELS[status]}.`)
+      // Refetch so the new entry shows in the Overview status history. The
+      // change is already saved, so a failed refresh just defers the card
+      // update to the next load rather than being an error.
+      try {
+        setDrive(await getDrive(drive.id))
+      } catch {
+        /* keep the optimistic status */
+      }
     } catch (e) {
       setDrive({ ...drive, status: prev })
       toast.error(errMsg(e, 'Could not update the status.'))
@@ -341,54 +365,70 @@ function OverviewTab({ drive }: { drive: DriveDetail }) {
   }, [drive.id])
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 pb-6">
-      {/* Key facts */}
-      <Card className="p-4">
+    <div className="mx-auto grid max-w-6xl gap-5 pb-6 lg:grid-cols-3 lg:items-start">
+      {/* Main column */}
+      <div className="space-y-5 lg:col-span-2">
+        {/* Key facts */}
+        <Card className="p-4">
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          <Fact label="Drive date" value={formatPlacementDate(drive.drive_date)} />
-          <Fact
+          <IconFact
+            icon={CalendarDays}
+            label="Drive date"
+            value={formatPlacementDate(drive.drive_date)}
+          />
+          <IconFact
+            icon={Clock}
             label="Register by"
             value={formatPlacementDateTime(drive.registration_end_date)}
           />
           {drive.offer_type ? (
-            <Fact label="Offer type" value={drive.offer_type.name} />
+            <IconFact icon={Briefcase} label="Offer type" value={drive.offer_type.name} />
           ) : null}
           {drive.job_locations.length > 0 ? (
-            <Fact
+            <IconFact
+              icon={MapPin}
               label="Job locations"
               value={drive.job_locations.map((l) => l.name).join(', ')}
             />
           ) : null}
-          <MoneyFact
+          <IconMoneyFact
+            icon={Wallet}
             label="Stipend"
             mode={drive.stipend_mode}
             min={drive.stipend_min}
             max={drive.stipend_max}
           />
-          <MoneyFact
+          <IconMoneyFact
+            icon={IndianRupee}
             label="CTC"
             mode={drive.ctc_mode}
             min={drive.ctc_min}
             max={drive.ctc_max}
           />
-          <BondFact hasBond={drive.has_bond} bondYears={drive.bond_years} />
+          <IconBondFact
+            icon={ScrollText}
+            hasBond={drive.has_bond}
+            bondYears={drive.bond_years}
+          />
           {drive.placement_categories.length > 0 ? (
-            <Fact
+            <IconFact
+              icon={Tags}
               label="Placement categories"
               value={drive.placement_categories.map((c) => c.name).join(', ')}
             />
           ) : null}
           {drive.company_categories.length > 0 ? (
-            <Fact
+            <IconFact
+              icon={Building2}
               label="Company categories"
               value={drive.company_categories.map((c) => c.name).join(', ')}
             />
           ) : null}
           {drive.spoc_email ? (
-            <Fact label="SPOC email" value={drive.spoc_email} />
+            <IconFact icon={Mail} label="SPOC email" value={drive.spoc_email} />
           ) : null}
           {drive.spoc_contact ? (
-            <Fact label="SPOC contact" value={drive.spoc_contact} />
+            <IconFact icon={Phone} label="SPOC contact" value={drive.spoc_contact} />
           ) : null}
         </dl>
         {drive.bond_desc ? (
@@ -399,34 +439,45 @@ function OverviewTab({ drive }: { drive: DriveDetail }) {
             <RichTextView value={drive.bond_desc} className="text-sm" />
           </div>
         ) : null}
-      </Card>
+        </Card>
 
-      {/* Eligibility */}
-      {eligibility ? <DriveEligibilitySummary summary={eligibility} /> : null}
+        {/* Eligibility */}
+        {eligibility ? <DriveEligibilitySummary summary={eligibility} /> : null}
 
       {/* Designations */}
       {drive.profiles.map((p) => (
         <Card key={p.id} className="p-4">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <h2 className="text-sm font-semibold">{p.designation.name}</h2>
+          <h2 className="mb-3 text-sm font-semibold">{p.designation.name}</h2>
+          <dl className="mb-3 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
             {p.offer_type ? (
-              <Badge variant="secondary">{p.offer_type.name}</Badge>
+              <IconFact icon={Briefcase} label="Offer type" value={p.offer_type.name} />
             ) : null}
-            {p.job_locations.map((l) => (
-              <Badge key={l.id} variant="muted">
-                {l.name}
-              </Badge>
-            ))}
-          </div>
-          <dl className="mb-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-            <MoneyFact
+            {p.job_locations.length > 0 ? (
+              <IconFact
+                icon={MapPin}
+                label="Job locations"
+                value={p.job_locations.map((l) => l.name).join(', ')}
+              />
+            ) : null}
+            <IconMoneyFact
+              icon={Wallet}
               label="Stipend"
               mode={p.stipend_mode}
               min={p.stipend_min}
               max={p.stipend_max}
             />
-            <MoneyFact label="CTC" mode={p.ctc_mode} min={p.ctc_min} max={p.ctc_max} />
-            <BondFact hasBond={p.has_bond} bondYears={p.bond_years} />
+            <IconMoneyFact
+              icon={IndianRupee}
+              label="CTC"
+              mode={p.ctc_mode}
+              min={p.ctc_min}
+              max={p.ctc_max}
+            />
+            <IconBondFact
+              icon={ScrollText}
+              hasBond={p.has_bond}
+              bondYears={p.bond_years}
+            />
           </dl>
           {p.jd ? (
             <div className="border-t pt-3">
@@ -458,6 +509,13 @@ function OverviewTab({ drive }: { drive: DriveDetail }) {
           ) : null}
         </Card>
       ))}
+      </div>
+
+      {/* Status history sidebar */}
+      <Card className="p-4">
+        <h2 className="mb-3 text-sm font-semibold">Status history</h2>
+        <DriveStatusHistory history={drive.status_history} />
+      </Card>
     </div>
   )
 }

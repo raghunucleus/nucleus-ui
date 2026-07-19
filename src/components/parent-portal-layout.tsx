@@ -34,6 +34,7 @@ import { parentNavigate } from '@/lib/parent-nav'
 import { cn } from '@/lib/utils'
 import { useParentAuthStore } from '@/stores/parent-auth-store'
 import { withGlobalLoader } from '@/stores/loader-store'
+import { useNetworkStore } from '@/stores/network-store'
 
 const SIDEBAR_STORAGE_KEY = 'nucleus-parent-sidebar'
 const MOBILE_MQ = '(max-width: 767px)' // matches Tailwind's < md
@@ -106,6 +107,7 @@ function isActive(pathname: string, route: string): boolean {
  */
 export function ParentPortalLayout() {
   const { t } = useTranslation()
+  const reconnectNonce = useNetworkStore((s) => s.reconnectNonce)
   const guardian = useParentAuthStore((s) => s.guardian)
   const students = useParentAuthStore((s) => s.students)
   const selectedStudentId = useParentAuthStore((s) => s.selectedStudentId)
@@ -253,7 +255,9 @@ export function ParentPortalLayout() {
 
         <main className="scrollbar-themed min-w-0 flex-1 overflow-auto px-4 py-8 sm:px-6">
           <div className="mx-auto max-w-5xl space-y-6">
-            <Outlet />
+            {/* Keyed on the reconnect nonce so the active page remounts and
+                refetches after a recovery. */}
+            <Outlet key={reconnectNonce} />
           </div>
         </main>
       </div>

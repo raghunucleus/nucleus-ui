@@ -494,28 +494,30 @@ function ApprovalDetail({
                 return (
                   <div
                     key={c.field}
-                    className="flex flex-wrap items-center gap-2 rounded-md bg-muted/30 px-3 py-2 text-sm"
+                    className="flex flex-wrap items-start gap-2 rounded-md bg-muted/30 px-3 py-2 text-sm"
                   >
-                    <span className="w-32 shrink-0 text-xs font-medium text-muted-foreground">
+                    <span className="w-32 shrink-0 pt-0.5 text-xs font-medium text-muted-foreground">
                       {labelForChange(c)}
                     </span>
-                    <span className="text-muted-foreground line-through">
-                      {changeFromText(c)}
-                    </span>
-                    <ArrowRight className="size-3.5 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 font-medium break-words">
-                      {changeToText(c)}
-                      {certificateUrl && (
-                        <a
-                          href={certificateUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                        >
-                          <ExternalLink className="size-3" /> View certificate
-                        </a>
-                      )}
-                    </span>
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className="min-w-0 text-muted-foreground line-through break-words">
+                        {changeFromText(c)}
+                      </span>
+                      <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 font-medium break-words">
+                        {changeToText(c)}
+                        {certificateUrl && (
+                          <a
+                            href={certificateUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                          >
+                            <ExternalLink className="size-3" /> View certificate
+                          </a>
+                        )}
+                      </span>
+                    </div>
                     {decidable ? (
                       <VerdictToggle
                         value={verdicts[c.field] ?? 'approved'}

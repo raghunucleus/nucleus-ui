@@ -1,6 +1,14 @@
+import { useNetworkStore } from '@/stores/network-store'
+
 export const API_BASE_URL = (
   import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 ).replace(/\/+$/, '')
+
+/** Unauthenticated liveness probe (NestJS Terminus) used for recovery checks. */
+const HEALTH_PATH = '/health/live'
+
+/** Gateway statuses that mean an upstream proxy couldn't reach the app server. */
+const GATEWAY_DOWN = new Set([502, 503, 504])
 
 /** Thrown for any non-2xx response, or when the server is unreachable (status 0). */
 export class ApiError extends Error {
@@ -10,6 +18,51 @@ export class ApiError extends Error {
     super(message)
     this.name = 'ApiError'
     this.status = status
+  }
+}
+
+/**
+ * `fetch` that passively reports reachability into the network store. A resolved
+ * `Response` is treated as online (even a 4xx/5xx app error), except gateway
+ * statuses {502,503,504} which mean a proxy couldn't reach the app. A thrown
+ * error (network down / DNS / abort) is a failure. The original result/error is
+ * always returned/rethrown unchanged so call-site handling is untouched.
+ */
+async function fetchReporting(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  try {
+    const res = await fetch(input, init)
+    const net = useNetworkStore.getState()
+    if (GATEWAY_DOWN.has(res.status)) net.reportFail()
+    else net.reportOk()
+    return res
+  } catch (err) {
+    useNetworkStore.getState().reportFail()
+    throw err
+  }
+}
+
+/**
+ * Cheap, unauthenticated liveness check against `/health/live`. Returns a
+ * boolean and writes nothing to the store — the monitor uses it for the
+ * confirming probe and recovery polling. Aborts after `timeoutMs`.
+ */
+export async function pingServer(timeoutMs = 4000): Promise<boolean> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${API_BASE_URL}${HEALTH_PATH}`, {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+    return res.ok
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
   }
 }
 
@@ -29,7 +82,7 @@ export async function apiFetch<T>(
 
   let res: Response
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    res = await fetchReporting(`${API_BASE_URL}${path}`, {
       method: options.method ?? 'GET',
       headers,
       body:
@@ -72,7 +125,7 @@ export async function apiUpload<T>(
 ): Promise<T> {
   let res: Response
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
+    res = await fetchReporting(`${API_BASE_URL}${path}`, {
       method,
       headers: { Authorization: `Bearer ${token}` },
       body: form,

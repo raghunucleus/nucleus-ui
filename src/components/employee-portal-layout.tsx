@@ -58,6 +58,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useEmployeeAuthStore } from '@/stores/employee-auth-store'
 import { withGlobalLoader } from '@/stores/loader-store'
+import { useNetworkStore } from '@/stores/network-store'
 
 const ICON_MAP: Record<string, LucideIcon> = {
   BookOpen,
@@ -147,6 +148,7 @@ function computeInitials(source: string): string {
 export function EmployeePortalLayout() {
   const signOut = useEmployeeAuthStore((s) => s.signOut)
   const navigate = useNavigate()
+  const reconnectNonce = useNetworkStore((s) => s.reconnectNonce)
   const [access, setAccess] = useState<EffectiveAccess | null>(null)
   const [accessError, setAccessError] = useState<string | null>(null)
   const [profile, setProfile] = useState<EmployeeProfile | null>(null)
@@ -346,7 +348,13 @@ export function EmployeePortalLayout() {
                 page flashes "No access" for the duration of that request, even
                 for screens the employee can use. An error still falls through
                 to the page (the sidebar surfaces a retry banner). */}
-            {access || accessError ? <Outlet /> : <AccessLoading />}
+            {access || accessError ? (
+              // Keyed on the reconnect nonce so the active page remounts and
+              // refetches after a recovery.
+              <Outlet key={reconnectNonce} />
+            ) : (
+              <AccessLoading />
+            )}
           </main>
         </div>
       </div>
