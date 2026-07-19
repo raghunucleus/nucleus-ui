@@ -464,6 +464,8 @@ function DriveDetailView({
         Back to Placements
       </button>
 
+      <div className="grid gap-5 lg:grid-cols-[1fr_20rem] lg:items-start">
+        <div className="space-y-5">
       {/* Header card */}
       <Card className="p-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -577,9 +579,6 @@ function DriveDetailView({
       {/* Eligibility — who this drive is open to */}
       <DriveEligibilitySummary summary={detail.eligibility} />
 
-      {/* Action history */}
-      <PlacementHistoryTimeline history={detail.history} />
-
       {/* Designations */}
       {drive.profiles.map((p) => (
         <Card key={p.id} className="p-4">
@@ -645,6 +644,13 @@ function DriveDetailView({
           ) : null}
         </Card>
       ))}
+        </div>
+
+        {/* Action history */}
+        <div className="space-y-5">
+          <PlacementHistoryTimeline history={detail.history} />
+        </div>
+      </div>
 
       <DenyInviteDialog
         invite={
