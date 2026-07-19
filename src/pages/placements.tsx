@@ -2,13 +2,18 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import {
   ArrowLeft,
+  Briefcase,
   Check,
   CircleAlert,
   Globe,
   Goal,
   Loader2,
   Mailbox,
+  MapPin,
   RefreshCw,
+  ScrollText,
+  Tag,
+  Wallet,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -22,7 +27,14 @@ import {
   formatPlacementDateTime,
 } from '@/components/placement-invite'
 import { DriveEligibilitySummary } from '@/components/drive-management/drive-eligibility-summary'
-import { BondFact, Fact, MoneyFact } from '@/components/drive-management/facts'
+import {
+  BondFact,
+  Fact,
+  IconBondFact,
+  IconFact,
+  IconMoneyFact,
+  MoneyFact,
+} from '@/components/drive-management/facts'
 import { FilterChips } from '@/components/placement-filter-chips'
 import { PlacementHistoryTimeline } from '@/components/placement-history'
 import { PageHeader } from '@/components/portal-layout'
@@ -571,26 +583,37 @@ function DriveDetailView({
       {/* Designations */}
       {drive.profiles.map((p) => (
         <Card key={p.id} className="p-4">
-          <div className="mb-2 flex flex-wrap items-center gap-2">
-            <h2 className="text-sm font-semibold">{p.designation.name}</h2>
+          <h2 className="mb-3 text-base font-semibold">{p.designation.name}</h2>
+          <dl className="mb-3 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             {p.offer_type ? (
-              <Badge variant="secondary">{p.offer_type.name}</Badge>
+              <IconFact icon={Tag} label="Job type" value={p.offer_type.name} />
             ) : null}
-            {p.job_locations.map((l) => (
-              <Badge key={l.id} variant="muted">
-                {l.name}
-              </Badge>
-            ))}
-          </div>
-          <dl className="mb-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-            <MoneyFact
+            {p.job_locations.length > 0 ? (
+              <IconFact
+                icon={MapPin}
+                label="Locations"
+                value={p.job_locations.map((l) => l.name).join(', ')}
+              />
+            ) : null}
+            <IconMoneyFact
+              icon={Wallet}
               label="Stipend"
               mode={p.stipend_mode}
               min={p.stipend_min}
               max={p.stipend_max}
             />
-            <MoneyFact label="CTC" mode={p.ctc_mode} min={p.ctc_min} max={p.ctc_max} />
-            <BondFact hasBond={p.has_bond} bondYears={p.bond_years} />
+            <IconMoneyFact
+              icon={Briefcase}
+              label="CTC"
+              mode={p.ctc_mode}
+              min={p.ctc_min}
+              max={p.ctc_max}
+            />
+            <IconBondFact
+              icon={ScrollText}
+              hasBond={p.has_bond}
+              bondYears={p.bond_years}
+            />
           </dl>
           {p.jd ? (
             <div className="border-t pt-3">

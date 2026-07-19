@@ -1,5 +1,6 @@
 import { apiFetch, apiUpload, API_BASE_URL } from './api'
 import { getEmployeeAccessToken, withEmployeeAuth } from './employee-auth'
+import type { DriveListItem } from './drive-management'
 
 /**
  * Data layer for the corporate-relations CRM. Two employee surfaces share the
@@ -531,6 +532,21 @@ export function listActivity(
   return withEmployeeAuth((token) =>
     apiFetch(`${ROOT[surface]}/${id}/activity${qs(params)}`, { token }),
   )
+}
+
+// --- Drives ---------------------------------------------------------------
+
+/** Placement drives raised against one company (read-only, for the detail tab). */
+export async function listCompanyDrives(
+  surface: Surface,
+  id: number,
+): Promise<DriveListItem[]> {
+  const res = await withEmployeeAuth((token) =>
+    apiFetch<{ items: DriveListItem[] }>(`${ROOT[surface]}/${id}/drives`, {
+      token,
+    }),
+  )
+  return res.items
 }
 
 // --- Company attributes (lookup config) -----------------------------------

@@ -1,3 +1,4 @@
+import { useSearch } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
@@ -6,6 +7,7 @@ import { useScreenAccess } from '@/hooks/use-screen-access'
 import { CompanyList } from './corporate-relations-company-management'
 
 const SCREEN_KEY = 'corporate_relations.companies.view'
+const BASE_ROUTE = '/corporate-relations/companies'
 
 /**
  * Responsible-officer surface. Reuses the same CompanyList + CompanyDetail as
@@ -20,7 +22,22 @@ export default function EmployeeCompaniesPage() {
   }, [])
 
   const access = useScreenAccess(SCREEN_KEY)
+  const search = useSearch({ strict: false }) as { open?: number; tab?: string }
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [initialTab, setInitialTab] = useState<string | undefined>()
+
+  // Reopen a company from `?open=<id>` (optionally `&tab=`) and strip the params.
+  // The Drives-tab → drive detail → Back round-trip returns here as
+  // `?open=<id>&tab=drives`.
+  useEffect(() => {
+    if (search.open) {
+      setSelectedId(search.open)
+      setInitialTab(typeof search.tab === 'string' ? search.tab : undefined)
+      window.history.replaceState({}, '', BASE_ROUTE)
+    }
+    // Run once on mount for the incoming redirect only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (!access) {
     return (
@@ -41,6 +58,7 @@ export default function EmployeeCompaniesPage() {
           canEditDetails
           nameEditable={false}
           onBack={() => setSelectedId(null)}
+          initialTab={initialTab}
         />
       </div>
     )
@@ -55,7 +73,14 @@ export default function EmployeeCompaniesPage() {
           relationship up to date.
         </p>
       </div>
-      <CompanyList surface="companies" onOpen={(id) => setSelectedId(id)} showFilters />
+      <CompanyList
+        surface="companies"
+        onOpen={(id) => {
+          setInitialTab(undefined)
+          setSelectedId(id)
+        }}
+        showFilters
+      />
     </div>
   )
 }

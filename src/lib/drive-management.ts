@@ -357,6 +357,11 @@ export type DriveSortField = (typeof DRIVE_SORT_FIELDS)[number]
 export interface DriveListQuery {
   search?: string
   company_id?: number
+  statuses?: DriveStatus[]
+  company_ids?: number[]
+  offer_type_ids?: number[]
+  placement_category_ids?: number[]
+  company_category_ids?: number[]
   sort_by?: DriveSortField
   sort_dir?: 'asc' | 'desc'
   page?: number
@@ -463,7 +468,11 @@ export function getDriveAnalytics(id: number): Promise<DriveAnalytics> {
 export function listDrives(query: DriveListQuery): Promise<DriveListResponse> {
   const qs = new URLSearchParams()
   for (const [k, v] of Object.entries(query)) {
-    if (v !== undefined && v !== null && v !== '') qs.set(k, String(v))
+    if (Array.isArray(v)) {
+      if (v.length) qs.set(k, v.join(','))
+    } else if (v !== undefined && v !== null && v !== '') {
+      qs.set(k, String(v))
+    }
   }
   const suffix = qs.toString() ? `?${qs}` : ''
   return withEmployeeAuth((token) => apiFetch(`${DRIVES_ROOT}${suffix}`, { token }))
@@ -491,6 +500,20 @@ export function listDriveCompanyOptions(): Promise<Chip[]> {
 export function listDriveCompanyCategoryOptions(): Promise<Chip[]> {
   return withEmployeeAuth((token) =>
     apiFetch(`${DRIVES_ROOT}/company-category-options`, { token }),
+  )
+}
+
+/** Active offer types — the drive list's offer-type filter options. */
+export function listDriveOfferTypeOptions(): Promise<Chip[]> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/offer-type-options`, { token }),
+  )
+}
+
+/** Active placement categories — the drive list's placement-category filter options. */
+export function listDrivePlacementCategoryOptions(): Promise<Chip[]> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/placement-category-options`, { token }),
   )
 }
 

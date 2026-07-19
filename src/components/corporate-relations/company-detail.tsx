@@ -28,7 +28,6 @@ import {
 } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import ComingSoon from '@/components/employee/coming-soon'
 import {
   ChipRow,
   Field,
@@ -36,6 +35,7 @@ import {
   TabBar,
   Textarea,
   formatDate,
+  formatDateTime,
   relationshipVariant,
   titleCase,
   type TabDef,
@@ -51,6 +51,7 @@ import {
   getCompany,
   getFormOptions,
   listActivity,
+  listCompanyDrives,
   listInteractions,
   listMilestones,
   setCompanyStatus,
@@ -72,6 +73,12 @@ import {
 } from '@/lib/corporate-relations'
 import { CompanyForm } from '@/components/corporate-relations/company-form'
 import { ApiError } from '@/lib/api'
+import {
+  DRIVE_STATUS_LABELS,
+  driveStatusVariant,
+  type DriveListItem,
+} from '@/lib/drive-management'
+import { employeeNavigateTo } from '@/lib/employee-navigate'
 
 const TABS: TabDef[] = [
   { key: 'overview', label: 'Overview', icon: Building2 },
@@ -101,6 +108,8 @@ export interface CompanyDetailProps {
   onEditCompany?: (company: Company) => void
   /** Bumped by the page after an external save to force a reload. */
   reloadToken?: number
+  /** Tab to open on first render (e.g. when restored from a deep link). */
+  initialTab?: string
 }
 
 export function CompanyDetail({
@@ -113,12 +122,13 @@ export function CompanyDetail({
   onBack,
   onEditCompany,
   reloadToken = 0,
+  initialTab,
 }: CompanyDetailProps) {
   const [company, setCompany] = useState<Company | null>(null)
   const [options, setOptions] = useState<FormOptions | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState('overview')
+  const [tab, setTab] = useState(initialTab ?? 'overview')
   const [localReload, setLocalReload] = useState(0)
   const refresh = () => setLocalReload((n) => n + 1)
 
@@ -197,11 +207,7 @@ export function CompanyDetail({
           />
         )}
         {tab === 'drives' && (
-          <ComingSoon
-            title="Placement drives"
-            subtitle="Drive management ships as a dedicated screen soon. You'll be able to plan and track each drive conducted by this company here."
-            icon={CalendarDays}
-          />
+          <DrivesTab surface={surface} company={company} />
         )}
         {tab === 'relationship' && (
           <RelationshipTab
@@ -1088,6 +1094,125 @@ const MONTHS = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ]
 
+// ---------------------------------------------------------------------------
+// Drives
+// ---------------------------------------------------------------------------
+
+/**
+ * Read-only list of the placement drives raised against this company. Backed by
+ * the corporate-relations surface's own `:id/drives` endpoint (governed by the
+ * company grant), so it works without the separate drive-management screen.
+ * Cards click through to the dedicated drive detail screen.
+ */
+/** The employee-portal route each surface's company detail lives on — used to
+ *  build the `from` return path so the drive detail's Back comes back here. */
+const RETURN_BASE: Record<Surface, string> = {
+  management: '/corporate-relations/company-management',
+  companies: '/corporate-relations/companies',
+}
+
+function DrivesTab({
+  surface,
+  company,
+}: {
+  surface: Surface
+  company: Company
+}) {
+  const [items, setItems] = useState<DriveListItem[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  // Open a drive, telling its detail screen where Back should return: this same
+  // company on the Drives tab. (The standalone drives list sends no `from`.)
+  function openDrive(id: number) {
+    const back = `${RETURN_BASE[surface]}?open=${company.id}&tab=drives`
+    employeeNavigateTo(
+      `/drive-management/drives/${id}?from=${encodeURIComponent(back)}`,
+    )
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    setItems(null)
+    setError(null)
+    listCompanyDrives(surface, company.id)
+      .then((r) => !cancelled && setItems(r))
+      .catch((e) => {
+        if (!cancelled) {
+          setError(errMsg(e, 'Could not load drives.'))
+          setItems([])
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [surface, company.id])
+
+  if (error) {
+    return <p className="text-sm text-destructive">{error}</p>
+  }
+  if (items === null) {
+    return <p className="text-sm text-muted-foreground">Loading…</p>
+  }
+  if (items.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed bg-muted/20 p-8 text-center text-sm text-muted-foreground">
+        No drives have been raised for this company yet.
+      </p>
+    )
+  }
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((d) => (
+        <div
+          key={d.id}
+          className="flex flex-col gap-3 rounded-xl border bg-card p-4 transition-shadow hover:shadow-sm"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => openDrive(d.id)}
+              className="line-clamp-2 min-w-0 flex-1 text-left font-medium hover:underline"
+            >
+              {d.drive_name}
+            </button>
+            <Badge variant={driveStatusVariant(d.status)}>
+              {DRIVE_STATUS_LABELS[d.status]}
+            </Badge>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant="muted">
+              {d.offer_type ? d.offer_type.name : 'Per designation'}
+            </Badge>
+            <Badge variant="muted">
+              {d.designation_count === 1
+                ? d.designations[0]?.name
+                : `${d.designation_count} designations`}
+            </Badge>
+            {d.placement_categories.map((c) => (
+              <Badge key={c.id} variant="muted">
+                {c.name}
+              </Badge>
+            ))}
+          </div>
+
+          <dl className="mt-auto grid grid-cols-2 gap-2 text-sm">
+            <div>
+              <dt className="text-xs text-muted-foreground">Drive date</dt>
+              <dd>{formatDate(d.drive_date)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Registration ends</dt>
+              <dd>{formatDateTime(d.registration_end_date)}</dd>
+            </div>
+          </dl>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function InteractionsTab({
   surface,
   company,
@@ -1420,18 +1545,6 @@ const ACTIVITY_ICONS: Record<CompanyActivity['entity_type'], typeof Building2> =
 }
 
 const ACTIVITY_PAGE_SIZE = 25
-
-function formatDateTime(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
 
 function displayValue(v: unknown): string {
   if (v === null || v === undefined || v === '') return '—'

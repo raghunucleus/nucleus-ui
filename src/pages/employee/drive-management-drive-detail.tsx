@@ -1,4 +1,4 @@
-import { useParams } from '@tanstack/react-router'
+import { useParams, useSearch } from '@tanstack/react-router'
 import {
   ArrowLeft,
   Ban,
@@ -128,6 +128,10 @@ export default function EmployeeDriveDetailPage() {
   const params = useParams({ strict: false }) as { driveId?: string }
   const driveId = params.driveId ? Number(params.driveId) : null
 
+  // Optional return path — set when the drive is opened from a company's Drives
+  // tab so Back returns there instead of the standalone drives list.
+  const { from } = useSearch({ strict: false }) as { from?: string }
+
   const [drive, setDrive] = useState<DriveDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -209,7 +213,7 @@ export default function EmployeeDriveDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => employeeNavigateTo(LIST_ROUTE)}
+            onClick={() => employeeNavigateTo(from ?? LIST_ROUTE)}
           >
             <ArrowLeft className="size-4" /> Back
           </Button>

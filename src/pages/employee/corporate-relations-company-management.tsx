@@ -79,16 +79,19 @@ export default function EmployeeCompanyManagementPage() {
   const access = useScreenAccess(SCREEN_KEY)
   const actions = access?.actions ?? []
 
-  const search = useSearch({ strict: false }) as { open?: number }
+  const search = useSearch({ strict: false }) as { open?: number; tab?: string }
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [initialTab, setInitialTab] = useState<string | undefined>()
   const [reloadToken, setReloadToken] = useState(0)
 
-  // After the full-screen create/edit form saves, it redirects back here with
-  // `?open=<id>`; reopen that company's detail and strip the param so a manual
-  // back/refresh doesn't re-trigger it.
+  // Reopen a company's detail from `?open=<id>` (with an optional `&tab=`) and
+  // strip the params so a manual back/refresh doesn't re-trigger it. Used both
+  // by the create/edit form redirect and by the Drives-tab → drive detail →
+  // Back round-trip, which returns here as `?open=<id>&tab=drives`.
   useEffect(() => {
     if (search.open) {
       setSelectedId(search.open)
+      setInitialTab(typeof search.tab === 'string' ? search.tab : undefined)
       setReloadToken((n) => n + 1)
       window.history.replaceState({}, '', BASE_ROUTE)
     }
@@ -117,6 +120,7 @@ export default function EmployeeCompanyManagementPage() {
           onBack={() => setSelectedId(null)}
           onEditCompany={(c) => navigateTo(`${BASE_ROUTE}/${c.id}/edit`)}
           reloadToken={reloadToken}
+          initialTab={initialTab}
         />
       </div>
     )
@@ -142,7 +146,10 @@ export default function EmployeeCompanyManagementPage() {
 
       <CompanyList
         surface="management"
-        onOpen={(id) => setSelectedId(id)}
+        onOpen={(id) => {
+          setInitialTab(undefined)
+          setSelectedId(id)
+        }}
         onEditCompany={(id) => navigateTo(`${BASE_ROUTE}/${id}/edit`)}
         reloadToken={reloadToken}
         showFilters

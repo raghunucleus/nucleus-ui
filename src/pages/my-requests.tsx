@@ -416,24 +416,26 @@ function RequestDetail({
               </div>
             )}
           </Card>
+        </div>
 
+        <div className="space-y-4">
           <Card className="p-4">
             <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               History
             </h3>
             <RequestTimeline timeline={detail.timeline} />
           </Card>
-        </div>
 
-        <Card className="p-4">
-          <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Approvers
-          </h3>
-          <ApproversList
-            approvers={detail.approvers}
-            isDecided={!isOpen}
-          />
-        </Card>
+          <Card className="p-4">
+            <h3 className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Approvers
+            </h3>
+            <ApproversList
+              approvers={detail.approvers}
+              isDecided={!isOpen}
+            />
+          </Card>
+        </div>
       </div>
     </>
   )

@@ -8,19 +8,29 @@ import {
   Pencil,
   Plus,
   Search,
+  SlidersHorizontal,
   Trash2,
+  X,
 } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import {
   CompanyLogo,
   formatDate,
   formatDateTime,
+  SearchableMultiSelect,
 } from '@/components/corporate-relations/bits'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import {
@@ -36,11 +46,18 @@ import { ApiError } from '@/lib/api'
 import { employeeNavigateTo } from '@/lib/employee-navigate'
 import {
   DRIVE_STATUS_LABELS,
+  DRIVE_STATUSES,
   deleteDrive,
   driveStatusVariant,
+  listDriveCompanyCategoryOptions,
+  listDriveCompanyOptions,
+  listDriveOfferTypeOptions,
+  listDrivePlacementCategoryOptions,
   listDrives,
+  type Chip,
   type DriveListItem,
   type DriveSortField,
+  type DriveStatus,
 } from '@/lib/drive-management'
 import { cn } from '@/lib/utils'
 
@@ -50,6 +67,30 @@ const LIST_ROUTE = '/drive-management/drives'
 const PAGE_SIZE = 25
 
 type ViewMode = 'table' | 'cards'
+
+/** The committed filter state. Empty arrays = that facet is off. */
+interface DriveFilters {
+  statuses: DriveStatus[]
+  companyIds: number[]
+  offerTypeIds: number[]
+  placementCategoryIds: number[]
+  companyCategoryIds: number[]
+}
+
+const EMPTY_FILTERS: DriveFilters = {
+  statuses: [],
+  companyIds: [],
+  offerTypeIds: [],
+  placementCategoryIds: [],
+  companyCategoryIds: [],
+}
+
+/** How many facets are active, for the Filters button / dialog badges. */
+function countActive(f: DriveFilters): number {
+  return (
+    Object.values(f) as (DriveStatus[] | number[])[]
+  ).filter((a) => a.length > 0).length
+}
 
 function errMsg(e: unknown, fallback: string): string {
   return e instanceof ApiError || e instanceof Error ? e.message : fallback
@@ -78,6 +119,17 @@ export default function EmployeeDrivesPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [page, setPage] = useState(1)
 
+  // Committed filters drive the fetch; the dialog edits a draft copy (below).
+  const [filters, setFilters] = useState<DriveFilters>(EMPTY_FILTERS)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [draft, setDraft] = useState<DriveFilters>(EMPTY_FILTERS)
+
+  // Filter option lists, loaded once. Empty until then; selects handle that.
+  const [companyOpts, setCompanyOpts] = useState<Chip[]>([])
+  const [offerTypeOpts, setOfferTypeOpts] = useState<Chip[]>([])
+  const [placementOpts, setPlacementOpts] = useState<Chip[]>([])
+  const [companyCatOpts, setCompanyCatOpts] = useState<Chip[]>([])
+
   const [items, setItems] = useState<DriveListItem[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -93,11 +145,41 @@ export default function EmployeeDrivesPage() {
     return () => window.clearTimeout(t)
   }, [search])
 
+  // Load the filter option lists once. Failures leave a facet's list empty
+  // (the select shows "no options") — they must not block the drive list.
+  useEffect(() => {
+    let cancelled = false
+    Promise.allSettled([
+      listDriveCompanyOptions(),
+      listDriveOfferTypeOptions(),
+      listDrivePlacementCategoryOptions(),
+      listDriveCompanyCategoryOptions(),
+    ]).then(([company, offer, placement, companyCat]) => {
+      if (cancelled) return
+      if (company.status === 'fulfilled') setCompanyOpts(company.value)
+      if (offer.status === 'fulfilled') setOfferTypeOpts(offer.value)
+      if (placement.status === 'fulfilled') setPlacementOpts(placement.value)
+      if (companyCat.status === 'fulfilled') setCompanyCatOpts(companyCat.value)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Array refs aren't stable deps, so refetch off a serialized key instead.
+  const filtersKey = JSON.stringify(filters)
+
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    const undef = <T,>(a: T[]) => (a.length ? a : undefined)
     listDrives({
       search: debounced || undefined,
+      statuses: undef(filters.statuses),
+      company_ids: undef(filters.companyIds),
+      offer_type_ids: undef(filters.offerTypeIds),
+      placement_category_ids: undef(filters.placementCategoryIds),
+      company_category_ids: undef(filters.companyCategoryIds),
       sort_by: sortBy,
       sort_dir: sortDir,
       page,
@@ -118,7 +200,8 @@ export default function EmployeeDrivesPage() {
     return () => {
       cancelled = true
     }
-  }, [debounced, sortBy, sortDir, page, reload])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debounced, filtersKey, sortBy, sortDir, page, reload])
 
   const changeView = (next: ViewMode) => {
     setView(next)
@@ -137,6 +220,75 @@ export default function EmployeeDrivesPage() {
     },
     [sortBy],
   )
+
+  const openFilters = () => {
+    setDraft(filters)
+    setFilterOpen(true)
+  }
+  const applyFilters = () => {
+    setPage(1)
+    setFilters(draft)
+    setFilterOpen(false)
+  }
+  const clearDraft = () => setDraft(EMPTY_FILTERS)
+  const patchDraft = <K extends keyof DriveFilters>(
+    key: K,
+    value: DriveFilters[K],
+  ) => setDraft((f) => ({ ...f, [key]: value }))
+
+  // Removing a chip clears that whole facet against the committed filters,
+  // which changes `filtersKey` and refetches immediately.
+  const clearFacet = (key: keyof DriveFilters) => {
+    setPage(1)
+    setFilters((f) => ({ ...f, [key]: [] }))
+  }
+  const clearAllFilters = () => {
+    setPage(1)
+    setFilters(EMPTY_FILTERS)
+  }
+
+  const activeCount = countActive(filters)
+  const draftCount = countActive(draft)
+  const draftDirty = JSON.stringify(draft) !== filtersKey
+
+  // One grouped chip per active facet, ids resolved to names. Ids whose option
+  // list hasn't loaded yet are skipped rather than shown as a bare number.
+  const idChip = (
+    key: keyof DriveFilters,
+    label: string,
+    ids: number[],
+    opts: Chip[],
+  ) => {
+    const names = ids
+      .map((id) => opts.find((o) => o.id === id)?.name)
+      .filter((n): n is string => Boolean(n))
+    if (names.length === 0) return null
+    return { id: key, label, values: names, onClear: () => clearFacet(key) }
+  }
+  const appliedChips = [
+    filters.statuses.length > 0
+      ? {
+          id: 'statuses',
+          label: 'Status',
+          values: filters.statuses.map((s) => DRIVE_STATUS_LABELS[s]),
+          onClear: () => clearFacet('statuses'),
+        }
+      : null,
+    idChip('companyIds', 'Company', filters.companyIds, companyOpts),
+    idChip('offerTypeIds', 'Offer type', filters.offerTypeIds, offerTypeOpts),
+    idChip(
+      'placementCategoryIds',
+      'Placement category',
+      filters.placementCategoryIds,
+      placementOpts,
+    ),
+    idChip(
+      'companyCategoryIds',
+      'Company category',
+      filters.companyCategoryIds,
+      companyCatOpts,
+    ),
+  ].filter((c): c is AppliedFacet => c !== null)
 
   const onDelete = async (drive: DriveListItem) => {
     if (
@@ -185,33 +337,138 @@ export default function EmployeeDrivesPage() {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-56 flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search drives or companies…"
-            className="pl-8"
-          />
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-56 flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search drives or companies…"
+              className="pl-8"
+            />
+          </div>
+
+          <Button
+            variant={activeCount > 0 ? 'default' : 'outline'}
+            onClick={openFilters}
+          >
+            <SlidersHorizontal className="size-4" />
+            Filters
+            {activeCount > 0 && (
+              <Badge variant="secondary" className="ml-1">
+                {activeCount}
+              </Badge>
+            )}
+          </Button>
+
+          <div className="inline-flex overflow-hidden rounded-md border bg-background text-xs">
+            <ViewButton
+              active={view === 'table'}
+              onClick={() => changeView('table')}
+              icon={List}
+              label="Table"
+            />
+            <ViewButton
+              active={view === 'cards'}
+              onClick={() => changeView('cards')}
+              icon={LayoutGrid}
+              label="Cards"
+              bordered
+            />
+          </div>
         </div>
 
-        <div className="inline-flex overflow-hidden rounded-md border bg-background text-xs">
-          <ViewButton
-            active={view === 'table'}
-            onClick={() => changeView('table')}
-            icon={List}
-            label="Table"
-          />
-          <ViewButton
-            active={view === 'cards'}
-            onClick={() => changeView('cards')}
-            icon={LayoutGrid}
-            label="Cards"
-            bordered
-          />
-        </div>
+        {appliedChips.length > 0 && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <span className="text-xs font-medium text-muted-foreground">
+              Filters · {activeCount}
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {appliedChips.map((chip) => (
+                <AppliedFilterChip key={chip.id} {...chip} />
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <X className="size-3" /> Clear all
+            </button>
+          </div>
+        )}
       </div>
+
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DialogContent className="flex max-h-[85vh] w-[calc(100vw-2rem)] max-w-3xl flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="border-b px-6 py-4">
+            <DialogTitle className="flex items-center gap-2">
+              Filters
+              {draftCount > 0 && <Badge variant="secondary">{draftCount}</Badge>}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+            <FilterField label="Status">
+              <EnumChips
+                options={DRIVE_STATUSES}
+                selected={draft.statuses}
+                onChange={(v) => patchDraft('statuses', v as DriveStatus[])}
+                format={(s) => DRIVE_STATUS_LABELS[s as DriveStatus]}
+              />
+            </FilterField>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FilterField label="Company">
+                <SearchableMultiSelect
+                  options={companyOpts}
+                  selected={draft.companyIds}
+                  onChange={(v) => patchDraft('companyIds', v)}
+                  placeholder="Any company"
+                />
+              </FilterField>
+              <FilterField label="Offer type">
+                <SearchableMultiSelect
+                  options={offerTypeOpts}
+                  selected={draft.offerTypeIds}
+                  onChange={(v) => patchDraft('offerTypeIds', v)}
+                  placeholder="Any offer type"
+                />
+              </FilterField>
+              <FilterField label="Placement category">
+                <SearchableMultiSelect
+                  options={placementOpts}
+                  selected={draft.placementCategoryIds}
+                  onChange={(v) => patchDraft('placementCategoryIds', v)}
+                  placeholder="Any placement category"
+                />
+              </FilterField>
+              <FilterField label="Company category">
+                <SearchableMultiSelect
+                  options={companyCatOpts}
+                  selected={draft.companyCategoryIds}
+                  onChange={(v) => patchDraft('companyCategoryIds', v)}
+                  placeholder="Any company category"
+                />
+              </FilterField>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-row justify-between border-t px-6 py-4">
+            <Button
+              variant="ghost"
+              onClick={clearDraft}
+              disabled={draftCount === 0}
+            >
+              <X className="size-4" /> Clear all
+            </Button>
+            <Button onClick={applyFilters} disabled={!draftDirty}>
+              Apply
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {error ? (
         <div className="rounded-xl border bg-card p-8 text-center text-sm text-destructive">
@@ -225,8 +482,8 @@ export default function EmployeeDrivesPage() {
         <div className="rounded-xl border bg-card p-10 text-center">
           <p className="text-sm font-medium">No drives yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {debounced
-              ? 'No drive matches that search.'
+            {debounced || activeCount > 0
+              ? 'No drive matches those filters.'
               : 'Create a drive to get started.'}
           </p>
         </div>
@@ -558,5 +815,95 @@ function RowActions({
         </Button>
       )}
     </div>
+  )
+}
+
+/** A labelled block inside the filter dialog. */
+function FilterField({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      {children}
+    </div>
+  )
+}
+
+/** Toggle-chip multi-select over a fixed string enum (drive status). */
+function EnumChips({
+  options,
+  selected,
+  onChange,
+  format,
+}: {
+  options: readonly string[]
+  selected: string[]
+  onChange: (v: string[]) => void
+  format: (s: string) => string
+}) {
+  const toggle = (v: string) =>
+    onChange(
+      selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v],
+    )
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((o) => {
+        const on = selected.includes(o)
+        return (
+          <button
+            key={o}
+            type="button"
+            aria-pressed={on}
+            onClick={() => toggle(o)}
+            className={cn(
+              'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+              on
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'bg-card hover:bg-accent hover:text-accent-foreground',
+            )}
+          >
+            {format(o)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** A grouped, removable applied-filter pill (one whole facet). */
+interface AppliedFacet {
+  id: string
+  label: string
+  values: string[]
+  onClear: () => void
+}
+
+function AppliedFilterChip({ label, values, onClear }: AppliedFacet) {
+  const shown = values.slice(0, 2)
+  const overflow = values.length - shown.length
+  return (
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border bg-muted py-1 pl-2.5 pr-1 text-xs">
+      <span className="min-w-0 truncate">
+        <span className="font-medium text-foreground">{label}</span>
+        <span className="text-muted-foreground">: </span>
+        <span className="font-medium text-foreground">{shown.join(', ')}</span>
+        {overflow > 0 && (
+          <span className="text-muted-foreground"> +{overflow}</span>
+        )}
+      </span>
+      <button
+        type="button"
+        onClick={onClear}
+        className="flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+        aria-label={`Remove ${label} filter`}
+      >
+        <X className="size-3" />
+      </button>
+    </span>
   )
 }
