@@ -5,6 +5,9 @@ import type {
   DriveDetail,
   DriveListQuery,
   DriveListResponse,
+  DriveStudentActivityRow,
+  DriveStudentProfile,
+  DriveStudentTrack,
   DriveStudentsPage,
   EligibilitySummary,
 } from './drive-management'
@@ -95,5 +98,37 @@ export function listCoordinatorDriveStudents(
   const suffix = qs.toString() ? `?${qs}` : ''
   return withEmployeeAuth((token) =>
     apiFetch(`${ROOT}/${driveId}/students${suffix}`, { token }),
+  )
+}
+
+/** An in-scope student's audit trail in the drive (404 outside scope). */
+export function getCoordinatorDriveStudentTrack(
+  driveId: number,
+  studentId: number,
+): Promise<DriveStudentTrack> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${ROOT}/${driveId}/students/${studentId}/track`, { token }),
+  )
+}
+
+/** An in-scope student's full profile (government IDs excluded). */
+export function getCoordinatorDriveStudentProfile(
+  driveId: number,
+  studentId: number,
+): Promise<DriveStudentProfile> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${ROOT}/${driveId}/students/${studentId}/profile`, { token }),
+  )
+}
+
+/** An in-scope student's lifecycle across every OTHER drive. */
+export function getCoordinatorDriveStudentActivity(
+  driveId: number,
+  studentId: number,
+): Promise<{ items: DriveStudentActivityRow[] }> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${ROOT}/${driveId}/students/${studentId}/drive-activity`, {
+      token,
+    }),
   )
 }

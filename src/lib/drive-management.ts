@@ -1057,6 +1057,99 @@ export function getDriveStudentTrack(
   )
 }
 
+// --- Student detail sheet (profile + cross-drive activity) -----------------
+
+/** One field of the employee-visible profile (registry-driven). */
+export interface EmployeeProfileField {
+  key: string
+  label: string
+  kind: string
+  value: unknown
+  /** Human-readable rendering (FK names, Yes/No); null when unset. */
+  display: string | null
+}
+
+export interface EmployeeProfileGroup {
+  key: string
+  label: string
+  order: number
+  fields: EmployeeProfileField[]
+}
+
+/** The full profile behind a Students-tab row (government IDs excluded). */
+export interface DriveStudentProfile {
+  student: {
+    id: number
+    roll_no: string
+    display_name: string
+    programme: string | null
+    entry_type: number
+    entry_type_label: string
+    admission_year: number
+    admission_year_display: string
+    pass_out_year: number | null
+  }
+  groups: EmployeeProfileGroup[]
+  certifications: Array<{
+    id: number
+    name: string
+    certificate_file_url: string | null
+    created_at: string
+  }>
+  resume: {
+    url: string | null
+    external_url: string | null
+    uploaded_at: string | null
+  }
+}
+
+/** One row of the student's lifecycle in ANOTHER drive. */
+export interface DriveStudentActivityRow {
+  drive_id: number
+  drive_name: string
+  drive_status: DriveStatus
+  drive_date: string | null
+  company: { name: string; logo_url: string | null }
+  offer_type: string | null
+  /** The student's status in that drive (DRIVE_STUDENT_STATUS codes). */
+  status: number
+  imported_at: string
+  invited_at: string | null
+  responded_at: string | null
+  outcome_marked_at: string | null
+  revoked_at: string | null
+  rejection_reason: string | null
+  selected_designation: string | null
+  ctc: string | null
+  ctc_min: string | null
+  stipend: string | null
+  stipend_min: string | null
+}
+
+/** A drive student's full profile (membership in the drive is the access gate). */
+export function getDriveStudentProfile(
+  driveId: number,
+  studentId: number,
+): Promise<DriveStudentProfile> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/${studentId}/profile`, {
+      token,
+    }),
+  )
+}
+
+/** The student's lifecycle in every OTHER drive, latest activity first. */
+export function getDriveStudentActivity(
+  driveId: number,
+  studentId: number,
+): Promise<{ items: DriveStudentActivityRow[] }> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/${studentId}/drive-activity`, {
+      token,
+    }),
+  )
+}
+
 /** Hard-delete a student from the drive (Imported rows only, server-enforced). */
 export function removeDriveStudent(
   driveId: number,

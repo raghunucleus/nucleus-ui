@@ -67,8 +67,15 @@ import {
 import {
   getCoordinatorDrive,
   getCoordinatorDriveEligibilitySummary,
+  getCoordinatorDriveStudentActivity,
+  getCoordinatorDriveStudentProfile,
+  getCoordinatorDriveStudentTrack,
   listCoordinatorDriveStudents,
 } from '@/lib/placement-coordinator'
+import {
+  DriveStudentDetailSheet,
+  type DriveStudentDetailApi,
+} from '@/components/employee/drive-student-detail-sheet'
 import { cn } from '@/lib/utils'
 
 /**
@@ -395,6 +402,13 @@ function OverviewTab({ drive }: { drive: DriveDetail }) {
 
 /** "Designation · CTC ₹6,00,000 LPA · Stipend ₹25,000 – ₹30,000/month" for a
  *  Selected row; null when nothing was recorded (legacy selections). */
+/** The coordinator surface's scope-checked fetchers for the detail sheet. */
+const coordinatorStudentDetailApi: DriveStudentDetailApi = {
+  getProfile: getCoordinatorDriveStudentProfile,
+  getDriveActivity: getCoordinatorDriveStudentActivity,
+  getTrack: getCoordinatorDriveStudentTrack,
+}
+
 function selectionSummary(r: DriveStudentRow): string | null {
   const fmt = (v: string) => `₹${Number(v).toLocaleString('en-IN')}`
   const band = (main: string, min: string | null) =>
@@ -424,6 +438,9 @@ function StudentsTab({ driveId }: { driveId: number }) {
   const [pageCount, setPageCount] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [detailStudent, setDetailStudent] = useState<DriveStudentRow | null>(
+    null,
+  )
 
   // Reset to the first page whenever the search/filter changes.
   useEffect(() => {
@@ -532,7 +549,11 @@ function StudentsTab({ driveId }: { driveId: number }) {
             </TableHeader>
             <TableBody>
               {(rows ?? []).map((r) => (
-                <TableRow key={r.id}>
+                <TableRow
+                  key={r.id}
+                  className="cursor-pointer"
+                  onClick={() => setDetailStudent(r)}
+                >
                   <TableCell className="whitespace-nowrap text-sm font-medium">
                     {r.roll_no}
                   </TableCell>
@@ -582,6 +603,18 @@ function StudentsTab({ driveId }: { driveId: number }) {
       {!loading && !error && pageCount > 1 && (
         <Pagination page={page} totalPages={pageCount} onPage={setPage} />
       )}
+
+      {/* Per-student detail (profile / drive activity / this drive's trail) */}
+      <DriveStudentDetailSheet
+        driveId={driveId}
+        studentId={detailStudent?.id ?? null}
+        studentName={detailStudent?.display_name}
+        open={!!detailStudent}
+        onOpenChange={(open) => {
+          if (!open) setDetailStudent(null)
+        }}
+        api={coordinatorStudentDetailApi}
+      />
     </div>
   )
 }

@@ -48,7 +48,10 @@ import {
   formatPlacementDate,
   formatPlacementDateTime,
 } from '@/components/placement-invite'
-import { DriveStudentTrackSheet } from '@/components/employee/drive-student-track'
+import {
+  DriveStudentDetailSheet,
+  type DriveStudentDetailApi,
+} from '@/components/employee/drive-student-detail-sheet'
 import {
   SelectionFields,
   prefillSelectionDraft,
@@ -100,6 +103,9 @@ import {
   getDrive,
   getDriveEligibility,
   getDriveEligibilitySummary,
+  getDriveStudentActivity,
+  getDriveStudentProfile,
+  getDriveStudentTrack,
   getDriveStudentsFilterPrefill,
   importAllDriveStudents,
   importDriveStudents,
@@ -625,6 +631,13 @@ function DriveFilterTab({
 
 /** "Designation · CTC ₹6,00,000 LPA · Stipend ₹25,000 – ₹30,000/month" for a
  *  Selected row; null when nothing was recorded (legacy selections). */
+/** The manage surface's fetchers for the row-click detail sheet. */
+const manageStudentDetailApi: DriveStudentDetailApi = {
+  getProfile: getDriveStudentProfile,
+  getDriveActivity: getDriveStudentActivity,
+  getTrack: getDriveStudentTrack,
+}
+
 function selectionSummary(r: DriveStudentRow): string | null {
   const fmt = (v: string) => `₹${Number(v).toLocaleString('en-IN')}`
   const band = (main: string, min: string | null) =>
@@ -1536,14 +1549,16 @@ function DriveStudentsTab({
         </DialogContent>
       </Dialog>
 
-      {/* Per-student track (audit trail) */}
-      <DriveStudentTrackSheet
+      {/* Per-student detail (profile / drive activity / this drive's trail) */}
+      <DriveStudentDetailSheet
         driveId={driveId}
         studentId={trackStudent?.id ?? null}
+        studentName={trackStudent?.display_name}
         open={!!trackStudent}
         onOpenChange={(open) => {
           if (!open) setTrackStudent(null)
         }}
+        api={manageStudentDetailApi}
       />
     </div>
   )
