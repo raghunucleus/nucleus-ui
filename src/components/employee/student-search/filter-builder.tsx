@@ -24,6 +24,7 @@ export function FilterBuilder({
   fkOptions,
   ensureFkOptions,
   confirmProtectedChange,
+  expanded = false,
 }: {
   meta: SearchMeta
   rows: BuilderRow[]
@@ -33,6 +34,8 @@ export function FilterBuilder({
   ensureFkOptions: (lookup: string) => void
   /** Ask the user to confirm changing a protected (recommended) default. */
   confirmProtectedChange: () => Promise<boolean>
+  /** Rendered in the roomy expand modal — chips spell values out in full. */
+  expanded?: boolean
 }) {
   const filterable = meta.attributes.filter((a) => a.filterable)
   const byKey = new Map(meta.attributes.map((a) => [a.key, a]))
@@ -104,6 +107,7 @@ export function FilterBuilder({
       onChange={(next) => writeCondition(row, cond.uid, next)}
       onRemove={() => void requestRemove(row, cond)}
       onUnlock={() => void requestUnlock(row, cond)}
+      expanded={expanded}
     />
   )
 
@@ -155,6 +159,7 @@ export function FilterBuilder({
         }
         orAttributes={filterable}
         orGroups={meta.groups}
+        expanded={expanded}
       />
     )
   }

@@ -484,9 +484,12 @@ export function StudentSearchPanel({
     )
   }
 
-  // The filter editor itself, reused by both the inline rail and the expand
-  // modal so edits flow through one piece of state.
-  const editor =
+  // The filter editor itself, rendered by both the inline rail and the expand
+  // modal. It stays a function rather than a single shared element because the
+  // two surfaces pass different `expanded` values — chips spell values out in
+  // full in the roomy modal. Filter state still lives here, so both copies read
+  // and write one piece of state.
+  const editorFor = (expanded: boolean) =>
     mode === 'builder' ? (
       <FilterBuilder
         meta={meta}
@@ -495,6 +498,7 @@ export function StudentSearchPanel({
         fkOptions={fkOptions}
         ensureFkOptions={ensureFkOptions}
         confirmProtectedChange={confirmProtectedChange}
+        expanded={expanded}
       />
     ) : (
       <NqlEditor
@@ -622,7 +626,7 @@ export function StudentSearchPanel({
 
         <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-card">
           <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto p-3">
-            {editor}
+            {editorFor(false)}
           </div>
           <div className="shrink-0 space-y-2 border-t p-3">
             {searchButton}
@@ -767,7 +771,7 @@ export function StudentSearchPanel({
             {explainPanel}
           </div>
           <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto px-6 py-4">
-            {editor}
+            {editorFor(true)}
           </div>
           <DialogFooter className="shrink-0 items-center gap-3 border-t px-6 py-4 sm:justify-between">
             {searchError ? (
