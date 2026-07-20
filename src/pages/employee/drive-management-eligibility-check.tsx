@@ -33,7 +33,7 @@ const SEEDED: SearchGroup = {
  */
 export default function EmployeeEligibilityCheckPage() {
   useEffect(() => {
-    document.title = 'Eligibility Check — Nucleus'
+    document.title = 'Students & Eligibility — Nucleus'
   }, [])
 
   const access = useScreenAccess(SCREEN_KEY)
@@ -50,7 +50,7 @@ export default function EmployeeEligibilityCheckPage() {
     <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 pb-4">
       <div className="shrink-0 pt-1">
         <h1 className="text-lg font-semibold tracking-tight">
-          Eligibility Check
+          Students &amp; Eligibility
         </h1>
         <p className="text-sm text-muted-foreground">
           Filter the whole institution with the drive filter set — check who

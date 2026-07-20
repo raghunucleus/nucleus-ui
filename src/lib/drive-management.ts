@@ -204,8 +204,10 @@ export interface DriveEligibility {
   max_current_backlogs: number | null
   /** Xth minimum, a percentage. */
   min_tenth_percentage: number | null
-  /** 12th-or-Diploma minimum, a percentage. */
-  min_twelfth_or_diploma_percentage: number | null
+  /** 12th minimum, a percentage — screens regular entrants. */
+  min_twelfth_percentage: number | null
+  /** Diploma minimum, a percentage — screens lateral entrants. */
+  min_diploma_percentage: number | null
   /** Btech minimum, a 10-point CGPA. */
   min_btech_cgpa: number | null
 }
@@ -230,7 +232,8 @@ export interface EligibilitySummary {
   allow_backlog_history: boolean
   max_current_backlogs: number | null
   min_tenth_percentage: number | null
-  min_twelfth_or_diploma_percentage: number | null
+  min_twelfth_percentage: number | null
+  min_diploma_percentage: number | null
   min_btech_cgpa: number | null
   has_restrictions: boolean
 }

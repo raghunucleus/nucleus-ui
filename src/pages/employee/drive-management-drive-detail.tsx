@@ -1826,7 +1826,8 @@ interface EligibilityForm {
   allow_backlog_history: boolean
   max_current_backlogs: string
   min_tenth_percentage: string
-  min_twelfth_or_diploma_percentage: string
+  min_twelfth_percentage: string
+  min_diploma_percentage: string
   min_btech_cgpa: string
 }
 
@@ -1839,9 +1840,8 @@ function toForm(e: DriveEligibility): EligibilityForm {
     allow_backlog_history: e.allow_backlog_history,
     max_current_backlogs: strOf(e.max_current_backlogs),
     min_tenth_percentage: strOf(e.min_tenth_percentage),
-    min_twelfth_or_diploma_percentage: strOf(
-      e.min_twelfth_or_diploma_percentage,
-    ),
+    min_twelfth_percentage: strOf(e.min_twelfth_percentage),
+    min_diploma_percentage: strOf(e.min_diploma_percentage),
     min_btech_cgpa: strOf(e.min_btech_cgpa),
   }
 }
@@ -1895,13 +1895,10 @@ function EligibilityTab({
         genders: form.genders,
         passout_years: form.passout_years,
         allow_backlog_history: form.allow_backlog_history,
-        max_current_backlogs: form.allow_backlog_history
-          ? numOrNull(form.max_current_backlogs)
-          : null,
+        max_current_backlogs: numOrNull(form.max_current_backlogs),
         min_tenth_percentage: numOrNull(form.min_tenth_percentage),
-        min_twelfth_or_diploma_percentage: numOrNull(
-          form.min_twelfth_or_diploma_percentage,
-        ),
+        min_twelfth_percentage: numOrNull(form.min_twelfth_percentage),
+        min_diploma_percentage: numOrNull(form.min_diploma_percentage),
         min_btech_cgpa: numOrNull(form.min_btech_cgpa),
       })
       toast.success('Eligibility saved.')
@@ -1981,32 +1978,26 @@ function EligibilityTab({
         <Field label="Allow with history of backlogs">
           <NativeSelect
             value={form.allow_backlog_history ? 'yes' : 'no'}
-            onChange={(e) => {
-              const yes = e.target.value === 'yes'
-              patch(
-                yes
-                  ? { allow_backlog_history: true }
-                  : { allow_backlog_history: false, max_current_backlogs: '' },
-              )
-            }}
+            onChange={(e) =>
+              patch({ allow_backlog_history: e.target.value === 'yes' })
+            }
           >
             <option value="no">No</option>
             <option value="yes">Yes</option>
           </NativeSelect>
         </Field>
 
-        {form.allow_backlog_history && (
-          <Field label="Allow current backlogs upto" hint="Blank = no limit.">
-            <Input
-              type="number"
-              min={0}
-              max={99}
-              value={form.max_current_backlogs}
-              onChange={(e) => patch({ max_current_backlogs: e.target.value })}
-              placeholder="No limit"
-            />
-          </Field>
-        )}
+        {/* Independent of the history setting — both are always editable. */}
+        <Field label="Allow current backlogs upto" hint="Blank = no limit.">
+          <Input
+            type="number"
+            min={0}
+            max={99}
+            value={form.max_current_backlogs}
+            onChange={(e) => patch({ max_current_backlogs: e.target.value })}
+            placeholder="No limit"
+          />
+        </Field>
       </div>
 
       <div className="space-y-1.5">
@@ -2026,17 +2017,26 @@ function EligibilityTab({
               placeholder="e.g. 60"
             />
           </Field>
-          <Field label="12th / Diploma (min %)">
+          <Field label="12th (min %)" hint="Applies to regular entrants.">
             <Input
               type="number"
               min={0}
               max={100}
               step="any"
-              value={form.min_twelfth_or_diploma_percentage}
-              onChange={(e) =>
-                patch({ min_twelfth_or_diploma_percentage: e.target.value })
-              }
-              placeholder="e.g. 60"
+              value={form.min_twelfth_percentage}
+              onChange={(e) => patch({ min_twelfth_percentage: e.target.value })}
+              placeholder="e.g. 70"
+            />
+          </Field>
+          <Field label="Diploma (min %)" hint="Applies to lateral entrants.">
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step="any"
+              value={form.min_diploma_percentage}
+              onChange={(e) => patch({ min_diploma_percentage: e.target.value })}
+              placeholder="e.g. 80"
             />
           </Field>
           <Field label="Btech (min CGPA /10)">

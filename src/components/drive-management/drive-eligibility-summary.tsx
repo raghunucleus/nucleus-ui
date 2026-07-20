@@ -27,14 +27,16 @@ export function DriveEligibilitySummary({
     allow_backlog_history,
     max_current_backlogs,
     min_tenth_percentage,
-    min_twelfth_or_diploma_percentage,
+    min_twelfth_percentage,
+    min_diploma_percentage,
     min_btech_cgpa,
     has_restrictions,
   } = summary
 
   const hasAcademicMins =
     min_tenth_percentage != null ||
-    min_twelfth_or_diploma_percentage != null ||
+    min_twelfth_percentage != null ||
+    min_diploma_percentage != null ||
     min_btech_cgpa != null
 
   return (
@@ -87,11 +89,11 @@ export function DriveEligibilitySummary({
                 {min_tenth_percentage != null ? (
                   <Fact label="Xth" value={`${min_tenth_percentage}%`} />
                 ) : null}
-                {min_twelfth_or_diploma_percentage != null ? (
-                  <Fact
-                    label="12th / Diploma"
-                    value={`${min_twelfth_or_diploma_percentage}%`}
-                  />
+                {min_twelfth_percentage != null ? (
+                  <Fact label="12th" value={`${min_twelfth_percentage}%`} />
+                ) : null}
+                {min_diploma_percentage != null ? (
+                  <Fact label="Diploma" value={`${min_diploma_percentage}%`} />
                 ) : null}
                 {min_btech_cgpa != null ? (
                   <Fact label="Btech" value={`${min_btech_cgpa} CGPA`} />
