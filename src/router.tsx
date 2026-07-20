@@ -140,20 +140,22 @@ const placementsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/placements',
   component: Placements,
-  // `?tab=` picks Invites/Drives; `?drive=<id>` opens that drive's detail
-  // (used by the invite/outcome notification deep-links). The two filter
+  // `?tab=` picks Invites/Drives/My Offers; `?drive=<id>` opens that drive's
+  // detail (used by the invite/outcome notification deep-links). The two filter
   // params keep each tab's chip selection in the URL; the page applies the
   // defaults (pending / accepted) when they are absent.
   validateSearch: (
     search: Record<string, unknown>,
   ): {
-    tab?: 'invites' | 'drives'
+    tab?: 'invites' | 'drives' | 'offers'
     drive?: number
     invitesFilter?: InviteFilter
     drivesFilter?: DriveFilter
   } => ({
     tab:
-      search.tab === 'invites' || search.tab === 'drives'
+      search.tab === 'invites' ||
+      search.tab === 'drives' ||
+      search.tab === 'offers'
         ? search.tab
         : undefined,
     drive:

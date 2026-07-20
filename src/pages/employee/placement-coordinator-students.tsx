@@ -176,6 +176,9 @@ export default function EmployeePlacementCoordinatorStudentsPage() {
   const changeBatch = (next: number | null) => {
     setBatchId(next)
     setAllowedOverrides({})
+    // Same contract as the bucket switch: the memo above has already produced
+    // an adapter carrying the new batch by the time the panel reads the nonce.
+    setSearchNonce((n) => n + 1)
     if (next !== null) {
       window.localStorage.setItem(BATCH_STORAGE_KEY, String(next))
     }
@@ -278,7 +281,15 @@ export default function EmployeePlacementCoordinatorStudentsPage() {
               tabs refetches rather than holding two result sets. */}
           {tab === 'students' ? (
             <div className="min-h-0 flex-1">
-              {searchApi && (
+              {/* The panel boots once and never re-runs its first search, so it
+                  must not mount on the unvalidated localStorage id — that id
+                  can belong to a batch this employee no longer verifies (or to
+                  another account on this browser) and the resulting 404 would
+                  stick until the panel was unmounted. Wait for the batch list. */}
+              {!batchesLoaded && (
+                <div className="h-full min-h-64 animate-pulse rounded-xl bg-muted" />
+              )}
+              {batchesLoaded && searchApi && (
                 <StudentSearchPanel
                   api={searchApi}
                   hiddenAttrs={HIDDEN_ATTRS}

@@ -73,6 +73,21 @@ export interface PlacementDeniedInvite extends PlacementInvite {
   rejection_reason: string | null
 }
 
+/**
+ * What the student was actually selected for — present iff status is SELECTED.
+ * Per-student figures, not the advertised drive bands: ctc in LPA, stipend in
+ * ₹/month; the main column is the fixed value or range MAX (`_min` null ⇒
+ * fixed). Legacy selections (recorded before capture existed) are all-null.
+ */
+export interface PlacementSelection {
+  drive_profile_id: number | null
+  designation: string | null
+  ctc: string | null
+  ctc_min: string | null
+  stipend: string | null
+  stipend_min: string | null
+}
+
 export interface PlacementDriveRecord extends PlacementDriveCard {
   status: number
   invited_at: string | null
@@ -83,11 +98,19 @@ export interface PlacementDriveRecord extends PlacementDriveCard {
   rejection_reason: string | null
   /** Only meaningful when status is REVOKED: true = revoked after accepting. */
   revoked_from_accepted: boolean | null
+  selection: PlacementSelection | null
 }
 
 /** One entry of the student's action trail; actor is never a named employee. */
 export interface PlacementHistoryEvent {
-  action: 'invited' | 'reminded' | 'accepted' | 'denied' | 'outcome' | 'revoked'
+  action:
+    | 'invited'
+    | 'reminded'
+    | 'accepted'
+    | 'denied'
+    | 'outcome'
+    | 'revoked'
+    | 'selection_updated'
   to_status: number
   by: 'you' | 'placement_cell'
   reason: string | null
@@ -106,8 +129,40 @@ export interface PlacementDriveDetail {
     responded_at: string | null
     rejection_reason: string | null
     outcome_marked_at: string | null
+    selection: PlacementSelection | null
   }
   history: PlacementHistoryEvent[]
+}
+
+// --- offer formatting ------------------------------------------------------
+
+const rupees = (v: string) => `₹${Number(v).toLocaleString('en-IN')}`
+const band = (main: string, min: string | null) =>
+  min != null ? `${rupees(min)} – ${rupees(main)}` : rupees(main)
+
+/** "₹6.5 LPA" or "₹6 – ₹7.5 LPA"; null when no CTC was recorded. */
+export function formatOfferCtc(sel: PlacementSelection): string | null {
+  return sel.ctc != null ? `${band(sel.ctc, sel.ctc_min)} LPA` : null
+}
+
+/** "₹25,000/month" or "₹20,000 – ₹25,000/month"; null when none recorded. */
+export function formatOfferStipend(sel: PlacementSelection): string | null {
+  return sel.stipend != null ? `${band(sel.stipend, sel.stipend_min)}/month` : null
+}
+
+/** "CTC ₹6.5 LPA · Stipend ₹25,000/month" for offer cards; null if neither. */
+export function offerPackageSummary(sel: PlacementSelection): string | null {
+  const parts: string[] = []
+  const ctc = formatOfferCtc(sel)
+  const stipend = formatOfferStipend(sel)
+  if (ctc) parts.push(`CTC ${ctc}`)
+  if (stipend) parts.push(`Stipend ${stipend}`)
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
+/** True for selections recorded before per-student capture existed. */
+export function isLegacySelection(sel: PlacementSelection): boolean {
+  return sel.designation == null && sel.ctc == null && sel.stipend == null
 }
 
 // --- client-side filters ---------------------------------------------------

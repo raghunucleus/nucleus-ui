@@ -13,6 +13,7 @@ import {
   RefreshCw,
   ScrollText,
   Tag,
+  Trophy,
   Wallet,
   X,
 } from 'lucide-react'
@@ -26,6 +27,7 @@ import {
   formatPlacementDate,
   formatPlacementDateTime,
 } from '@/components/placement-invite'
+import { CelebrationOverlay } from '@/components/celebration-overlay'
 import { DriveEligibilitySummary } from '@/components/drive-management/drive-eligibility-summary'
 import {
   BondFact,
@@ -36,6 +38,7 @@ import {
   MoneyFact,
 } from '@/components/drive-management/facts'
 import { FilterChips } from '@/components/placement-filter-chips'
+import { PlacementOfferCard } from '@/components/placement-offer-card'
 import { PlacementHistoryTimeline } from '@/components/placement-history'
 import { PageHeader } from '@/components/portal-layout'
 import { StateView } from '@/components/state-view'
@@ -58,11 +61,16 @@ import {
   driveFilterOf,
   fetchPlacementDrive,
   fetchPlacementDrives,
+  formatOfferCtc,
+  formatOfferStipend,
   inviteFilterOf,
+  isLegacySelection,
   type DriveFilter,
   type InviteFilter,
+  type PlacementDrive,
   type PlacementDriveDetail,
   type PlacementDriveRecord,
+  type PlacementSelection,
 } from '@/lib/student-placements'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
@@ -73,7 +81,7 @@ function errMsg(err: unknown, fallback: string): string {
     : fallback
 }
 
-type Tab = 'invites' | 'drives'
+type Tab = 'invites' | 'drives' | 'offers'
 
 const INVITE_FILTER_LABELS: Record<InviteFilter, string> = {
   pending: 'Pending',
@@ -254,6 +262,13 @@ export default function Placements() {
     driveFilter === 'all'
       ? records
       : records.filter((r) => driveFilterOf(r) === driveFilter)
+  const offerRows = records
+    .filter((r) => r.status === PLACEMENT_STATUS.SELECTED)
+    .sort(
+      (a, b) =>
+        new Date(b.outcome_marked_at ?? 0).getTime() -
+        new Date(a.outcome_marked_at ?? 0).getTime(),
+    )
 
   return (
     <>
@@ -270,6 +285,7 @@ export default function Placements() {
           [
             { key: 'invites', label: `Invites (${inviteCounts.pending})` },
             { key: 'drives', label: `Drives (${records.length})` },
+            { key: 'offers', label: `My Offers (${driveCounts.selected})` },
           ] as { key: Tab; label: string }[]
         ).map((t) => (
           <button
@@ -343,6 +359,24 @@ export default function Placements() {
             </div>
           )}
         </div>
+      ) : tab === 'offers' ? (
+        offerRows.length === 0 ? (
+          <StateView
+            icon={Trophy}
+            title="No offers yet"
+            description="When the placement cell selects you in a drive, your offer will appear here."
+          />
+        ) : (
+          <div className="space-y-2.5">
+            {offerRows.map((r) => (
+              <PlacementOfferCard
+                key={r.drive_id}
+                record={r}
+                onOpen={openDrive}
+              />
+            ))}
+          </div>
+        )
       ) : (
         <div className="space-y-4">
           <FilterChips
@@ -396,6 +430,8 @@ function DriveDetailView({
   const [error, setError] = useState<string | null>(null)
   const [accepting, setAccepting] = useState(false)
   const [denyOpen, setDenyOpen] = useState(false)
+  // The view remounts per opened drive, so the celebration replays each open.
+  const [celebrated, setCelebrated] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -452,6 +488,10 @@ function DriveDetailView({
 
   const { drive, membership } = detail
   const isPendingInvite = membership.status === PLACEMENT_STATUS.INVITED
+  const selectedProfileId =
+    membership.status === PLACEMENT_STATUS.SELECTED
+      ? (membership.selection?.drive_profile_id ?? null)
+      : null
 
   return (
     <div className="space-y-5 pb-6">
@@ -466,6 +506,16 @@ function DriveDetailView({
 
       <div className="grid gap-5 lg:grid-cols-[1fr_20rem] lg:items-start">
         <div className="space-y-5">
+      {/* Selection hero — the student's own offer, above everything else */}
+      {membership.status === PLACEMENT_STATUS.SELECTED &&
+      membership.selection ? (
+        <SelectionHeroCard
+          selection={membership.selection}
+          drive={drive}
+          outcomeMarkedAt={membership.outcome_marked_at}
+        />
+      ) : null}
+
       {/* Header card */}
       <Card className="p-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -539,10 +589,20 @@ function DriveDetailView({
       <Card className="p-4">
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
           <Fact label="Drive date" value={formatPlacementDate(drive.drive_date)} />
-          <Fact
-            label="Register by"
-            value={formatPlacementDateTime(drive.registration_end_date)}
-          />
+          {/* The deadline only matters while the invite is open; afterwards
+              show when the student registered (accepted) instead. */}
+          {isPendingInvite ? (
+            <Fact
+              label="Last date to register"
+              value={formatPlacementDateTime(drive.registration_end_date)}
+            />
+          ) : membership.status !== PLACEMENT_STATUS.DENIED &&
+            membership.responded_at ? (
+            <Fact
+              label="Registered on"
+              value={formatPlacementDateTime(membership.responded_at)}
+            />
+          ) : null}
           {drive.offer_type ? (
             <Fact label="Offer type" value={drive.offer_type.name} />
           ) : null}
@@ -581,8 +641,20 @@ function DriveDetailView({
 
       {/* Designations */}
       {drive.profiles.map((p) => (
-        <Card key={p.id} className="p-4">
-          <h2 className="mb-3 text-base font-semibold">{p.designation.name}</h2>
+        <Card
+          key={p.id}
+          className={cn(
+            'p-4',
+            p.id === selectedProfileId &&
+              'border-success bg-success/5 ring-1 ring-success/40',
+          )}
+        >
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <h2 className="text-base font-semibold">{p.designation.name}</h2>
+            {p.id === selectedProfileId ? (
+              <Badge variant="success">You were selected for this role</Badge>
+            ) : null}
+          </div>
           <dl className="mb-3 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             {p.offer_type ? (
               <IconFact icon={Tag} label="Job type" value={p.offer_type.name} />
@@ -673,7 +745,87 @@ function DriveDetailView({
           void load()
         }}
       />
+
+      {!celebrated && membership.status === PLACEMENT_STATUS.SELECTED ? (
+        <CelebrationOverlay
+          title={`Congratulations — you've been selected!`}
+          subtitle={
+            membership.selection?.designation
+              ? `${drive.company.name} has selected you as ${membership.selection.designation}.`
+              : `${drive.company.name} has selected you.`
+          }
+          onDone={() => setCelebrated(true)}
+        />
+      ) : null}
     </div>
+  )
+}
+
+/**
+ * The student's own selection: role, actual offered package (per-student
+ * figures recorded by the placement cell — not the advertised drive bands)
+ * and when the offer was made. Legacy selections show a single fallback line.
+ */
+function SelectionHeroCard({
+  selection: sel,
+  drive,
+  outcomeMarkedAt,
+}: {
+  selection: PlacementSelection
+  drive: PlacementDrive
+  outcomeMarkedAt: string | null
+}) {
+  const selectedProfile =
+    sel.drive_profile_id != null
+      ? drive.profiles.find((p) => p.id === sel.drive_profile_id)
+      : undefined
+  const offerType =
+    selectedProfile?.offer_type?.name ?? drive.offer_type?.name ?? null
+  const ctc = formatOfferCtc(sel)
+  const stipend = formatOfferStipend(sel)
+  return (
+    <Card className="border-success/50 bg-success/5 p-4">
+      <div className="flex items-center gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-success/15 text-success">
+          <Trophy className="size-5" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold">
+            Congratulations — you've been selected!
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {drive.company.name} has selected you
+            {sel.designation ? (
+              <>
+                {' '}
+                as <span className="font-medium text-foreground">{sel.designation}</span>
+              </>
+            ) : null}
+            .
+          </p>
+        </div>
+      </div>
+      {isLegacySelection(sel) ? (
+        <p className="mt-3 border-t border-success/20 pt-3 text-sm text-muted-foreground">
+          Your offer details will be updated by the placement cell.
+        </p>
+      ) : (
+        <dl className="mt-3 grid gap-x-6 gap-y-3 border-t border-success/20 pt-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          {sel.designation ? (
+            <Fact label="Selected for" value={sel.designation} />
+          ) : null}
+          {ctc ? <Fact label="Offered CTC" value={ctc} /> : null}
+          {stipend ? <Fact label="Stipend" value={stipend} /> : null}
+          {offerType ? <Fact label="Offer type" value={offerType} /> : null}
+          {outcomeMarkedAt ? (
+            <Fact
+              label="Offered on"
+              value={formatPlacementDate(outcomeMarkedAt)}
+            />
+          ) : null}
+        </dl>
+      )}
+    </Card>
   )
 }
 

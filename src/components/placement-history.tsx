@@ -4,6 +4,7 @@ import {
   Check,
   Flag,
   Mail,
+  Pencil,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -22,6 +23,7 @@ const ICONS: Record<PlacementHistoryEvent['action'], LucideIcon> = {
   denied: X,
   outcome: Flag,
   revoked: Ban,
+  selection_updated: Pencil,
 }
 
 function title(e: PlacementHistoryEvent): string {
@@ -38,6 +40,11 @@ function title(e: PlacementHistoryEvent): string {
       return `Marked ${PLACEMENT_STATUS_LABELS[e.to_status] ?? e.to_status}`
     case 'revoked':
       return 'Invitation revoked'
+    case 'selection_updated':
+      return 'Offer details updated'
+    // The audit log can grow new actions before this client knows them.
+    default:
+      return 'Updated by the placement cell'
   }
 }
 
@@ -70,7 +77,9 @@ export function PlacementHistoryTimeline({
       <h2 className="mb-3 text-sm font-semibold">History</h2>
       <ol className="space-y-0">
         {history.map((e, i) => {
-          const Icon = ICONS[e.action]
+          // Fall back for audit actions this client doesn't know yet — an
+          // unmapped action must never crash the whole detail view.
+          const Icon = ICONS[e.action] ?? Flag
           const last = i === history.length - 1
           return (
             <li key={i} className="flex gap-3">
