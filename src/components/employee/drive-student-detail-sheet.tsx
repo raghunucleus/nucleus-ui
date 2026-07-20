@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { History, ListChecks, User } from 'lucide-react'
 
 import { CompanyLogo, TabBar } from '@/components/corporate-relations/bits'
@@ -45,7 +45,7 @@ const TABS = [
 type TabKey = 'details' | 'activity' | 'track'
 
 /** One lazily-fetched tab's slot: undefined = not requested yet. */
-interface Slot<T> {
+export interface Slot<T> {
   data?: T
   loading: boolean
   error: string | null
@@ -182,9 +182,7 @@ export function DriveStudentDetailSheet({
         </div>
 
         <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto px-4 pb-4">
-          {tab === 'details' && (
-            <DetailsTab slot={profile} />
-          )}
+          {tab === 'details' && <StudentProfileDetails slot={profile} />}
           {tab === 'activity' && <ActivityTab slot={activity} />}
           {tab === 'track' && (
             <>
@@ -203,7 +201,20 @@ export function DriveStudentDetailSheet({
   )
 }
 
-function DetailsTab({ slot }: { slot: Slot<DriveStudentProfile> }) {
+/**
+ * The read-only rendering of an employee-facing student profile: entry-type
+ * badges, the registry groups, certifications and resume links. Shared by this
+ * sheet's Details tab and the placement-coordinator students sheet — `extra`
+ * lets a host inject surface-specific content (a completion bar, placement
+ * flags) above the badges without forking the renderer.
+ */
+export function StudentProfileDetails({
+  slot,
+  extra,
+}: {
+  slot: Slot<DriveStudentProfile>
+  extra?: ReactNode
+}) {
   if (slot.loading) return <LoadingSkeleton />
   if (slot.error)
     return <p className="pt-4 text-sm text-destructive">{slot.error}</p>
@@ -212,6 +223,7 @@ function DetailsTab({ slot }: { slot: Slot<DriveStudentProfile> }) {
 
   return (
     <div className="space-y-5 pt-3">
+      {extra}
       <div className="flex flex-wrap gap-1.5">
         <Badge variant="secondary">{p.student.entry_type_label}</Badge>
         <Badge variant="secondary">

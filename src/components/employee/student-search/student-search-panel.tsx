@@ -4,14 +4,15 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from 'react'
 import {
   CheckCircle2,
   Download,
   Info,
   Loader2,
-  Maximize2,
   Search as SearchIcon,
+  SlidersHorizontal,
   UserPlus,
   X,
 } from 'lucide-react'
@@ -61,7 +62,11 @@ import {
   filtersToNql,
 } from './filter-model'
 import { NqlEditor } from './nql-editor'
-import { ResultsSkeleton, ResultsTable } from './results-table'
+import {
+  ResultsSkeleton,
+  ResultsTable,
+  type RowColumnDef,
+} from './results-table'
 
 type Mode = 'builder' | 'nql'
 
@@ -80,6 +85,10 @@ export function StudentSearchPanel({
   lockedAttrs,
   importApi,
   showFilterHelp,
+  hiddenAttrs,
+  rowColumns,
+  toolbarExtra,
+  searchNonce,
 }: {
   api: StudentSearchApi
   initialFilters?: SearchGroup | null
@@ -96,9 +105,35 @@ export function StudentSearchPanel({
   importApi?: StudentImportApi
   /** Renders the "Help with filters" documentation button in the filter rail. */
   showFilterHelp?: boolean
+  /**
+   * Attribute keys removed from the pickers, the filter help and the default
+   * column set — for surfaces where an outer control already pins that axis
+   * (the placement coordinator's batch dropdown fixes programme, department
+   * and pass-out year). Purely presentational: the server's scope decides what
+   * is actually reachable, so hiding an attribute cannot widen a result set.
+   */
+  hiddenAttrs?: string[]
+  /** Caller-rendered leading result columns. See ResultsTable. */
+  rowColumns?: RowColumnDef[]
+  /**
+   * Extra toolbar control, rendered just left of the column picker. The panel
+   * never needs to know what it does — pair it with `searchNonce` to re-run
+   * the search once the control has changed something the panel doesn't own.
+   */
+  toolbarExtra?: ReactNode
+  /**
+   * Bump to re-run the current search from page 1. For callers whose search
+   * adapter reads state the panel can't see (e.g. a scope switch): change the
+   * state, then bump this. Ignored before the first search has run.
+   */
+  searchNonce?: number
 }) {
   const [meta, setMeta] = useState<SearchMeta | null>(null)
   const [metaError, setMetaError] = useState<string | null>(null)
+
+  // Stable across renders when the caller passes a constant array, so the
+  // boot effect's dep on it never re-fires.
+  const hidden = useMemo(() => new Set(hiddenAttrs ?? []), [hiddenAttrs])
 
   const [mode, setMode] = useState<Mode>('builder')
   const [rows, setRows] = useState<BuilderRow[]>([])
@@ -258,13 +293,38 @@ export function StudentSearchPanel({
   )
 
   // --- Explain: current filters -> plain-English lines --------------------
+  // Deliberately built from the UNFILTERED meta: a seeded or parsed condition
+  // on a hidden attribute must still explain with its proper label.
   const attrByKey = useMemo(
     () => new Map((meta?.attributes ?? []).map((a) => [a.key, a] as const)),
     [meta],
   )
 
+  /**
+   * Meta as the *pickers* see it. Hidden attributes are dropped so they can't
+   * be added as filters or columns, but ResultsTable keeps the full `meta` —
+   * it needs every attribute for header labels and enum rendering, including
+   * any hidden column a saved query still selects.
+   */
+  const visibleMeta = useMemo(
+    () =>
+      meta && hidden.size > 0
+        ? { ...meta, attributes: meta.attributes.filter((a) => !hidden.has(a.key)) }
+        : meta,
+    [meta, hidden],
+  )
+
   // Builder rows explain live; NQL is parsed (debounced) while the panel is open.
   const builderAst = useMemo(() => composeFilters(rows), [rows])
+
+  /**
+   * How many conditions are actually in force, for the Filters button's badge.
+   * `composeFilters` already drops incomplete conditions and empty rows, so the
+   * builder count is exact. NQL has no condition count — a non-empty query
+   * simply reads as one active filter.
+   */
+  const activeFilters =
+    mode === 'nql' ? (nql.trim() ? 1 : 0) : (builderAst?.and?.length ?? 0)
 
   useEffect(() => {
     if (!explainOpen || mode !== 'nql') return
@@ -331,7 +391,9 @@ export function StudentSearchPanel({
       .meta()
       .then((m) => {
         setMeta(m)
-        setColumns(m.defaultColumns)
+        // The default set contains `programme`, so a surface that hides it
+        // must not request it as a column.
+        setColumns(m.defaultColumns.filter((c) => !hidden.has(c)))
         if (initialFilters) {
           const decomposed = decomposeFilters(initialFilters, lockedAttrs)
           if (decomposed) setRows(decomposed)
@@ -342,7 +404,7 @@ export function StudentSearchPanel({
           err instanceof Error ? err.message : 'Could not load search config.',
         )
       })
-  }, [api, initialFilters, lockedAttrs])
+  }, [api, initialFilters, lockedAttrs, hidden])
 
   // First search once meta (and thus default columns / prefilled rows) are in.
   const searchedOnce = useRef(false)
@@ -351,6 +413,17 @@ export function StudentSearchPanel({
     searchedOnce.current = true
     void runSearch(1, pageSize)
   }, [meta, runSearch, pageSize])
+
+  // Caller-requested refetch. Runs after render, so `runSearch` has already
+  // closed over whatever new adapter the caller's state change produced.
+  // Skipped before the first search, which the effect above owns.
+  const lastNonce = useRef(searchNonce)
+  useEffect(() => {
+    if (lastNonce.current === searchNonce) return
+    lastNonce.current = searchNonce
+    if (!searchedOnce.current) return
+    void runSearch(1, pageSize)
+  }, [searchNonce, runSearch, pageSize])
 
   const toggleSort = useCallback(
     (by: string) => {
@@ -484,6 +557,10 @@ export function StudentSearchPanel({
     )
   }
 
+  // `meta` is non-null past the guard above; the pickers get the hidden-attr
+  // filtered view, everything else keeps the full set.
+  const pickerMeta = visibleMeta ?? meta
+
   // The filter editor itself, rendered by both the inline rail and the expand
   // modal. It stays a function rather than a single shared element because the
   // two surfaces pass different `expanded` values — chips spell values out in
@@ -492,7 +569,7 @@ export function StudentSearchPanel({
   const editorFor = (expanded: boolean) =>
     mode === 'builder' ? (
       <FilterBuilder
-        meta={meta}
+        meta={pickerMeta}
         rows={rows}
         onChange={setRows}
         fkOptions={fkOptions}
@@ -502,7 +579,7 @@ export function StudentSearchPanel({
       />
     ) : (
       <NqlEditor
-        meta={meta}
+        meta={pickerMeta}
         value={nql}
         onChange={(v) => {
           setNql(v)
@@ -510,23 +587,6 @@ export function StudentSearchPanel({
         }}
       />
     )
-
-  // The Search button + inline error, shared by the rail footer and the modal.
-  const searchButton = (
-    <Button
-      type="button"
-      className="w-full"
-      onClick={() => void runSearch(1, pageSize)}
-      disabled={searching}
-    >
-      {searching ? (
-        <Loader2 className="size-4 animate-spin" />
-      ) : (
-        <SearchIcon className="size-4" />
-      )}
-      Search
-    </Button>
-  )
 
   const modeToggle = (
     <div className="inline-flex w-full rounded-lg border bg-card p-0.5">
@@ -600,46 +660,12 @@ export function StudentSearchPanel({
   ) : null
 
   return (
-    <div className="grid min-h-0 gap-4 py-1 lg:h-full lg:grid-cols-[20rem_minmax(0,1fr)]">
-      {/* LEFT: filter editor — a self-contained column that matches the results
-          height, with its own scrolling body between a fixed header and footer. */}
-      <aside className="flex min-h-0 flex-col gap-3 lg:h-full">
-        <div className="flex shrink-0 items-center gap-2">
-          {modeToggle}
-          {showFilterHelp ? <FilterHelpButton meta={meta} /> : null}
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            className="size-9 shrink-0"
-            onClick={() => setExpanded(true)}
-            aria-label="Expand filters"
-            title="Expand"
-          >
-            <Maximize2 className="size-4" />
-          </Button>
-        </div>
-
-        {switchNoteBanner ? (
-          <div className="shrink-0">{switchNoteBanner}</div>
-        ) : null}
-
-        <div className="flex min-h-0 flex-1 flex-col rounded-xl border bg-card">
-          <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto p-3">
-            {editorFor(false)}
-          </div>
-          <div className="shrink-0 space-y-2 border-t p-3">
-            {searchButton}
-            {searchError ? (
-              <p className="text-xs text-destructive">{searchError}</p>
-            ) : null}
-          </div>
-        </div>
-      </aside>
-
-      {/* RIGHT: results, in focus */}
-      <div className="flex min-h-0 min-w-0 flex-col gap-3 lg:h-full">
-        {/* Toolbar: free text · columns · export */}
+    <div className="flex min-h-0 min-w-0 flex-col gap-3 py-1 lg:h-full">
+      {/* Results take the full width; the filter editor lives behind the
+          toolbar's Filters button, in the modal the expand affordance used to
+          open. The host supplies the height bound this stretches into. */}
+      <>
+        {/* Toolbar: free text · filters · columns · export */}
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <div className="min-w-52 max-w-xs flex-1">
             <Input
@@ -651,6 +677,27 @@ export function StudentSearchPanel({
               placeholder="Search name, roll no, email…"
             />
           </div>
+          {/* The only way into the filter editor. Badged with the number of
+              conditions actually in force, so a closed panel never hides
+              state the user forgot they applied. */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setExpanded(true)}
+            aria-label="Filters"
+          >
+            <SlidersHorizontal className="size-4" />
+            Filters
+            {activeFilters > 0 ? (
+              <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground">
+                {activeFilters}
+              </span>
+            ) : null}
+          </Button>
+          {searchError ? (
+            <p className="text-xs text-destructive">{searchError}</p>
+          ) : null}
           <div className="ml-auto flex items-center gap-2">
             {importApi && result ? (
               <Button
@@ -667,8 +714,9 @@ export function StudentSearchPanel({
                 Import all ({result.total.toLocaleString()})
               </Button>
             ) : null}
+            {toolbarExtra}
             <ColumnPicker
-              meta={meta}
+              meta={pickerMeta}
               columns={columns}
               onChange={setColumns}
               onApply={() => void runSearch(1, pageSize)}
@@ -747,24 +795,28 @@ export function StudentSearchPanel({
               onPageSize={setPageSize}
               onImportRow={importApi ? (row) => void importRow(row) : undefined}
               importingId={importingId}
+              rowColumns={rowColumns}
             />
           ) : null}
         </div>
-      </div>
+      </>
 
-      {/* Expanded filter editor — same state, roomier surface. */}
+      {/* The filter editor — now the only surface for it, opened from the
+          toolbar's Filters button. Same state as before; the rail that used to
+          mirror it is gone. */}
       <Dialog open={expanded} onOpenChange={setExpanded}>
         <DialogContent className="flex h-[85vh] max-h-[85vh] w-[95vw] max-w-6xl flex-col gap-0 p-0">
           <DialogHeader className="shrink-0 border-b px-6 py-4">
-            <DialogTitle>Edit filters</DialogTitle>
+            <DialogTitle>Filters</DialogTitle>
             <DialogDescription>
-              Build your shortlist with more room. Changes here apply to the
-              filter panel.
+              Build your shortlist, then apply it to the results.
             </DialogDescription>
           </DialogHeader>
           <div className="shrink-0 space-y-2 px-6 pt-4">
             <div className="flex items-center gap-2">
               <div className="flex-1">{modeToggle}</div>
+              {/* Both moved here from the deleted rail. */}
+              {showFilterHelp ? <FilterHelpButton meta={pickerMeta} /> : null}
               {explainToggle}
             </div>
             {switchNoteBanner}
@@ -781,11 +833,16 @@ export function StudentSearchPanel({
             )}
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => setExpanded(false)}>
-                Done
+                Cancel
               </Button>
               <Button
                 type="button"
-                onClick={() => void runSearch(1, pageSize)}
+                onClick={() => {
+                  // Close optimistically: runSearch surfaces any failure in the
+                  // toolbar's error slot, which is visible behind the modal.
+                  setExpanded(false)
+                  void runSearch(1, pageSize)
+                }}
                 disabled={searching}
               >
                 {searching ? (
@@ -793,7 +850,7 @@ export function StudentSearchPanel({
                 ) : (
                   <SearchIcon className="size-4" />
                 )}
-                Search
+                Apply filters
               </Button>
             </div>
           </DialogFooter>

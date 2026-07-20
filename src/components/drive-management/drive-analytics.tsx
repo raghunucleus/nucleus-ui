@@ -24,6 +24,7 @@ import {
   YAxis,
 } from 'recharts'
 
+import { AXIS_TICK, TOOLTIP_STYLE } from '@/components/drive-management/chart-chrome'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { ApiError } from '@/lib/api'
@@ -66,16 +67,9 @@ const SERIES = {
   },
 } as const
 
-const TOOLTIP_STYLE = {
-  background: 'var(--color-card)',
-  border: '1px solid var(--color-border)',
-  borderRadius: 8,
-  color: 'var(--color-foreground)',
-  fontSize: 12,
-  boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)',
-} as const
-
-const AXIS_TICK = { fontSize: 12, fill: 'var(--color-muted-foreground)' } as const
+// TOOLTIP_STYLE / AXIS_TICK now live in ./chart-chrome so other analytics
+// surfaces can share them — a component file may not also export constants
+// without breaking Fast Refresh.
 
 // --- formatting -------------------------------------------------------------
 
@@ -349,8 +343,14 @@ export function DriveAnalyticsTab({ driveId }: { driveId: number }) {
 }
 
 // --- building blocks --------------------------------------------------------
+//
+// KpiTile / SectionCard / AttentionTile are exported so other analytics
+// surfaces (the placement coordinator's batch analytics) render as one visual
+// system rather than growing a parallel set of near-identical tiles. Keep the
+// `var(--color-icon-*)` palette and TOOLTIP_STYLE/AXIS_TICK conventions with
+// them — never hard-coded hex, so light/dark resolve on their own.
 
-function KpiTile({
+export function KpiTile({
   icon: Icon,
   color,
   label,
@@ -391,7 +391,7 @@ function KpiTile({
   )
 }
 
-function SectionCard({
+export function SectionCard({
   title,
   subtitle,
   children,
@@ -817,7 +817,7 @@ function ReasonsCard({
   )
 }
 
-function AttentionTile({
+export function AttentionTile({
   icon: Icon,
   label,
   value,

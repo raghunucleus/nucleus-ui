@@ -21,6 +21,7 @@ import EmployeeDriveFormPage from '@/pages/employee/drive-management-drive-form'
 import EmployeeDrivesPage from '@/pages/employee/drive-management-drives'
 import EmployeeEligibilityCheckPage from '@/pages/employee/drive-management-eligibility-check'
 import EmployeePlacementCoordinatorDriveDetailPage from '@/pages/employee/placement-coordinator-drive-detail'
+import EmployeePlacementCoordinatorStudentsPage from '@/pages/employee/placement-coordinator-students'
 import EmployeePlacementCoordinatorDrivesPage from '@/pages/employee/placement-coordinator-drives'
 import EmployeeHome from '@/pages/employee/home'
 import EmployeeIdCardPage from '@/pages/employee/id-card'
@@ -224,6 +225,15 @@ const placementCoordinatorDriveDetailRoute = createRoute({
   component: EmployeePlacementCoordinatorDriveDetailPage,
 })
 
+// The coordinator's cohort. Scope comes from the employee's profile-verifier
+// batches, not from RBAC attributes; the path must equal the catalog's
+// `web_route` for `placement_coordinator.students.view`.
+const placementCoordinatorStudentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/placement-coordinator/students',
+  component: EmployeePlacementCoordinatorStudentsPage,
+})
+
 // Paths must equal the RBAC catalog's `web_route` values for the two
 // derived Requests screens.
 const requestsApprovalsRoute = createRoute({
@@ -303,6 +313,7 @@ const routeTree = rootRoute.addChildren([
   driveEditRoute,
   placementCoordinatorDrivesRoute,
   placementCoordinatorDriveDetailRoute,
+  placementCoordinatorStudentsRoute,
   eligibilityCheckRoute,
   requestsApprovalsRoute,
   requestsMineRoute,

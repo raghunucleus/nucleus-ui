@@ -7,6 +7,8 @@ import {
   Plus,
 } from 'lucide-react'
 
+import type { ReactNode } from 'react'
+
 import { NativeSelect } from '@/components/corporate-relations/bits'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,6 +29,15 @@ import { IMPLICIT_COLUMN_LABELS } from '@/lib/student-search'
 import { cn } from '@/lib/utils'
 
 const PAGE_SIZES = [25, 50, 100]
+
+/** One caller-rendered leading column. See {@link ResultsTable}'s `rowColumns`. */
+export interface RowColumnDef {
+  key: string
+  header: string
+  /** Width / alignment classes, applied to both the header and the cells. */
+  className?: string
+  render: (row: Record<string, unknown>) => ReactNode
+}
 
 /**
  * Table-shaped loading state — a results bar plus a header and shimmer rows,
@@ -87,6 +98,7 @@ export function ResultsTable({
   onPageSize,
   onImportRow,
   importingId,
+  rowColumns,
 }: {
   meta: SearchMeta
   result: StudentSearchResult
@@ -102,10 +114,21 @@ export function ResultsTable({
   onImportRow?: (row: Record<string, unknown>) => void
   /** Student id currently being imported (its button spins). */
   importingId?: number | null
+  /**
+   * Caller-rendered leading columns, before the resolved result columns — for
+   * per-row controls the registry can't express (the placement coordinator's
+   * allowed toggle and profile-completion bar). Each def gets its own header,
+   * so two unrelated controls are never crammed under one label. The row is
+   * the raw server object, so a consumer can read fields its own endpoint
+   * attached beyond the resolved columns.
+   */
+  rowColumns?: RowColumnDef[]
 }) {
   const byKey = new Map(meta.attributes.map((a) => [a.key, a]))
   const showImport = !!onImportRow
-  const colSpan = result.columns.length + (showImport ? 1 : 0)
+  const extraCols = rowColumns ?? []
+  const colSpan =
+    result.columns.length + extraCols.length + (showImport ? 1 : 0)
 
   const labelOf = (key: string) =>
     IMPLICIT_COLUMN_LABELS[key] ?? byKey.get(key)?.label ?? key
@@ -166,6 +189,14 @@ export function ResultsTable({
               {showImport ? (
                 <TableHead className="w-24 whitespace-nowrap" />
               ) : null}
+              {extraCols.map((c) => (
+                <TableHead
+                  key={c.key}
+                  className={cn('whitespace-nowrap', c.className)}
+                >
+                  {c.header}
+                </TableHead>
+              ))}
               {result.columns.map((key) => {
                 const canSort = sortable(key)
                 const active = sort?.by === key
@@ -239,6 +270,14 @@ export function ResultsTable({
                         )}
                       </TableCell>
                     ) : null}
+                    {extraCols.map((c) => (
+                      <TableCell
+                        key={c.key}
+                        className={cn('whitespace-nowrap', c.className)}
+                      >
+                        {c.render(row)}
+                      </TableCell>
+                    ))}
                     {result.columns.map((key) => (
                       <TableCell key={key} className="whitespace-nowrap text-sm">
                         {renderCell(key, row[key])}
