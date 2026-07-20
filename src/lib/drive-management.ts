@@ -3,6 +3,7 @@ import { apiFetch, apiUpload } from './api'
 import { getEmployeeAccessToken, withEmployeeAuth } from './employee-auth'
 import type { NotifyChannels } from './notify-channels'
 import type {
+  ExportColumnCatalog,
   ExportFormat,
   FkOption,
   ParsedNql,
@@ -724,7 +725,72 @@ export function eligibilityCheckSearchApi(): StudentSearchApi {
           token,
         }),
       ),
+    // Present only here: this screen's Export opens the column picker + order
+    // editor, and the server honours the resulting `export_columns`.
+    exportColumns: () =>
+      withEmployeeAuth((token) =>
+        apiFetch<ExportColumnCatalog>(`${root}/export/columns`, { token }),
+      ),
   }
+}
+
+/** One recorded selection, as the Placed-count hover card lists it. */
+export interface StudentSelection {
+  drive_id: number
+  drive_name: string
+  company_name: string
+  designation: string | null
+  offer_type: string | null
+  is_internship: boolean
+  is_full_time: boolean
+  /** LPA — the fixed amount or a range's MAX; `_min` set means a range. */
+  ctc: number | null
+  ctc_min: number | null
+  /** ₹/month, same fixed-or-range convention as ctc. */
+  stipend: number | null
+  stipend_min: number | null
+  drive_date: string | null
+}
+
+/** The Academics hover card's payload. */
+export interface StudentAcademics {
+  /** 1 = Regular, 2 = Lateral — decides whether 12th % or Diploma % applies. */
+  entry_type: number
+  tenth_percentage: number | null
+  twelfth_percentage: number | null
+  diploma_percentage: number | null
+  ug_cgpa: number | null
+  current_backlogs: number | null
+  backlog_history: boolean
+}
+
+/** Hover-card detail — fetched per row, only once the employee hovers it. */
+export function getEligibilityStudentPlacements(
+  studentId: number,
+): Promise<StudentSelection[]> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${ELIGIBILITY_CHECK_ROOT}/${studentId}/placements`, { token }),
+  )
+}
+
+export function getEligibilityStudentAcademics(
+  studentId: number,
+): Promise<StudentAcademics> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${ELIGIBILITY_CHECK_ROOT}/${studentId}/academics`, { token }),
+  )
+}
+
+/**
+ * The full profile behind a roll-number click — the same payload, from the same
+ * server service, that the drive Students tab's detail sheet renders.
+ */
+export function getEligibilityStudentProfile(
+  studentId: number,
+): Promise<DriveStudentProfile> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${ELIGIBILITY_CHECK_ROOT}/${studentId}/profile`, { token }),
+  )
 }
 
 /** The drive's eligibility translated to pre-fill filter conditions. */

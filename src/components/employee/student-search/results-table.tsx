@@ -101,6 +101,10 @@ export function ResultsTable({
   importingId,
   rowColumns,
   onRowOpen,
+  appendColumns,
+  hideColumns,
+  stickyColumn,
+  cellRenderers,
 }: {
   meta: SearchMeta
   result: StudentSearchResult
@@ -131,16 +135,52 @@ export function ResultsTable({
    * plain directory, the drive Filter tab) render exactly as before.
    */
   onRowOpen?: (row: Record<string, unknown>) => void
+  /**
+   * Caller-rendered columns AFTER the resolved ones — for a column the registry
+   * can't express because it isn't a value at all (the eligibility screen's
+   * Academics hover card). Same def shape as {@link rowColumns}.
+   */
+  appendColumns?: RowColumnDef[]
+  /**
+   * Resolved columns to drop before rendering — the row object still carries
+   * them. For keys the server always returns but a surface has no use for
+   * (`id`, the raw database key, which would otherwise sit left of the roll
+   * number and break a left-pinned column).
+   */
+  hideColumns?: string[]
+  /**
+   * Key of the column pinned to the left edge while the table scrolls
+   * horizontally. Only meaningful for the first rendered column — anything to
+   * its left would scroll out from under it.
+   */
+  stickyColumn?: string
+  /**
+   * Per-column cell overrides, keyed by column key. Used for cells that are
+   * more than a value — the eligibility screen's hover cards. Everything not
+   * listed renders through the default value formatter.
+   */
+  cellRenderers?: Record<string, (row: Record<string, unknown>) => ReactNode>
 }) {
   const byKey = new Map(meta.attributes.map((a) => [a.key, a]))
   const showImport = !!onImportRow
   const showOpen = !!onRowOpen
   const extraCols = rowColumns ?? []
+  const trailingCols = appendColumns ?? []
+  const hidden = hideColumns
+  const shownColumns = hidden?.length
+    ? result.columns.filter((c) => !hidden.includes(c))
+    : result.columns
   const colSpan =
-    result.columns.length +
+    shownColumns.length +
     extraCols.length +
+    trailingCols.length +
     (showImport ? 1 : 0) +
     (showOpen ? 1 : 0)
+
+  // The pinned cell must also out-rank the sticky header row (z-10) so the
+  // corner stays on top of both axes.
+  const stickyCell = 'sticky left-0 z-10 border-r bg-card'
+  const stickyHead = 'sticky left-0 z-20 border-r bg-card'
 
   const labelOf = (key: string) =>
     IMPLICIT_COLUMN_LABELS[key] ?? byKey.get(key)?.label ?? key
@@ -209,11 +249,14 @@ export function ResultsTable({
                   {c.header}
                 </TableHead>
               ))}
-              {result.columns.map((key) => {
+              {shownColumns.map((key) => {
                 const canSort = sortable(key)
                 const active = sort?.by === key
                 return (
-                  <TableHead key={key}>
+                  <TableHead
+                    key={key}
+                    className={cn(key === stickyColumn && stickyHead)}
+                  >
                     {canSort ? (
                       <button
                         type="button"
@@ -240,6 +283,14 @@ export function ResultsTable({
                   </TableHead>
                 )
               })}
+              {trailingCols.map((c) => (
+                <TableHead
+                  key={c.key}
+                  className={cn('whitespace-nowrap', c.className)}
+                >
+                  {c.header}
+                </TableHead>
+              ))}
               {showOpen ? (
                 <TableHead className="w-20 whitespace-nowrap" />
               ) : null}
@@ -293,19 +344,38 @@ export function ResultsTable({
                         {c.render(row)}
                       </TableCell>
                     ))}
-                    {result.columns.map((key) => (
-                      <TableCell key={key} className="whitespace-nowrap text-sm">
-                        {showOpen && key === 'display_name' ? (
-                          <button
-                            type="button"
-                            onClick={() => onRowOpen?.(row)}
-                            className="font-medium text-primary underline-offset-2 hover:underline"
-                          >
-                            {renderCell(key, row[key])}
-                          </button>
-                        ) : (
-                          renderCell(key, row[key])
-                        )}
+                    {shownColumns.map((key) => {
+                      const custom = cellRenderers?.[key]
+                      return (
+                        <TableCell
+                          key={key}
+                          className={cn(
+                            'whitespace-nowrap text-sm',
+                            key === stickyColumn && stickyCell,
+                          )}
+                        >
+                          {custom ? (
+                            custom(row)
+                          ) : showOpen && key === 'display_name' ? (
+                            <button
+                              type="button"
+                              onClick={() => onRowOpen?.(row)}
+                              className="font-medium text-primary underline-offset-2 hover:underline"
+                            >
+                              {renderCell(key, row[key])}
+                            </button>
+                          ) : (
+                            renderCell(key, row[key])
+                          )}
+                        </TableCell>
+                      )
+                    })}
+                    {trailingCols.map((c) => (
+                      <TableCell
+                        key={c.key}
+                        className={cn('whitespace-nowrap', c.className)}
+                      >
+                        {c.render(row)}
                       </TableCell>
                     ))}
                     {showOpen ? (

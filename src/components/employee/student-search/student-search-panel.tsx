@@ -52,6 +52,7 @@ import { isGroupNode } from '@/lib/student-search'
 import { cn } from '@/lib/utils'
 
 import { ColumnPicker } from './column-picker'
+import { ExportColumnsDialog } from './export-columns-dialog'
 import { FilterBuilder } from './filter-builder'
 import { FilterHelpButton } from './filter-help'
 import {
@@ -88,6 +89,12 @@ export function StudentSearchPanel({
   hiddenAttrs,
   rowColumns,
   onRowOpen,
+  appendColumns,
+  hideColumns,
+  stickyColumn,
+  cellRenderers,
+  defaultColumns,
+  exportStorageKey,
   toolbarExtra,
   searchNonce,
 }: {
@@ -118,6 +125,25 @@ export function StudentSearchPanel({
   rowColumns?: RowColumnDef[]
   /** Opens a row's detail — adds a clickable name and a View column. */
   onRowOpen?: (row: Record<string, unknown>) => void
+  /** Caller-rendered trailing result columns. See ResultsTable. */
+  appendColumns?: RowColumnDef[]
+  /** Resolved columns to drop from the table. See ResultsTable. */
+  hideColumns?: string[]
+  /** Column key pinned to the left edge on horizontal scroll. */
+  stickyColumn?: string
+  /** Per-column cell overrides. See ResultsTable. */
+  cellRenderers?: Record<string, (row: Record<string, unknown>) => ReactNode>
+  /**
+   * Overrides the registry's default column set for this mount. Hidden
+   * attributes are still filtered out of it.
+   */
+  defaultColumns?: string[]
+  /**
+   * localStorage key the export dialog's column order persists under. Required
+   * for the dialog path (an api that serves `exportColumns`) so two surfaces
+   * don't share one remembered layout.
+   */
+  exportStorageKey?: string
   /**
    * Extra toolbar control, rendered just left of the column picker. The panel
    * never needs to know what it does — pair it with `searchNonce` to re-run
@@ -396,7 +422,9 @@ export function StudentSearchPanel({
         setMeta(m)
         // The default set contains `programme`, so a surface that hides it
         // must not request it as a column.
-        setColumns(m.defaultColumns.filter((c) => !hidden.has(c)))
+        setColumns(
+          (defaultColumns ?? m.defaultColumns).filter((c) => !hidden.has(c)),
+        )
         if (initialFilters) {
           const decomposed = decomposeFilters(initialFilters, lockedAttrs)
           if (decomposed) setRows(decomposed)
@@ -407,7 +435,7 @@ export function StudentSearchPanel({
           err instanceof Error ? err.message : 'Could not load search config.',
         )
       })
-  }, [api, initialFilters, lockedAttrs, hidden])
+  }, [api, initialFilters, lockedAttrs, hidden, defaultColumns])
 
   // First search once meta (and thus default columns / prefilled rows) are in.
   const searchedOnce = useRef(false)
@@ -452,6 +480,23 @@ export function StudentSearchPanel({
     lastQuery.current = { sort, pageSize }
     void runSearch(1, pageSize)
   }, [sort, pageSize, runSearch])
+
+  // --- export ---------------------------------------------------------------
+  // The dialog path is keyed off the adapter: a mount that can describe its
+  // columns gets the picker, and its `export_columns` become the sheet layout.
+  const [exportOpen, setExportOpen] = useState(false)
+  const loadExportColumns = useMemo(
+    () => (api.exportColumns ? () => api.exportColumns!() : null),
+    [api],
+  )
+  const submitExport = useCallback(
+    (exportColumns: string[], format: ExportFormat) =>
+      api.createExport(
+        { ...buildBody(1, pageSize), export_columns: exportColumns },
+        format,
+      ),
+    [api, buildBody, pageSize],
+  )
 
   const startExport = useCallback(
     async (format: ExportFormat) => {
@@ -724,26 +769,40 @@ export function StudentSearchPanel({
               onChange={setColumns}
               onApply={() => void runSearch(1, pageSize)}
             />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={exporting}>
-                  {exporting ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Download className="size-4" />
-                  )}
-                  Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => void startExport('xlsx')}>
-                  Excel (.xlsx)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => void startExport('csv')}>
-                  CSV (.csv)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Mounts that serve a column catalog get the picker + order
+                editor; the rest keep the plain format-only dropdown, which
+                exports exactly the on-screen columns. */}
+            {loadExportColumns ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setExportOpen(true)}
+              >
+                <Download className="size-4" />
+                Export
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={exporting}>
+                    {exporting ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Download className="size-4" />
+                    )}
+                    Export
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => void startExport('xlsx')}>
+                    Excel (.xlsx)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void startExport('csv')}>
+                    CSV (.csv)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
 
@@ -800,6 +859,10 @@ export function StudentSearchPanel({
               importingId={importingId}
               rowColumns={rowColumns}
               onRowOpen={onRowOpen}
+              appendColumns={appendColumns}
+              hideColumns={hideColumns}
+              stickyColumn={stickyColumn}
+              cellRenderers={cellRenderers}
             />
           ) : null}
         </div>
@@ -860,6 +923,17 @@ export function StudentSearchPanel({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {loadExportColumns ? (
+        <ExportColumnsDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          loadColumns={loadExportColumns}
+          submit={submitExport}
+          storageKey={exportStorageKey ?? 'student-search-export-columns'}
+          total={result?.total ?? 0}
+        />
+      ) : null}
 
       {importApi ? (
         <Dialog open={confirmImportAll} onOpenChange={setConfirmImportAll}>

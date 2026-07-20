@@ -89,6 +89,12 @@ export interface StudentSearchBody {
   sort?: { by: string; dir: 'asc' | 'desc' }
   page?: number
   pageSize?: number
+  /**
+   * Export only, and ORDER-SIGNIFICANT: the sheet's left-to-right layout, which
+   * the export dialog picks independently of the on-screen `columns`. Ignored
+   * by `search`; honoured only by mounts that serve {@link exportColumns}.
+   */
+  export_columns?: string[]
 }
 
 export interface StudentSearchResult {
@@ -107,6 +113,21 @@ export interface FkOption {
 }
 
 export type ExportFormat = 'csv' | 'xlsx'
+
+/** One pickable export column. `kind: 'link'` renders as a clickable cell. */
+export interface ExportColumnDef {
+  key: string
+  label: string
+  group: string
+  kind: string
+}
+
+/** Everything the export dialog's two panes render. */
+export interface ExportColumnCatalog {
+  groups: { key: string; label: string }[]
+  columns: ExportColumnDef[]
+  defaultColumns: string[]
+}
 
 /** Result of compiling an NQL string to the shared filter AST (server-side). */
 export interface ParsedNql {
@@ -133,6 +154,13 @@ export interface StudentSearchApi {
     body: StudentSearchBody,
     format: ExportFormat,
   ): Promise<{ job_id: number }>
+  /**
+   * The pickable export columns. Presence is the switch: a mount that serves
+   * this gets the column picker + order editor behind its Export button (and
+   * must honour `export_columns`); one that doesn't keeps the plain
+   * format-only dropdown, exporting exactly the on-screen columns.
+   */
+  exportColumns?(): Promise<ExportColumnCatalog>
 }
 
 /** Labels for the implicit columns every result carries. */
