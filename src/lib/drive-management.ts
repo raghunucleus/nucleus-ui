@@ -1349,6 +1349,115 @@ export function updateDriveStudentSelection(
   )
 }
 
+// --- Bulk selection upload (the Students tab's "Upload selections" sheet) ---
+
+/** One sheet row as the client parsed it — every cell a raw string, so the
+ *  server decides what's a number and reports problems per-cell. */
+export interface SelectionUploadCell {
+  roll_number: string
+  ctc?: string
+  ctc_min?: string
+  stipend?: string
+  stipend_min?: string
+}
+
+/** One rejected cell, addressed by 0-based sheet row + column key. */
+export interface SelectionUploadRowError {
+  row: number
+  column: string
+  value?: string
+  reason: string
+}
+
+/** A sheet row as the server resolved it — student matched, blanks filled. */
+export interface SelectionUploadRow {
+  row: number
+  roll_number: string
+  student_id: number | null
+  display_name: string | null
+  current_status: number | null
+  ctc: number | null
+  ctc_min: number | null
+  stipend: number | null
+  stipend_min: number | null
+  /** Which amounts came from the drive's package rather than the sheet. */
+  defaulted: string[]
+  /** True when this student is already Selected — the row replaces it. */
+  will_update: boolean
+}
+
+export interface SelectionUploadPreview {
+  drive_profile_id: number
+  designation: string
+  offer_type: { name: string; is_internship: boolean; is_full_time: boolean }
+  /** How each amount is advertised — a lower bound only applies to a `range`. */
+  package: {
+    ctc_mode: DriveAmountMode | null
+    stipend_mode: DriveAmountMode | null
+  }
+  valid: boolean
+  total_rows: number
+  error_count: number
+  errors: SelectionUploadRowError[]
+  rows: SelectionUploadRow[]
+  new_selections: number
+  updates: number
+}
+
+/** One student as actually written — the commit receipt's line item. */
+export interface SelectionUploadCommitRow {
+  student_id: number
+  roll_number: string
+  display_name: string | null
+  /** 'selected' = 30 → 60 (notified); 'updated' = replaced an existing one. */
+  action: 'selected' | 'updated'
+  /** The package as recorded — the same string the audit trail stores. */
+  summary: string
+}
+
+export interface SelectionUploadCommit {
+  selected: number
+  updated: number
+  notified: number
+  requested: number
+  /** Rows whose status guard didn't match — changed under us since preview. */
+  skipped: number
+  designation: string
+  rows: SelectionUploadCommitRow[]
+}
+
+/** Dry-run a parsed sheet. Always resolves — problems arrive as `errors` under
+ *  `valid: false` rather than as a thrown ApiError. */
+export function previewSelectionUpload(
+  driveId: number,
+  driveProfileId: number,
+  rows: SelectionUploadCell[],
+): Promise<SelectionUploadPreview> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/selection-upload/preview`, {
+      method: 'POST',
+      body: { drive_profile_id: driveProfileId, rows },
+      token,
+    }),
+  )
+}
+
+/** Apply a sheet. The server re-validates from scratch, so the rows posted here
+ *  are the edited ones on screen, not the preview's verdict. */
+export function commitSelectionUpload(
+  driveId: number,
+  driveProfileId: number,
+  rows: SelectionUploadCell[],
+): Promise<SelectionUploadCommit> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${DRIVES_ROOT}/${driveId}/students/selection-upload/commit`, {
+      method: 'POST',
+      body: { drive_profile_id: driveProfileId, rows },
+      token,
+    }),
+  )
+}
+
 /** Revoke Invited/Accepted students (20/30 → 80) with a required reason. */
 export function revokeDriveStudents(
   driveId: number,

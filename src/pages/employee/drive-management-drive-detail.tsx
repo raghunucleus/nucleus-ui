@@ -9,6 +9,7 @@ import {
   CalendarDays,
   Clock,
   Download,
+  FileSpreadsheet,
   Filter,
   Globe,
   GraduationCap,
@@ -38,6 +39,7 @@ import {
   type TabDef,
 } from '@/components/corporate-relations/bits'
 import { DriveAnalyticsTab } from '@/components/drive-management/drive-analytics'
+import { DriveSelectionUploadDialog } from '@/components/drive-management/drive-selection-upload-dialog'
 import { DriveStudentsExportDialog } from '@/components/drive-management/drive-students-export-dialog'
 import { DriveEligibilitySummary } from '@/components/drive-management/drive-eligibility-summary'
 import { DriveStatusHistory } from '@/components/drive-management/drive-status-history'
@@ -63,6 +65,7 @@ import {
 import {
   SelectionFields,
   prefillSelectionDraft,
+  sanitizeSelectionDraft,
   selectionDraftToWrite,
   selectionDraftValid,
   type SelectionDraft,
@@ -759,6 +762,7 @@ function DriveStudentsTab({
   )
   const [removing, setRemoving] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  const [selectionUploadOpen, setSelectionUploadOpen] = useState(false)
   // Re-fetch trigger, bumped locally on any mutation and externally via refreshKey.
   const [localKey, setLocalKey] = useState(0)
 
@@ -1012,16 +1016,23 @@ function DriveStudentsTab({
     }
   }, [driveId, outcomeIds, outcomeChoice, selDraft, refetch])
 
-  const openEditSelection = useCallback((r: DriveStudentRow) => {
-    setEditDraft({
-      drive_profile_id: r.selected_drive_profile_id,
-      ctc: r.ctc ?? '',
-      ctc_min: r.ctc_min ?? '',
-      stipend: r.stipend ?? '',
-      stipend_min: r.stipend_min ?? '',
-    })
-    setEditSelectionRow(r)
-  }, [])
+  const openEditSelection = useCallback(
+    (r: DriveStudentRow) => {
+      // Seeded from the stored row, so it may carry a lower bound this drive no
+      // longer offers — sanitize or the hidden value would block Save.
+      setEditDraft(
+        sanitizeSelectionDraft(drive, {
+          drive_profile_id: r.selected_drive_profile_id,
+          ctc: r.ctc ?? '',
+          ctc_min: r.ctc_min ?? '',
+          stipend: r.stipend ?? '',
+          stipend_min: r.stipend_min ?? '',
+        }),
+      )
+      setEditSelectionRow(r)
+    },
+    [drive],
+  )
 
   const onSaveSelection = useCallback(async () => {
     if (!editSelectionRow || !editDraft) return
@@ -1167,6 +1178,22 @@ function DriveStudentsTab({
                 <Send className="size-4" />
               )}
               Invite all imported
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={driveArchived}
+              title={
+                driveArchived
+                  ? 'This drive is archived; student records are frozen.'
+                  : undefined
+              }
+              onClick={() => setSelectionUploadOpen(true)}
+            >
+              <FileSpreadsheet className="size-4" />
+              Upload selections
             </Button>
           )}
           <Button
@@ -1569,6 +1596,13 @@ function DriveStudentsTab({
         api={exportApi}
         filters={exportFilters}
         total={total}
+      />
+
+      <DriveSelectionUploadDialog
+        open={selectionUploadOpen}
+        onOpenChange={setSelectionUploadOpen}
+        drive={drive}
+        onCommitted={refetch}
       />
 
       {/* Invite / reinvite / remind — confirm and pick the delivery channels */}

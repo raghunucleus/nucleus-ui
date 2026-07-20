@@ -73,10 +73,39 @@ export function prefillSelectionDraft(
   }
 }
 
-/** One amount pair is valid when its main figure is positive and any lower
- *  bound sits below it; an inapplicable pair must simply stay empty. */
-function pairValid(applies: boolean, main: string, min: string): boolean {
-  if (!applies) return main === '' && min === ''
+/**
+ * Strip lower bounds the drive no longer offers.
+ *
+ * Needed when a draft is seeded from a STORED selection rather than from the
+ * drive's package: a row written before the range-only rule (or on a drive
+ * since switched from range to fixed) can carry a `_min` that now has no input
+ * to show it. Without this the form would hold a value the user can't see or
+ * clear, and `selectionDraftValid` would disable Save with no visible cause.
+ */
+export function sanitizeSelectionDraft(
+  drive: DriveDetail,
+  draft: SelectionDraft,
+): SelectionDraft {
+  const profile = drive.profiles.find((p) => p.id === draft.drive_profile_id)
+  const pkg = effectivePackage(drive, profile)
+  return {
+    ...draft,
+    ctc_min: pkg.ctc?.mode === 'range' ? draft.ctc_min : '',
+    stipend_min: pkg.stipend?.mode === 'range' ? draft.stipend_min : '',
+  }
+}
+
+/**
+ * One amount pair is valid when its main figure is positive and any lower bound
+ * sits below it; an inapplicable pair must simply stay empty.
+ *
+ * A lower bound only exists against an advertised `range` — a fixed drive has
+ * exactly one figure, so a bound there would record a band nobody configured.
+ * The server enforces the same rule in `assertSelection`.
+ */
+function pairValid(band: PackageBand | null, main: string, min: string): boolean {
+  if (!band) return main === '' && min === ''
+  if (min !== '' && band.mode !== 'range') return false
   const m = Number(main)
   if (!(m > 0)) return false
   if (min !== '' && !(Number(min) > 0 && Number(min) < m)) return false
@@ -92,8 +121,8 @@ export function selectionDraftValid(
   const profile = drive.profiles.find((p) => p.id === draft.drive_profile_id)
   const pkg = effectivePackage(drive, profile)
   return (
-    pairValid(pkg.ctc != null, draft.ctc, draft.ctc_min) &&
-    pairValid(pkg.stipend != null, draft.stipend, draft.stipend_min)
+    pairValid(pkg.ctc, draft.ctc, draft.ctc_min) &&
+    pairValid(pkg.stipend, draft.stipend, draft.stipend_min)
   )
 }
 
@@ -157,6 +186,7 @@ export function SelectionFields({
           idPrefix={`${idPrefix}-ctc`}
           main={draft.ctc}
           min={draft.ctc_min}
+          showLower={pkg.ctc.mode === 'range'}
           onMain={(v) => onChange({ ...draft, ctc: v })}
           onMin={(v) => onChange({ ...draft, ctc_min: v })}
         />
@@ -169,6 +199,7 @@ export function SelectionFields({
           idPrefix={`${idPrefix}-stipend`}
           main={draft.stipend}
           min={draft.stipend_min}
+          showLower={pkg.stipend.mode === 'range'}
           onMain={(v) => onChange({ ...draft, stipend: v })}
           onMin={(v) => onChange({ ...draft, stipend_min: v })}
         />
@@ -177,14 +208,18 @@ export function SelectionFields({
   )
 }
 
-/** Main figure + optional lower bound. Filling the bound records a range whose
- *  max is the main figure; leaving it empty records a single final amount. */
+/**
+ * Main figure, plus an optional lower bound only on a drive that advertises a
+ * range. Filling the bound records a range whose max is the main figure; leaving
+ * it empty (or not being offered it) records a single final amount.
+ */
 function SelectionAmount({
   label,
   unit,
   idPrefix,
   main,
   min,
+  showLower,
   onMain,
   onMin,
 }: {
@@ -193,6 +228,8 @@ function SelectionAmount({
   idPrefix: string
   main: string
   min: string
+  /** False on a fixed-amount drive, where a bound would be meaningless. */
+  showLower: boolean
   onMain: (v: string) => void
   onMin: (v: string) => void
 }) {
@@ -200,7 +237,11 @@ function SelectionAmount({
     <Field
       label={`${label} (${unit})`}
       htmlFor={`${idPrefix}-amount`}
-      hint="Add a lower bound only to record a range — the main figure is its maximum and is what student filters compare."
+      hint={
+        showLower
+          ? 'Add a lower bound only to record a range — the main figure is its maximum and is what student filters compare.'
+          : undefined
+      }
     >
       <div className="flex flex-wrap items-center gap-2">
         <Input
@@ -213,17 +254,21 @@ function SelectionAmount({
           placeholder="Amount"
           className="w-32"
         />
-        <span className="text-sm text-muted-foreground">lower bound</span>
-        <Input
-          aria-label={`${label} lower bound`}
-          type="number"
-          min={0}
-          step="any"
-          value={min}
-          onChange={(e) => onMin(e.target.value)}
-          placeholder="Optional"
-          className="w-32"
-        />
+        {showLower && (
+          <>
+            <span className="text-sm text-muted-foreground">lower bound</span>
+            <Input
+              aria-label={`${label} lower bound`}
+              type="number"
+              min={0}
+              step="any"
+              value={min}
+              onChange={(e) => onMin(e.target.value)}
+              placeholder="Optional"
+              className="w-32"
+            />
+          </>
+        )}
       </div>
     </Field>
   )
