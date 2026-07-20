@@ -5,6 +5,7 @@ import {
   Building2,
   CalendarDays,
   Clock,
+  Download,
   Globe,
   IndianRupee,
   LayoutDashboard,
@@ -24,6 +25,7 @@ import {
   type TabDef,
 } from '@/components/corporate-relations/bits'
 import { DriveEligibilitySummary } from '@/components/drive-management/drive-eligibility-summary'
+import { DriveStudentsExportDialog } from '@/components/drive-management/drive-students-export-dialog'
 import { DriveStatusHistory } from '@/components/drive-management/drive-status-history'
 import {
   DriveStudentGroupHeaderRow,
@@ -71,6 +73,7 @@ import {
   companyWebsiteHref,
   companyWebsiteLabel,
   driveStatusVariant,
+  driveStudentsExportFilters,
   type DriveDetail,
   type DriveStudentRow,
   type DriveStudentsFilterOptions,
@@ -78,6 +81,7 @@ import {
   type EligibilitySummary,
 } from '@/lib/drive-management'
 import {
+  coordinatorDriveStudentsExportApi,
   getCoordinatorDrive,
   getCoordinatorDriveEligibilitySummary,
   getCoordinatorDriveStudentActivity,
@@ -464,6 +468,25 @@ function StudentsTab({ driveId }: { driveId: number }) {
   const [detailStudent, setDetailStudent] = useState<DriveStudentRow | null>(
     null,
   )
+  const [exportOpen, setExportOpen] = useState(false)
+
+  const exportApi = useMemo(
+    () => coordinatorDriveStudentsExportApi(driveId),
+    [driveId],
+  )
+  // The export replays the tab's filters, NOT its paging or grouping. The
+  // coordinator's RBAC scope is applied server-side, same as the list.
+  const exportFilters = useMemo(
+    () =>
+      driveStudentsExportFilters({
+        search,
+        status: statusFilter ?? undefined,
+        programme_ids: filters.programmeIds,
+        passout_years: filters.passoutYears,
+        entry_type: filters.entryType ?? undefined,
+      }),
+    [search, statusFilter, filters],
+  )
 
   // Reset to the first page (and re-expand groups) whenever a filter changes.
   useEffect(() => {
@@ -556,6 +579,15 @@ function StudentsTab({ driveId }: { driveId: number }) {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExportOpen(true)}
+            disabled={total === 0}
+          >
+            <Download className="size-4" />
+            Export
+          </Button>
           <DriveStudentsFilterToggle
             open={filtersOpen}
             activeCount={activeFilterCount}
@@ -730,6 +762,15 @@ function StudentsTab({ driveId }: { driveId: number }) {
           if (!open) setDetailStudent(null)
         }}
         api={coordinatorStudentDetailApi}
+      />
+
+      {/* Export — column pick + order, honouring the tab's live filters */}
+      <DriveStudentsExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        api={exportApi}
+        filters={exportFilters}
+        total={total}
       />
     </div>
   )

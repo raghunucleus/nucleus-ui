@@ -9,6 +9,7 @@ import type {
   DriveStudentActivityRow,
   DriveStudentProfile,
   DriveStudentTrack,
+  DriveStudentsExportApi,
   DriveStudentsFilterOptions,
   DriveStudentsListOpts,
   DriveStudentsPage,
@@ -101,6 +102,28 @@ export function getCoordinatorDriveStudentsFilterOptions(
     apiFetch(`${ROOT}/${driveId}/students/filter-options`, { token }),
   )
 }
+
+/**
+ * The Students tab export, scoped exactly like the list — the server applies
+ * the coordinator's RBAC scope inside the job, so the file can never contain a
+ * programme or passout year they can't see on screen.
+ */
+export const coordinatorDriveStudentsExportApi = (
+  driveId: number,
+): DriveStudentsExportApi => ({
+  columns: () =>
+    withEmployeeAuth((token) =>
+      apiFetch(`${ROOT}/${driveId}/students/roster/export/columns`, { token }),
+    ),
+  create: (body) =>
+    withEmployeeAuth((token) =>
+      apiFetch(`${ROOT}/${driveId}/students/roster/export`, {
+        token,
+        method: 'POST',
+        body,
+      }),
+    ),
+})
 
 /** An in-scope student's audit trail in the drive (404 outside scope). */
 export function getCoordinatorDriveStudentTrack(

@@ -995,6 +995,77 @@ export function getDriveStudentsFilterOptions(
   )
 }
 
+// --- Students tab export ---------------------------------------------------
+
+/** One pickable export column. `kind: 'link'` renders as a clickable cell. */
+export interface DriveStudentsExportColumn {
+  key: string
+  label: string
+  group: string
+  kind: string
+}
+
+export interface DriveStudentsExportColumns {
+  groups: { key: string; label: string }[]
+  columns: DriveStudentsExportColumn[]
+  defaultColumns: string[]
+}
+
+/**
+ * An export request. The filter fields mirror the list's, so the file matches
+ * whatever the tab is showing; `columns` is ORDER-SIGNIFICANT — that array IS
+ * the sheet's left-to-right layout.
+ */
+export interface DriveStudentsExportBody {
+  columns: string[]
+  format: ExportFormat
+  search?: string
+  status?: number
+  programme_ids?: number[]
+  passout_years?: number[]
+  entry_type?: number
+}
+
+/** The two API calls the export dialog needs, so it can serve both surfaces. */
+export interface DriveStudentsExportApi {
+  columns(): Promise<DriveStudentsExportColumns>
+  create(body: DriveStudentsExportBody): Promise<{ job_id: number }>
+}
+
+/** Build an export body from the tab's live filter state. */
+export function driveStudentsExportFilters(
+  opts: DriveStudentsListOpts,
+): Omit<DriveStudentsExportBody, 'columns' | 'format'> {
+  return {
+    search: opts.search?.trim() || undefined,
+    status: opts.status,
+    programme_ids: opts.programme_ids?.length ? opts.programme_ids : undefined,
+    passout_years: opts.passout_years?.length ? opts.passout_years : undefined,
+    entry_type: opts.entry_type,
+  }
+}
+
+// `students/roster/export`, not `students/export` — the latter is the Filter
+// tab's search export, on the same base route server-side.
+export const driveStudentsExportApi = (
+  driveId: number,
+): DriveStudentsExportApi => ({
+  columns: () =>
+    withEmployeeAuth((token) =>
+      apiFetch(`${DRIVES_ROOT}/${driveId}/students/roster/export/columns`, {
+        token,
+      }),
+    ),
+  create: (body) =>
+    withEmployeeAuth((token) =>
+      apiFetch(`${DRIVES_ROOT}/${driveId}/students/roster/export`, {
+        token,
+        method: 'POST',
+        body,
+      }),
+    ),
+})
+
 export const STUDENT_ENTRY_TYPE_LABELS: Record<number, string> = {
   1: 'Regular',
   2: 'Lateral',

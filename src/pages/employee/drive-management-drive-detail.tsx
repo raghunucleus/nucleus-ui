@@ -8,6 +8,7 @@ import {
   Building2,
   CalendarDays,
   Clock,
+  Download,
   Filter,
   Globe,
   GraduationCap,
@@ -37,6 +38,7 @@ import {
   type TabDef,
 } from '@/components/corporate-relations/bits'
 import { DriveAnalyticsTab } from '@/components/drive-management/drive-analytics'
+import { DriveStudentsExportDialog } from '@/components/drive-management/drive-students-export-dialog'
 import { DriveEligibilitySummary } from '@/components/drive-management/drive-eligibility-summary'
 import { DriveStatusHistory } from '@/components/drive-management/drive-status-history'
 import {
@@ -110,6 +112,8 @@ import {
   companyWebsiteHref,
   companyWebsiteLabel,
   driveStatusVariant,
+  driveStudentsExportApi,
+  driveStudentsExportFilters,
   driveStudentsSearchApi,
   getDrive,
   getDriveEligibility,
@@ -706,6 +710,7 @@ function DriveStudentsTab({
     null,
   )
   const [removing, setRemoving] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false)
   // Re-fetch trigger, bumped locally on any mutation and externally via refreshKey.
   const [localKey, setLocalKey] = useState(0)
 
@@ -764,6 +769,21 @@ function DriveStudentsTab({
   }, [driveId, refreshKey, localKey])
 
   const grouped = filters.groupBy !== 'none'
+
+  const exportApi = useMemo(() => driveStudentsExportApi(driveId), [driveId])
+  // The export replays the tab's filters, NOT its paging or grouping: grouping
+  // is a display choice, and a download of "page 3" would be a bug.
+  const exportFilters = useMemo(
+    () =>
+      driveStudentsExportFilters({
+        search,
+        status: statusFilter ?? undefined,
+        programme_ids: filters.programmeIds,
+        passout_years: filters.passoutYears,
+        entry_type: filters.entryType ?? undefined,
+      }),
+    [search, statusFilter, filters],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -1089,6 +1109,15 @@ function DriveStudentsTab({
               Invite all imported
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExportOpen(true)}
+            disabled={total === 0}
+          >
+            <Download className="size-4" />
+            Export
+          </Button>
           <DriveStudentsFilterToggle
             open={filtersOpen}
             activeCount={activeFilterCount}
@@ -1466,6 +1495,15 @@ function DriveStudentsTab({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Export — column pick + order, honouring the tab's live filters */}
+      <DriveStudentsExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        api={exportApi}
+        filters={exportFilters}
+        total={total}
+      />
 
       {/* Invite-all confirm */}
       <Dialog open={inviteAllOpen} onOpenChange={setInviteAllOpen}>
