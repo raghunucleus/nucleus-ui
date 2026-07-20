@@ -67,6 +67,7 @@ import {
   selectionDraftValid,
   type SelectionDraft,
 } from '@/components/drive-management/selection-fields'
+import { ChannelPicker } from '@/components/employee/channel-picker'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { StudentSearchPanel } from '@/components/employee/student-search/student-search-panel'
 import { Badge } from '@/components/ui/badge'
@@ -146,6 +147,7 @@ import {
   type DriveStudentsFilterOptions,
   type DriveStudentsFilters,
 } from '@/lib/drive-management'
+import { hasChannel, type NotifyChannels } from '@/lib/notify-channels'
 import type {
   SearchCondition,
   SearchGroup,
@@ -155,6 +157,52 @@ import { cn } from '@/lib/utils'
 
 const SCREEN_KEY = 'drive_management.drives.manage'
 const LIST_ROUTE = '/drive-management/drives'
+
+/**
+ * An invite/reinvite/remind waiting on the channel dialog. All three share the
+ * dialog because all three send the student a message — the only difference is
+ * the copy and which endpoint runs on confirm.
+ */
+type PendingSend =
+  | { kind: 'invite-all' }
+  | { kind: 'invite' | 'remind'; row: DriveStudentRow }
+
+/** Dialog copy for the pending action; `null` only while it animates closed. */
+function sendCopy(p: PendingSend | null): {
+  title: string
+  description: string
+  cta: string
+} {
+  if (!p || p.kind === 'invite-all') {
+    return {
+      title: 'Invite all imported students?',
+      description:
+        'Every student still at Imported moves to Invited and is asked to ' +
+        'accept or deny this drive.',
+      cta: 'Invite all',
+    }
+  }
+  if (p.kind === 'remind') {
+    return {
+      title: `Remind ${p.row.display_name}?`,
+      description:
+        'Re-sends the invitation to a student who has not responded yet. ' +
+        'Their status does not change.',
+      cta: 'Send reminder',
+    }
+  }
+  const reinvite =
+    p.row.status === DRIVE_STUDENT_STATUS.REVOKED ||
+    p.row.status === DRIVE_STUDENT_STATUS.DENIED
+  return {
+    title: `${reinvite ? 'Reinvite' : 'Invite'} ${p.row.display_name}?`,
+    description: reinvite
+      ? 'Their earlier response is cleared and they are asked to accept or ' +
+        'deny this drive again.'
+      : 'They move to Invited and are asked to accept or deny this drive.',
+    cta: reinvite ? 'Reinvite' : 'Send invite',
+  }
+}
 
 function errMsg(e: unknown, fallback: string): string {
   return e instanceof ApiError || e instanceof Error ? e.message : fallback
@@ -717,8 +765,17 @@ function DriveStudentsTab({
   // Lifecycle actions.
   const [invitingId, setInvitingId] = useState<number | null>(null)
   const [remindingId, setRemindingId] = useState<number | null>(null)
-  const [inviteAllOpen, setInviteAllOpen] = useState(false)
   const [invitingAll, setInvitingAll] = useState(false)
+  // The action awaiting a channel choice. Every invite/reinvite/remind goes
+  // through the same dialog so the sender always picks how it is delivered.
+  const [pendingSend, setPendingSend] = useState<PendingSend | null>(null)
+  // Remembered across actions — a coordinator inviting row after row should not
+  // re-pick channels every time.
+  const [channels, setChannels] = useState<NotifyChannels>({
+    in_app: true,
+    push: true,
+    email: true,
+  })
   // Selection covers revocable rows (Invited/Accepted); bulk outcome is further
   // gated to all-Accepted at submit time.
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -852,50 +909,43 @@ function DriveStudentsTab({
     }
   }, [driveId, pendingRemove, refetch])
 
-  const onInviteRow = useCallback(
-    async (r: DriveStudentRow) => {
-      const verb =
-        r.status === DRIVE_STUDENT_STATUS.REVOKED ||
-        r.status === DRIVE_STUDENT_STATUS.DENIED
-          ? 'reinvited'
-          : 'invited'
-      setInvitingId(r.id)
-      try {
-        const s = await inviteDriveStudents(driveId, [r.id])
-        if (s.invited > 0) toast.success(`${r.display_name} ${verb}.`)
-        else toast.info(`${r.display_name} could not be ${verb}.`)
-        refetch()
-      } catch (e) {
-        toast.error(errMsg(e, 'Could not send the invite.'))
-      } finally {
-        setInvitingId(null)
-      }
-    },
-    [driveId, refetch],
-  )
+  const onInviteRow = useCallback(async (r: DriveStudentRow) => {
+    const verb =
+      r.status === DRIVE_STUDENT_STATUS.REVOKED ||
+      r.status === DRIVE_STUDENT_STATUS.DENIED
+        ? 'reinvited'
+        : 'invited'
+    setInvitingId(r.id)
+    try {
+      const s = await inviteDriveStudents(driveId, [r.id], channels)
+      if (s.invited > 0) toast.success(`${r.display_name} ${verb}.`)
+      else toast.info(`${r.display_name} could not be ${verb}.`)
+      refetch()
+    } catch (e) {
+      toast.error(errMsg(e, 'Could not send the invite.'))
+    } finally {
+      setInvitingId(null)
+    }
+  }, [driveId, refetch, channels])
 
-  const onRemindRow = useCallback(
-    async (r: DriveStudentRow) => {
-      setRemindingId(r.id)
-      try {
-        const s = await remindDriveStudents(driveId, [r.id])
-        if (s.reminded > 0) toast.success(`Reminder sent to ${r.display_name}.`)
-        else toast.info(`${r.display_name} is no longer awaiting a response.`)
-        refetch()
-      } catch (e) {
-        toast.error(errMsg(e, 'Could not send the reminder.'))
-      } finally {
-        setRemindingId(null)
-      }
-    },
-    [driveId, refetch],
-  )
+  const onRemindRow = useCallback(async (r: DriveStudentRow) => {
+    setRemindingId(r.id)
+    try {
+      const s = await remindDriveStudents(driveId, [r.id], channels)
+      if (s.reminded > 0) toast.success(`Reminder sent to ${r.display_name}.`)
+      else toast.info(`${r.display_name} is no longer awaiting a response.`)
+      refetch()
+    } catch (e) {
+      toast.error(errMsg(e, 'Could not send the reminder.'))
+    } finally {
+      setRemindingId(null)
+    }
+  }, [driveId, refetch, channels])
 
   const onInviteAll = useCallback(async () => {
     setInvitingAll(true)
     try {
-      const s = await inviteAllDriveStudents(driveId)
-      setInviteAllOpen(false)
+      const s = await inviteAllDriveStudents(driveId, channels)
       if (s.requested === 0) {
         toast.info('No imported students left to invite.')
       } else {
@@ -909,7 +959,17 @@ function DriveStudentsTab({
     } finally {
       setInvitingAll(false)
     }
-  }, [driveId, refetch])
+  }, [driveId, refetch, channels])
+
+  /** Run whatever the channel dialog was opened for, then close it. */
+  const onConfirmSend = useCallback(async () => {
+    const p = pendingSend
+    if (!p) return
+    setPendingSend(null)
+    if (p.kind === 'invite-all') await onInviteAll()
+    else if (p.kind === 'remind') await onRemindRow(p.row)
+    else await onInviteRow(p.row)
+  }, [pendingSend, onInviteAll, onInviteRow, onRemindRow])
 
   // Opens the outcome dialog defaulting to Selected, with the selection draft
   // prefilled from the drive/designation package (auto-picks a lone profile).
@@ -1099,7 +1159,7 @@ function DriveStudentsTab({
                   ? undefined
                   : 'Publish the drive to send invites.'
               }
-              onClick={() => setInviteAllOpen(true)}
+              onClick={() => setPendingSend({ kind: 'invite-all' })}
             >
               {invitingAll ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -1347,7 +1407,9 @@ function DriveStudentsTab({
                                     ? undefined
                                     : 'Publish the drive to send invites.'
                                 }
-                                onClick={() => void onInviteRow(r)}
+                                onClick={() =>
+                                  setPendingSend({ kind: 'invite', row: r })
+                                }
                               >
                                 {invitingId === r.id ? (
                                   <Loader2 className="size-3.5 animate-spin" />
@@ -1363,7 +1425,9 @@ function DriveStudentsTab({
                                 size="sm"
                                 className="h-7"
                                 disabled={remindingId !== null}
-                                onClick={() => void onRemindRow(r)}
+                                onClick={() =>
+                                  setPendingSend({ kind: 'remind', row: r })
+                                }
                               >
                                 {remindingId === r.id ? (
                                   <Loader2 className="size-3.5 animate-spin" />
@@ -1385,7 +1449,9 @@ function DriveStudentsTab({
                                     ? undefined
                                     : 'Publish the drive to send invites.'
                                 }
-                                onClick={() => void onInviteRow(r)}
+                                onClick={() =>
+                                  setPendingSend({ kind: 'invite', row: r })
+                                }
                               >
                                 {invitingId === r.id ? (
                                   <Loader2 className="size-3.5 animate-spin" />
@@ -1505,27 +1571,40 @@ function DriveStudentsTab({
         total={total}
       />
 
-      {/* Invite-all confirm */}
-      <Dialog open={inviteAllOpen} onOpenChange={setInviteAllOpen}>
-        <DialogContent className="sm:max-w-md">
+      {/* Invite / reinvite / remind — confirm and pick the delivery channels */}
+      <Dialog
+        open={!!pendingSend}
+        onOpenChange={(open) => {
+          if (!open) setPendingSend(null)
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Invite all imported students?</DialogTitle>
+            <DialogTitle>{sendCopy(pendingSend).title}</DialogTitle>
             <DialogDescription>
-              Every student still at Imported will be moved to Invited and
-              receive a notification asking them to accept or deny this drive.
+              {sendCopy(pendingSend).description}
             </DialogDescription>
           </DialogHeader>
+
+          <ChannelPicker value={channels} onChange={setChannels} />
+          {channels.email && (
+            <p className="text-xs text-muted-foreground">
+              The email carries the company, drive date and response deadline,
+              and links straight to this drive.
+            </p>
+          )}
+
           <DialogFooter>
-            <Button variant="outline" onClick={() => setInviteAllOpen(false)}>
+            <Button variant="outline" onClick={() => setPendingSend(null)}>
               Cancel
             </Button>
-            <Button onClick={() => void onInviteAll()} disabled={invitingAll}>
-              {invitingAll ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Send className="size-4" />
-              )}
-              Invite all
+            {/* Closes immediately — the row/header button owns the spinner. */}
+            <Button
+              onClick={() => void onConfirmSend()}
+              disabled={!hasChannel(channels)}
+            >
+              <Send className="size-4" />
+              {sendCopy(pendingSend).cta}
             </Button>
           </DialogFooter>
         </DialogContent>

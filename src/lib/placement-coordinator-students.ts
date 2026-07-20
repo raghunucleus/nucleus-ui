@@ -1,6 +1,7 @@
 import { apiFetch } from './api'
 import { withEmployeeAuth } from './employee-auth'
 import type { DriveStudentProfile } from './drive-management'
+import type { NotifyChannels } from './notify-channels'
 import type {
   ExportFormat,
   FkOption,
@@ -214,6 +215,26 @@ export function setCoordinatorStudentAllowed(
     apiFetch(
       `${ROOT}/${studentId}/allowed?programme_admission_year_id=${payId}`,
       { token, method: 'PATCH', body: { allowed } },
+    ),
+  )
+}
+
+/**
+ * Ask a student to update specific profile fields. `field_keys` are
+ * profile-field registry keys (the same keys `completion.missing` returns) and
+ * may be empty when the coordinator just wants to send a message.
+ *
+ * Requires the screen's `edit` action.
+ */
+export function notifyCoordinatorStudent(
+  payId: number,
+  studentId: number,
+  input: { field_keys: string[]; message: string; channels: NotifyChannels },
+): Promise<{ sent: true; fields: string[] }> {
+  return withEmployeeAuth((token) =>
+    apiFetch(
+      `${ROOT}/${studentId}/notify?programme_admission_year_id=${payId}`,
+      { token, method: 'POST', body: input },
     ),
   )
 }

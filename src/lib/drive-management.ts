@@ -1,6 +1,7 @@
 import type { RichTextValue } from '@/components/ui/lazy-rich-text-editor'
 import { apiFetch, apiUpload } from './api'
 import { getEmployeeAccessToken, withEmployeeAuth } from './employee-auth'
+import type { NotifyChannels } from './notify-channels'
 import type {
   ExportFormat,
   FkOption,
@@ -1203,11 +1204,12 @@ export function buildDriveStudentDisplayItems(
 export function inviteDriveStudents(
   driveId: number,
   studentIds: number[],
+  channels: NotifyChannels,
 ): Promise<DriveInviteSummary> {
   return withEmployeeAuth((token) =>
     apiFetch(`${DRIVES_ROOT}/${driveId}/students/invite`, {
       method: 'POST',
-      body: { student_ids: studentIds },
+      body: { student_ids: studentIds, channels },
       token,
     }),
   )
@@ -1216,10 +1218,12 @@ export function inviteDriveStudents(
 /** Invite every still-Imported student in the drive. */
 export function inviteAllDriveStudents(
   driveId: number,
+  channels: NotifyChannels,
 ): Promise<DriveInviteSummary> {
   return withEmployeeAuth((token) =>
     apiFetch(`${DRIVES_ROOT}/${driveId}/students/invite-all`, {
       method: 'POST',
+      body: { channels },
       token,
     }),
   )
@@ -1229,11 +1233,12 @@ export function inviteAllDriveStudents(
 export function remindDriveStudents(
   driveId: number,
   studentIds: number[],
+  channels: NotifyChannels,
 ): Promise<DriveRemindSummary> {
   return withEmployeeAuth((token) =>
     apiFetch(`${DRIVES_ROOT}/${driveId}/students/remind`, {
       method: 'POST',
-      body: { student_ids: studentIds },
+      body: { student_ids: studentIds, channels },
       token,
     }),
   )

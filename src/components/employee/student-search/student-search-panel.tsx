@@ -87,6 +87,7 @@ export function StudentSearchPanel({
   showFilterHelp,
   hiddenAttrs,
   rowColumns,
+  onRowOpen,
   toolbarExtra,
   searchNonce,
 }: {
@@ -115,6 +116,8 @@ export function StudentSearchPanel({
   hiddenAttrs?: string[]
   /** Caller-rendered leading result columns. See ResultsTable. */
   rowColumns?: RowColumnDef[]
+  /** Opens a row's detail — adds a clickable name and a View column. */
+  onRowOpen?: (row: Record<string, unknown>) => void
   /**
    * Extra toolbar control, rendered just left of the column picker. The panel
    * never needs to know what it does — pair it with `searchNonce` to re-run
@@ -796,6 +799,7 @@ export function StudentSearchPanel({
               onImportRow={importApi ? (row) => void importRow(row) : undefined}
               importingId={importingId}
               rowColumns={rowColumns}
+              onRowOpen={onRowOpen}
             />
           ) : null}
         </div>

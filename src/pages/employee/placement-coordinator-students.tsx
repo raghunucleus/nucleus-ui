@@ -1,4 +1,4 @@
-import { BarChart3, UserCheck, Users } from 'lucide-react'
+import { BarChart3, Bell, UserCheck, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -9,6 +9,7 @@ import {
   type Slot,
 } from '@/components/employee/drive-student-detail-sheet'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
+import { NotifyStudentDialog } from '@/components/employee/notify-student-dialog'
 import { StudentSearchPanel } from '@/components/employee/student-search/student-search-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -114,6 +115,9 @@ export default function EmployeePlacementCoordinatorStudentsPage() {
   const [bucket, setBucket] = useState<AllowedBucket>('all')
   const [searchNonce, setSearchNonce] = useState(0)
 
+  // The compose dialog, layered over the open profile sheet.
+  const [notifyOpen, setNotifyOpen] = useState(false)
+
   // The toggle writes only after the user confirms.
   const [pendingToggle, setPendingToggle] = useState<{
     id: number
@@ -215,6 +219,7 @@ export default function EmployeePlacementCoordinatorStudentsPage() {
 
   const openProfile = (id: number, name: string, rollNo: string) => {
     if (batchId === null) return
+    setNotifyOpen(false)
     setOpenStudent({ id, name, rollNo })
     setProfile({ loading: true, error: null })
     getCoordinatorStudentProfile(batchId, id)
@@ -295,6 +300,13 @@ export default function EmployeePlacementCoordinatorStudentsPage() {
                   hiddenAttrs={HIDDEN_ATTRS}
                   showFilterHelp
                   searchNonce={searchNonce}
+                  onRowOpen={(row) =>
+                    openProfile(
+                      Number(row.id),
+                      String(row.display_name ?? 'this student'),
+                      String(row.student_id ?? ''),
+                    )
+                  }
                   toolbarExtra={
                     <BucketSwitch value={bucket} onChange={changeBucket} />
                   }
@@ -418,12 +430,34 @@ export default function EmployeePlacementCoordinatorStudentsPage() {
           if (!open) setOpenStudent(null)
         }}
       >
-        <SheetContent side="right" className="flex w-full flex-col sm:max-w-2xl">
+        {/* Near-full-width: this is the whole profile — ~50 attributes across a
+            dozen groups — and a 2xl panel forces a one-column crawl. */}
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col sm:max-w-[92vw] lg:max-w-6xl"
+        >
           <SheetHeader>
-            <SheetTitle>{openStudent?.name ?? 'Student'}</SheetTitle>
-            <SheetDescription>
-              {openStudent?.rollNo || 'Full profile'}
-            </SheetDescription>
+            {/* pr-12 clears SheetContent's own close button, which is pinned
+                at `absolute top-4 right-4` and would otherwise sit on top of
+                the Notify button. */}
+            <div className="flex flex-wrap items-start justify-between gap-2 pr-12">
+              <div>
+                <SheetTitle>{openStudent?.name ?? 'Student'}</SheetTitle>
+                <SheetDescription>
+                  {openStudent?.rollNo || 'Full profile'}
+                </SheetDescription>
+              </div>
+              {canEdit && profile.data && openStudent && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNotifyOpen(true)}
+                >
+                  <Bell className="size-4" />
+                  Notify
+                </Button>
+              )}
+            </div>
           </SheetHeader>
           <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto px-4 pb-4">
             <StudentProfileDetails
@@ -476,6 +510,20 @@ export default function EmployeePlacementCoordinatorStudentsPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Keyed on the student so a second open starts from that student's own
+          missing-field selection rather than the previous one's. */}
+      {batchId !== null && openStudent && profile.data && (
+        <NotifyStudentDialog
+          key={openStudent.id}
+          open={notifyOpen}
+          onOpenChange={setNotifyOpen}
+          payId={batchId}
+          studentId={openStudent.id}
+          studentName={openStudent.name}
+          profile={profile.data}
+        />
+      )}
     </div>
   )
 }

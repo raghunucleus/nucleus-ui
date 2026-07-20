@@ -3,6 +3,7 @@ import {
   ArrowUp,
   Check,
   ChevronsUpDown,
+  Eye,
   Loader2,
   Plus,
 } from 'lucide-react'
@@ -99,6 +100,7 @@ export function ResultsTable({
   onImportRow,
   importingId,
   rowColumns,
+  onRowOpen,
 }: {
   meta: SearchMeta
   result: StudentSearchResult
@@ -123,12 +125,22 @@ export function ResultsTable({
    * attached beyond the resolved columns.
    */
   rowColumns?: RowColumnDef[]
+  /**
+   * When set, the row becomes openable: the name cell turns into a button and a
+   * trailing View column appears. Opt-in, so surfaces with no detail view (the
+   * plain directory, the drive Filter tab) render exactly as before.
+   */
+  onRowOpen?: (row: Record<string, unknown>) => void
 }) {
   const byKey = new Map(meta.attributes.map((a) => [a.key, a]))
   const showImport = !!onImportRow
+  const showOpen = !!onRowOpen
   const extraCols = rowColumns ?? []
   const colSpan =
-    result.columns.length + extraCols.length + (showImport ? 1 : 0)
+    result.columns.length +
+    extraCols.length +
+    (showImport ? 1 : 0) +
+    (showOpen ? 1 : 0)
 
   const labelOf = (key: string) =>
     IMPLICIT_COLUMN_LABELS[key] ?? byKey.get(key)?.label ?? key
@@ -228,6 +240,9 @@ export function ResultsTable({
                   </TableHead>
                 )
               })}
+              {showOpen ? (
+                <TableHead className="w-20 whitespace-nowrap" />
+              ) : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -280,9 +295,32 @@ export function ResultsTable({
                     ))}
                     {result.columns.map((key) => (
                       <TableCell key={key} className="whitespace-nowrap text-sm">
-                        {renderCell(key, row[key])}
+                        {showOpen && key === 'display_name' ? (
+                          <button
+                            type="button"
+                            onClick={() => onRowOpen?.(row)}
+                            className="font-medium text-primary underline-offset-2 hover:underline"
+                          >
+                            {renderCell(key, row[key])}
+                          </button>
+                        ) : (
+                          renderCell(key, row[key])
+                        )}
                       </TableCell>
                     ))}
+                    {showOpen ? (
+                      <TableCell className="whitespace-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7"
+                          onClick={() => onRowOpen?.(row)}
+                        >
+                          <Eye className="size-3.5" />
+                          View
+                        </Button>
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 )
               })
