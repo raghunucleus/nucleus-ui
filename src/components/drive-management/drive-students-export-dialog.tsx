@@ -400,7 +400,7 @@ export function DriveStudentsExportDialog({
             <span className="text-xs text-muted-foreground">
               {total.toLocaleString()} student{total === 1 ? '' : 's'} match the
               current filters
-              {format === 'csv' ? ' — CSV shows resume links as raw URLs' : ''}
+              {format === 'csv' ? ' — CSV shows the resume link as a raw URL' : ''}
             </span>
           </div>
           <Button

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import {
   Award,
@@ -17,7 +17,6 @@ import {
   RefreshCw,
   ShieldCheck,
   Trash2,
-  Upload,
   UserRound,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -33,11 +32,9 @@ import { ApiError } from '@/lib/api'
 import {
   cancelPendingPersonalEmail,
   clearResumeExternalUrl,
-  deleteResume,
   fetchFullProfile,
   requestPersonalEmailOtp,
   setResumeExternalUrl,
-  uploadResume,
   verifyPersonalEmailOtp,
   type ProfileFieldView,
   type ProfileGroupView,
@@ -441,15 +438,12 @@ function CertificationsBlock({
   )
 }
 
-// --- resume (direct — hosted PDF and/or external link, no approval) ---------------
-
-const RESUME_MAX_BYTES = 2 * 1024 * 1024
+// --- resume (direct — a single external link, no approval) -----------------------
 
 /**
- * Two INDEPENDENT ways to point recruiters at a resume: a HOSTED PDF (with a
- * permanent tokenized link that survives re-uploads) and an EXTERNAL https://
- * link. Recruiters get both — neither masks the other, so if one fails the
- * other still works. Only opens of the hosted (Nucleus) link are counted.
+ * The resume is ONE link the student hosts elsewhere (Drive, portfolio…). We
+ * don't host resume files: the student owns the hosting, and recruiters open the
+ * link directly.
  */
 function ResumeBlock({
   resume,
@@ -460,55 +454,11 @@ function ResumeBlock({
   onChanged: () => void
   className?: string
 }) {
-  const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const [editingExternal, setEditingExternal] = useState(false)
   const [externalDraft, setExternalDraft] = useState('')
 
-  // A file is currently uploaded; the permanent link exists once EVER uploaded.
-  const uploadedAt = resume.uploaded_at
-  const hasFile = uploadedAt !== null
-  const hostedUrl = resume.hosted_url
   const externalUrl = resume.external_url
-  // Exactly one of the two peers is set — suggest adding the other as a backup.
-  const showBackupNudge = hasFile !== (externalUrl !== null)
-
-  async function onPick(file: File | undefined) {
-    if (!file) return
-    if (file.type !== 'application/pdf') {
-      toast.info('The resume must be a PDF file.')
-      return
-    }
-    if (file.size >= RESUME_MAX_BYTES) {
-      toast.info('The resume must be smaller than 2 MB.')
-      return
-    }
-    setBusy(true)
-    try {
-      await uploadResume(file)
-      toast.success('Resume uploaded.')
-      onChanged()
-    } catch (err) {
-      toast.error(errMsg(err, 'Could not upload the resume.'))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function onDelete() {
-    setBusy(true)
-    try {
-      await deleteResume()
-      toast.success('Resume file removed.')
-      onChanged()
-    } catch (err) {
-      toast.error(errMsg(err, 'Could not remove the resume.'))
-    } finally {
-      setBusy(false)
-      setConfirmDelete(false)
-    }
-  }
 
   async function onCopy(url: string, label: string) {
     try {
@@ -528,12 +478,12 @@ function ResumeBlock({
     setBusy(true)
     try {
       await setResumeExternalUrl(value)
-      toast.success('External resume link saved.')
+      toast.success('Resume link saved.')
       setExternalDraft('')
       setEditingExternal(false)
       onChanged()
     } catch (err) {
-      toast.error(errMsg(err, 'Could not save the external link.'))
+      toast.error(errMsg(err, 'Could not save the resume link.'))
     } finally {
       setBusy(false)
     }
@@ -543,12 +493,12 @@ function ResumeBlock({
     setBusy(true)
     try {
       await clearResumeExternalUrl()
-      toast.success('External link removed.')
+      toast.success('Resume link removed.')
       setExternalDraft('')
       setEditingExternal(false)
       onChanged()
     } catch (err) {
-      toast.error(errMsg(err, 'Could not remove the external link.'))
+      toast.error(errMsg(err, 'Could not remove the resume link.'))
     } finally {
       setBusy(false)
     }
@@ -565,129 +515,16 @@ function ResumeBlock({
             Resume
           </p>
           <p className="text-sm font-medium">
-            {hasFile && externalUrl
-              ? 'Both links are live — recruiters get each one'
-              : hasFile || externalUrl
-                ? 'One link is live'
-                : 'Not set yet — upload a PDF or add a link below'}
+            {externalUrl
+              ? 'Your resume link is live — recruiters open it directly'
+              : 'Not set yet — add your resume link below'}
           </p>
         </div>
       </div>
 
-      {showBackupNudge && (
-        <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3">
-          <CircleAlert className="mt-0.5 size-4 shrink-0 text-warning" />
-          <p className="text-sm">
-            Add a backup link so recruiters always have a working copy — if one
-            link fails, the other still works.
-          </p>
-        </div>
-      )}
-
-      {/* Peer 1 — hosted PDF with its permanent link. */}
       <div className="mt-3 rounded-lg border bg-muted/20 p-3">
         <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <Upload className="size-3.5" /> Hosted PDF
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <p className="min-w-0 flex-1 text-sm">
-            {uploadedAt
-              ? `Uploaded ${formatDate(uploadedAt)}`
-              : hostedUrl
-                ? 'No file right now — the permanent link stays yours and works again after the next upload.'
-                : 'No file uploaded yet.'}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            {hostedUrl && hasFile && (
-              <a
-                href={hostedUrl}
-                target="_blank"
-                rel="noreferrer"
-                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
-              >
-                <ExternalLink className="size-4" /> Open
-              </a>
-            )}
-            {hostedUrl && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => void onCopy(hostedUrl, 'Permanent link')}
-              >
-                <Copy className="size-4" /> Copy link
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={busy}
-              onClick={() => inputRef.current?.click()}
-            >
-              <Upload className="size-4" /> {hasFile ? 'Replace' : 'Upload PDF'}
-            </Button>
-            {hasFile &&
-              (confirmDelete ? (
-                <>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    disabled={busy}
-                    onClick={() => void onDelete()}
-                  >
-                    Yes, delete
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => setConfirmDelete(false)}
-                  >
-                    Keep it
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  <Trash2 className="size-4" /> Delete
-                </Button>
-              ))}
-          </div>
-        </div>
-        {hostedUrl && (
-          <p className="mt-2 text-sm">
-            {resume.download_count > 0 ? (
-              <>
-                <span className="font-medium">
-                  Opened {resume.download_count}{' '}
-                  {resume.download_count === 1 ? 'time' : 'times'}
-                </span>
-                {resume.last_downloaded_at
-                  ? ` · last ${formatDate(resume.last_downloaded_at)}`
-                  : ''}
-              </>
-            ) : (
-              <span className="text-muted-foreground">Not opened yet.</span>
-            )}
-          </p>
-        )}
-        <p className="mt-1.5 text-xs text-muted-foreground">
-          PDF only, under 2 MB. Your permanent link never changes — even after
-          you replace the file — so it&rsquo;s safe to put on applications.
-          It&rsquo;s public: anyone with it can open your resume.
-          {hostedUrl
-            ? ' Opens are counted for this Nucleus link only — traffic on your external link isn’t visible to us.'
-            : ''}
-        </p>
-      </div>
-
-      {/* Peer 2 — external link, independent of the hosted PDF. */}
-      <div className="mt-2 rounded-lg border bg-muted/20 p-3">
-        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          <Link2 className="size-3.5" /> External link
+          <Link2 className="size-3.5" /> Resume link
         </p>
         {externalUrl && !editingExternal ? (
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -711,7 +548,7 @@ function ResumeBlock({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => void onCopy(externalUrl, 'External link')}
+                onClick={() => void onCopy(externalUrl, 'Resume link')}
               >
                 <Copy className="size-4" /> Copy
               </Button>
@@ -770,22 +607,11 @@ function ResumeBlock({
           </div>
         )}
         <p className="mt-1.5 text-xs text-muted-foreground">
-          A link you host elsewhere (Google Drive, a portfolio…), https:// only.
-          It sits alongside your hosted PDF — recruiters get both links, and
-          neither replaces the other.
+          A link you host yourself (Google Drive, a portfolio…), https:// only.
+          Keep it publicly viewable and working — recruiters open it directly,
+          and a broken link means no resume.
         </p>
       </div>
-
-      <input
-        ref={inputRef}
-        type="file"
-        accept="application/pdf"
-        className="hidden"
-        onChange={(e) => {
-          void onPick(e.target.files?.[0])
-          e.target.value = ''
-        }}
-      />
     </div>
   )
 }

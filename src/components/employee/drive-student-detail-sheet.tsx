@@ -284,39 +284,17 @@ export function StudentProfileDetails({
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Resume
         </h3>
-        {p.resume.url || p.resume.external_url ? (
-          <div className="space-y-1 text-sm">
-            {p.resume.url && (
-              <p>
-                <a
-                  href={p.resume.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-primary underline-offset-2 hover:underline"
-                >
-                  Uploaded resume
-                </a>
-                {p.resume.uploaded_at && (
-                  <span className="text-muted-foreground">
-                    {' '}
-                    · {formatDate(p.resume.uploaded_at)}
-                  </span>
-                )}
-              </p>
-            )}
-            {p.resume.external_url && (
-              <p>
-                <a
-                  href={p.resume.external_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-primary underline-offset-2 hover:underline"
-                >
-                  External link
-                </a>
-              </p>
-            )}
-          </div>
+        {p.resume.external_url ? (
+          <p className="text-sm">
+            <a
+              href={p.resume.external_url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary underline-offset-2 hover:underline"
+            >
+              Open resume
+            </a>
+          </p>
         ) : (
           <p className="text-sm text-muted-foreground">No resume on file.</p>
         )}

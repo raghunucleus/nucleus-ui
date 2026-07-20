@@ -186,51 +186,16 @@ export function cancelPendingPersonalEmail(): Promise<PersonalEmailState> {
 // --- resume (direct — no approval) --------------------------------------------
 
 /**
- * The resume as the placement side sees it: two INDEPENDENT links that recruiters
- * both get — a hosted PDF and an external link. Neither masks the other; if one
- * fails (our storage down, Drive permissions revoked) the other still works.
- * Only opens of the Nucleus (hosted) link are counted — external traffic is
- * invisible to us.
+ * The resume as the placement side sees it: a single externally-hosted link the
+ * student supplies (Drive, portfolio…) and keeps reachable. We don't host resume
+ * files, so we can't see the traffic either.
  */
 export interface ResumeView {
-  /**
-   * PERMANENT tokenized link (`<api>/public/resumes/<token>`) — never changes,
-   * survives re-uploads; 404s while no file is uploaded. Null only if a file
-   * was never uploaded.
-   */
-  hosted_url: string | null
-  /** The raw external link (Drive, portfolio…); null while unset. */
+  /** The raw external link; null while unset. */
   external_url: string | null
-  /** When the hosted file was last (re)uploaded; null while none is uploaded. */
-  uploaded_at: string | null
-  /** Opens of the Nucleus link only — the external link's traffic isn't counted. */
-  download_count: number
-  last_downloaded_at: string | null
 }
 
-/** PDF only, < 2 MB (validated client-side before calling too). */
-export function uploadResume(file: File): Promise<ResumeView> {
-  return withAuth((token) => {
-    const form = new FormData()
-    form.append('file', file, file.name)
-    return apiUpload<ResumeView>('/student/profile/resume', form, token, 'PUT')
-  })
-}
-
-/** Removes the hosted file; the external link (if any) is untouched. */
-export function deleteResume(): Promise<void> {
-  return withAuth((token) =>
-    apiFetch<void>('/student/profile/resume', {
-      method: 'DELETE',
-      token,
-    }),
-  )
-}
-
-/**
- * Sets the external resume link (https:// only, max 512 chars) — a peer of the
- * hosted PDF, which it leaves in place.
- */
+/** Sets the resume link (https:// only, max 512 chars). */
 export function setResumeExternalUrl(url: string): Promise<ResumeView> {
   return withAuth((token) =>
     apiFetch<ResumeView>('/student/profile/resume/external-url', {
@@ -241,7 +206,7 @@ export function setResumeExternalUrl(url: string): Promise<ResumeView> {
   )
 }
 
-/** Clears the external link; the hosted file (if any) is untouched. */
+/** Clears the resume link. */
 export function clearResumeExternalUrl(): Promise<ResumeView> {
   return withAuth((token) =>
     apiFetch<ResumeView>('/student/profile/resume/external-url', {

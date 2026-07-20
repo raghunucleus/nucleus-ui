@@ -351,7 +351,7 @@ export const FILTER_HELP: Record<string, FilterHelpEntry> = {
   },
   reason_of_gap: { summary: 'Free-text reason recorded for an education gap.' },
   has_resume: {
-    summary: 'Whether the student has uploaded a resume.',
+    summary: 'Whether the student has added their resume link.',
     details:
       'Supports Yes/No only. Useful as a readiness check before inviting ' +
       'students to a drive.',
@@ -364,16 +364,6 @@ export const FILTER_HELP: Record<string, FilterHelpEntry> = {
           { attr: 'has_resume', op: 'eq', value: false },
         ],
         nql: 'interested_in_placements_self = true AND has_resume = false',
-      },
-    ],
-  },
-  resume_uploaded_at: {
-    summary: 'When the current resume was uploaded.',
-    examples: [
-      {
-        title: 'Resume not refreshed this year',
-        builder: [{ attr: 'resume_uploaded_at', op: 'lt', value: '2026-01-01' }],
-        nql: 'resume_uploaded_at < "2026-01-01"',
       },
     ],
   },
