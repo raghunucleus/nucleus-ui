@@ -1,8 +1,16 @@
 import * as React from 'react'
-import { Check, ChevronsUpDown, Search, X } from 'lucide-react'
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ChevronsUpDown,
+  Search,
+  X,
+} from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { TableCell, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import type { Chip } from '@/lib/corporate-relations'
 
@@ -590,6 +598,139 @@ export function TabBar({
   )
 }
 
+// --- filter bits (shared by the drives lists and CR View) ------------------
+
+/** A labelled block inside the filter dialog. */
+export function FilterField({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      {children}
+    </div>
+  )
+}
+
+/** Toggle-chip multi-select over a fixed string enum (drive status). */
+export function EnumChips({
+  options,
+  selected,
+  onChange,
+  format,
+}: {
+  options: readonly string[]
+  selected: string[]
+  onChange: (v: string[]) => void
+  format: (s: string) => string
+}) {
+  const toggle = (v: string) =>
+    onChange(
+      selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v],
+    )
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((o) => {
+        const on = selected.includes(o)
+        return (
+          <button
+            key={o}
+            type="button"
+            aria-pressed={on}
+            onClick={() => toggle(o)}
+            className={cn(
+              'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+              on
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'bg-card hover:bg-accent hover:text-accent-foreground',
+            )}
+          >
+            {format(o)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * Single-choice sibling of {@link EnumChips} — exactly one option is on at a
+ * time. Suits mutually-exclusive facets ("Any / Yes / No") where a multi-select
+ * would allow contradictory picks.
+ */
+export function EnumChoiceChips<T extends string>({
+  options,
+  value,
+  onChange,
+  format,
+}: {
+  options: readonly T[]
+  value: T
+  onChange: (v: T) => void
+  format: (s: T) => string
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((o) => {
+        const on = o === value
+        return (
+          <button
+            key={o}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onChange(o)}
+            className={cn(
+              'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+              on
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'bg-card hover:bg-accent hover:text-accent-foreground',
+            )}
+          >
+            {format(o)}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** A grouped, removable applied-filter pill (one whole facet). */
+export interface AppliedFacet {
+  id: string
+  label: string
+  values: string[]
+  onClear: () => void
+}
+
+export function AppliedFilterChip({ label, values, onClear }: AppliedFacet) {
+  const shown = values.slice(0, 2)
+  const overflow = values.length - shown.length
+  return (
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border bg-muted py-1 pl-2.5 pr-1 text-xs">
+      <span className="min-w-0 truncate">
+        <span className="font-medium text-foreground">{label}</span>
+        <span className="text-muted-foreground">: </span>
+        <span className="font-medium text-foreground">{shown.join(', ')}</span>
+        {overflow > 0 && (
+          <span className="text-muted-foreground"> +{overflow}</span>
+        )}
+      </span>
+      <button
+        type="button"
+        onClick={onClear}
+        className="flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
+        aria-label={`Remove ${label} filter`}
+      >
+        <X className="size-3" />
+      </button>
+    </span>
+  )
+}
+
 // --- formatting -----------------------------------------------------------
 
 export function formatDate(iso: string | null | undefined): string {
@@ -621,4 +762,55 @@ export function titleCase(s: string): string {
   return s
     .replace(/[_-]/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+// --- grouped tables ---------------------------------------------------------
+
+/**
+ * The collapsible full-width header row of a grouped table view. The inner
+ * sticky wrapper keeps the label visible while the table scrolls horizontally
+ * under a pinned first column — deliberately no z-index, so it stays beneath
+ * the sticky header row (z-10) and its pinned corner (z-20).
+ */
+export function GroupHeaderRow({
+  label,
+  count,
+  noun,
+  open,
+  colSpan,
+  onToggle,
+}: {
+  label: string
+  count: number
+  /** Singular row noun, e.g. "role" — pluralized here. */
+  noun: string
+  open: boolean
+  colSpan: number
+  onToggle: () => void
+}) {
+  return (
+    <TableRow className="bg-muted/50 hover:bg-muted/50">
+      <TableCell colSpan={colSpan} className="py-1.5">
+        <div className="sticky left-0 w-fit max-w-full">
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={onToggle}
+            className="flex w-full items-center gap-2 text-sm font-medium"
+          >
+            {open ? (
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            )}
+            <span className="truncate">{label}</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              {count} {noun}
+              {count === 1 ? '' : 's'}
+            </span>
+          </button>
+        </div>
+      </TableCell>
+    </TableRow>
+  )
 }

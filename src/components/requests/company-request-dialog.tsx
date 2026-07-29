@@ -39,11 +39,17 @@ type CompanyRequest = ApprovalDetail & { can_act: boolean }
  */
 export function CompanyRequestDialog({
   companyId,
+  fetchRequest = getCompanyRequest,
   onOpenChange,
   onDecided,
 }: {
   /** The company whose request to show; `null` keeps the dialog closed. */
   companyId: number | null
+  /**
+   * Which screen's endpoint to read through. Defaults to Company Management;
+   * Roles or Designations passes its own, authorised by a different screen.
+   */
+  fetchRequest?: (id: number) => Promise<CompanyRequest | null>
   onOpenChange: (open: boolean) => void
   /** A decision landed — the company row it describes is now stale. */
   onDecided: () => void
@@ -64,7 +70,7 @@ export function CompanyRequestDialog({
     setError(null)
     setRequest(null)
     setOverrides({})
-    getCompanyRequest(companyId)
+    fetchRequest(companyId)
       .then((r) => {
         if (!cancelled) setRequest(r)
       })
@@ -82,6 +88,9 @@ export function CompanyRequestDialog({
     return () => {
       cancelled = true
     }
+    // `fetchRequest` is a module-level constant at every call site; listing it
+    // would re-fetch on every render of a caller that inlines one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId])
 
   const renderer = rendererFor('company_approval')

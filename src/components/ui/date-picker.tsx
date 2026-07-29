@@ -19,8 +19,11 @@ export function DatePicker({
   disabled,
   className,
   hideIcon,
+  clearable,
+  placeholder = 'Pick a date',
   'aria-label': ariaLabel = 'Pick a date',
 }: {
+  /** 'YYYY-MM-DD' — the empty string means "nothing picked" (see `clearable`). */
   value: string
   onChange: (iso: string) => void
   disabled?: boolean
@@ -28,20 +31,15 @@ export function DatePicker({
   /** Drop the leading calendar glyph — useful when several pickers sit inside
    * a single labelled group and one shared icon already conveys the affordance. */
   hideIcon?: boolean
+  /** Optional-date mode: an empty `value` shows `placeholder`, and the popover
+   * offers a Clear action that reports `onChange('')`. */
+  clearable?: boolean
+  placeholder?: string
   'aria-label'?: string
 }) {
   const [open, setOpen] = useState(false)
-  // Month the grid is currently showing — seeded from the selected date.
-  const [viewMonth, setViewMonth] = useState(() => startOfMonth(parseIso(value)))
   const rootRef = useRef<HTMLDivElement>(null)
   const popoverId = useId()
-
-  // Re-centre the grid on the selected month whenever it changes externally
-  // (prev/next-day buttons, "Today") so reopening always lands on the right
-  // month.
-  useEffect(() => {
-    setViewMonth(startOfMonth(parseIso(value)))
-  }, [value])
 
   // Close on outside click / Escape.
   useEffect(() => {
@@ -60,9 +58,7 @@ export function DatePicker({
     }
   }, [open])
 
-  const selected = parseIso(value)
-  const today = new Date()
-  const cells = monthGrid(viewMonth)
+  const selected = value ? parseIso(value) : null
 
   return (
     <div ref={rootRef} className={cn('relative', className)}>
@@ -81,7 +77,11 @@ export function DatePicker({
         {hideIcon ? null : (
           <CalendarDays className="size-4 text-muted-foreground" />
         )}
-        <span className="tabular-nums">{formatTrigger(selected)}</span>
+        {selected ? (
+          <span className="tabular-nums">{formatTrigger(selected)}</span>
+        ) : (
+          <span className="text-muted-foreground">{placeholder}</span>
+        )}
       </Button>
 
       {open ? (
@@ -89,94 +89,151 @@ export function DatePicker({
           id={popoverId}
           role="dialog"
           aria-label="Choose date"
-          className="absolute right-0 z-50 mt-2 w-72 origin-top rounded-md border bg-popover p-3 text-popover-foreground shadow-md"
+          className="absolute right-0 z-50 mt-2 origin-top rounded-md border bg-popover text-popover-foreground shadow-md"
         >
-          {/* Month switcher */}
-          <div className="mb-2 flex items-center justify-between">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label="Previous month"
-              onClick={() => setViewMonth(addMonths(viewMonth, -1))}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <span className="text-sm font-semibold tabular-nums">
-              {formatMonth(viewMonth)}
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label="Next month"
-              onClick={() => setViewMonth(addMonths(viewMonth, 1))}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-
-          {/* Weekday header — Monday first */}
-          <div className="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium text-muted-foreground">
-            {WEEKDAYS.map((d) => (
-              <span key={d} className="py-1">
-                {d}
-              </span>
-            ))}
-          </div>
-
-          {/* Day grid */}
-          <div className="grid grid-cols-7 gap-0.5">
-            {cells.map((cell) => {
-              const iso = toIso(cell)
-              const isSelected = iso === value
-              const isToday = sameDay(cell, today)
-              const isOutside = cell.getMonth() !== viewMonth.getMonth()
-              return (
-                <button
-                  key={iso}
-                  type="button"
-                  onClick={() => {
-                    onChange(iso)
+          <CalendarPanel
+            value={value}
+            onPick={(iso) => {
+              onChange(iso)
+              setOpen(false)
+            }}
+            onClear={
+              clearable && value
+                ? () => {
+                    onChange('')
                     setOpen(false)
-                  }}
-                  className={cn(
-                    'flex h-8 items-center justify-center rounded-md text-sm tabular-nums transition-colors',
-                    'hover:bg-accent hover:text-accent-foreground',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
-                    isOutside && !isSelected && 'text-muted-foreground/50',
-                    isToday &&
-                      !isSelected &&
-                      'font-semibold text-primary ring-1 ring-inset ring-primary/40',
-                    isSelected &&
-                      'bg-primary font-semibold text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground',
-                  )}
-                  aria-pressed={isSelected}
-                  aria-label={formatTrigger(cell)}
-                >
-                  {cell.getDate()}
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="mt-2 flex justify-end border-t pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                onChange(toIso(new Date()))
-                setOpen(false)
-              }}
-            >
-              Today
-            </Button>
-          </div>
+                  }
+                : undefined
+            }
+          />
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * The calendar itself — month switcher, Monday-first day grid, and the
+ * Today/Clear footer. Exported on its own so surfaces with their own popover
+ * machinery (the CR View table's portalled cell popovers) can embed the exact
+ * same calendar instead of falling back to the native `<input type="date">`
+ * popup, which the browser dismisses on focus/layout churn.
+ */
+export function CalendarPanel({
+  value,
+  onPick,
+  onClear,
+}: {
+  /** Selected 'YYYY-MM-DD' — '' or `null` for no selection. */
+  value: string | null
+  onPick: (iso: string) => void
+  /** When provided, a Clear action sits opposite Today in the footer. */
+  onClear?: () => void
+}) {
+  // Month the grid is currently showing — seeded from the selected date.
+  const [viewMonth, setViewMonth] = useState(() =>
+    startOfMonth(value ? parseIso(value) : new Date()),
+  )
+
+  // Re-centre the grid on the selected month whenever it changes externally
+  // so a stale month never lingers while the panel stays mounted.
+  useEffect(() => {
+    if (value) setViewMonth(startOfMonth(parseIso(value)))
+  }, [value])
+
+  const today = new Date()
+  const cells = monthGrid(viewMonth)
+
+  return (
+    <div className="w-72 p-3">
+      {/* Month switcher */}
+      <div className="mb-2 flex items-center justify-between">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          aria-label="Previous month"
+          onClick={() => setViewMonth(addMonths(viewMonth, -1))}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <span className="text-sm font-semibold tabular-nums">
+          {formatMonth(viewMonth)}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-7"
+          aria-label="Next month"
+          onClick={() => setViewMonth(addMonths(viewMonth, 1))}
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+
+      {/* Weekday header — Monday first */}
+      <div className="grid grid-cols-7 gap-0.5 text-center text-[11px] font-medium text-muted-foreground">
+        {WEEKDAYS.map((d) => (
+          <span key={d} className="py-1">
+            {d}
+          </span>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      <div className="grid grid-cols-7 gap-0.5">
+        {cells.map((cell) => {
+          const iso = toIso(cell)
+          const isSelected = iso === value
+          const isToday = sameDay(cell, today)
+          const isOutside = cell.getMonth() !== viewMonth.getMonth()
+          return (
+            <button
+              key={iso}
+              type="button"
+              onClick={() => onPick(iso)}
+              className={cn(
+                'flex h-8 items-center justify-center rounded-md text-sm tabular-nums transition-colors',
+                'hover:bg-accent hover:text-accent-foreground',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
+                isOutside && !isSelected && 'text-muted-foreground/50',
+                isToday &&
+                  !isSelected &&
+                  'font-semibold text-primary ring-1 ring-inset ring-primary/40',
+                isSelected &&
+                  'bg-primary font-semibold text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground',
+              )}
+              aria-pressed={isSelected}
+              aria-label={formatTrigger(cell)}
+            >
+              {cell.getDate()}
+            </button>
+          )
+        })}
+      </div>
+
+      <div
+        className={cn(
+          'mt-2 flex border-t pt-2',
+          onClear ? 'justify-between' : 'justify-end',
+        )}
+      >
+        {onClear ? (
+          <Button type="button" variant="ghost" size="sm" onClick={onClear}>
+            Clear
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => onPick(toIso(new Date()))}
+        >
+          Today
+        </Button>
+      </div>
     </div>
   )
 }

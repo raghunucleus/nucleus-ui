@@ -326,6 +326,15 @@ function RequestDetail({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
+  // Which corporate-relations screen this employee can resubmit a sent-back
+  // company from. Hooks run before the early returns below.
+  const companyMgmt = useScreenAccess(
+    'corporate_relations.company_management.manage',
+  )
+  const jobRoles = useScreenAccess('corporate_relations.job_roles.manage')
+  const canEditCompanies = companyMgmt?.actions.includes('edit') ?? false
+  const canAddCompanies = jobRoles?.actions.includes('create') ?? false
+
   useEffect(() => {
     let cancelled = false
     fetchMyEmployeeRequest(id)
@@ -381,6 +390,14 @@ function RequestDetail({
   // a renderer reads.
   const asRow = detail as unknown as ApprovalRow
   const companyId = (detail.payload as { company_id?: number }).company_id
+  // A company request is resubmitted from whichever corporate-relations screen
+  // the raiser actually holds — Company Management if they have it, otherwise
+  // Roles or Designations, which opens the same form in its slide-over.
+  const resubmitRoute = canEditCompanies
+    ? `/corporate-relations/company-management/${companyId}/edit`
+    : canAddCompanies
+      ? `/corporate-relations/job-roles?edit=${companyId}`
+      : null
 
   return (
     <div className="space-y-4">
@@ -404,15 +421,9 @@ function RequestDetail({
         <div className="flex flex-wrap items-center gap-2">
           {detail.status === 'sent_back' &&
             detail.request_type === 'company_approval' &&
-            companyId && (
-              <Button
-                size="sm"
-                onClick={() =>
-                  navigateTo(
-                    `/corporate-relations/company-management/${companyId}/edit`,
-                  )
-                }
-              >
+            companyId &&
+            resubmitRoute && (
+              <Button size="sm" onClick={() => navigateTo(resubmitRoute)}>
                 <Pencil className="size-4" /> Edit and resubmit
               </Button>
             )}

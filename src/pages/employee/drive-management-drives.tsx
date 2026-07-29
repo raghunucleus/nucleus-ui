@@ -12,14 +12,18 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import {
+  AppliedFilterChip,
   CompanyLogo,
+  EnumChips,
+  FilterField,
   formatDate,
   formatDateTime,
   SearchableMultiSelect,
+  type AppliedFacet,
 } from '@/components/corporate-relations/bits'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { Badge } from '@/components/ui/badge'
@@ -815,95 +819,5 @@ function RowActions({
         </Button>
       )}
     </div>
-  )
-}
-
-/** A labelled block inside the filter dialog. */
-function FilterField({
-  label,
-  children,
-}: {
-  label: string
-  children: ReactNode
-}) {
-  return (
-    <div className="space-y-1.5">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      {children}
-    </div>
-  )
-}
-
-/** Toggle-chip multi-select over a fixed string enum (drive status). */
-function EnumChips({
-  options,
-  selected,
-  onChange,
-  format,
-}: {
-  options: readonly string[]
-  selected: string[]
-  onChange: (v: string[]) => void
-  format: (s: string) => string
-}) {
-  const toggle = (v: string) =>
-    onChange(
-      selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v],
-    )
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {options.map((o) => {
-        const on = selected.includes(o)
-        return (
-          <button
-            key={o}
-            type="button"
-            aria-pressed={on}
-            onClick={() => toggle(o)}
-            className={cn(
-              'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-              on
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'bg-card hover:bg-accent hover:text-accent-foreground',
-            )}
-          >
-            {format(o)}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-/** A grouped, removable applied-filter pill (one whole facet). */
-interface AppliedFacet {
-  id: string
-  label: string
-  values: string[]
-  onClear: () => void
-}
-
-function AppliedFilterChip({ label, values, onClear }: AppliedFacet) {
-  const shown = values.slice(0, 2)
-  const overflow = values.length - shown.length
-  return (
-    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border bg-muted py-1 pl-2.5 pr-1 text-xs">
-      <span className="min-w-0 truncate">
-        <span className="font-medium text-foreground">{label}</span>
-        <span className="text-muted-foreground">: </span>
-        <span className="font-medium text-foreground">{shown.join(', ')}</span>
-        {overflow > 0 && (
-          <span className="text-muted-foreground"> +{overflow}</span>
-        )}
-      </span>
-      <button
-        type="button"
-        onClick={onClear}
-        className="flex size-4 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10 hover:text-foreground"
-        aria-label={`Remove ${label} filter`}
-      >
-        <X className="size-3" />
-      </button>
-    </span>
   )
 }

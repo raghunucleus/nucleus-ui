@@ -7,26 +7,33 @@ import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import { cn } from '@/lib/utils'
 import {
+  LOOKUP_KINDS,
   createAttribute,
   createPassoutYear,
   listAttributes,
   listPassoutYears,
+  setAttributeDefault,
   setAttributeStatus,
   setPassoutYearStatus,
   updateAttribute,
   updatePassoutYear,
+  type LookupKind,
 } from '@/lib/corporate-relations'
 
 const SCREEN_KEY = 'corporate_relations.company_attributes.manage'
 
+/** The bespoke list — its own endpoints, its own editor, no `attributes/:type`. */
+const PASSOUT_YEARS = 'passout-years'
+
 /**
- * The lists this screen configures. Kept separate from `LOOKUP_KINDS` (which
- * mirrors the server's parameterised `attributes/:type` whitelist) because
- * passout years have their own endpoints and their own editor.
+ * The lists this screen configures: the passout years first — everything else
+ * on the screen is recorded against them — then every parameterised lookup
+ * kind. Derived from `LOOKUP_KINDS` so adding a kind server-side and in the
+ * client whitelist is all it takes to show up here.
  */
 const SECTIONS = [
-  { key: 'categories', label: 'Categories' },
-  { key: 'passout-years', label: 'Passout Years' },
+  { key: PASSOUT_YEARS, label: 'Passout Years' },
+  ...LOOKUP_KINDS,
 ] as const
 
 type SectionKey = (typeof SECTIONS)[number]['key']
@@ -38,7 +45,7 @@ export default function EmployeeCompanyAttributesPage() {
 
   const access = useScreenAccess(SCREEN_KEY)
   const actions = access?.actions ?? []
-  const [section, setSection] = useState<SectionKey>('categories')
+  const [section, setSection] = useState<SectionKey>(PASSOUT_YEARS)
 
   if (!access) {
     return (
@@ -61,8 +68,9 @@ export default function EmployeeCompanyAttributesPage() {
             Company Attributes
           </h1>
           <p className="text-sm text-muted-foreground">
-            Configure the categories companies can be tagged with, and the
-            passout years.
+            Configure the categories companies can be tagged with, the
+            relationship types and current statuses CR View records against, and
+            the passout years.
           </p>
         </div>
       </div>
@@ -88,26 +96,41 @@ export default function EmployeeCompanyAttributesPage() {
 
         {/* key={section} remounts the editor per list, resetting its values,
             search and in-progress edits. */}
-        {section === 'categories' ? (
-          <LookupEditor
-            key={section}
-            load={() => listAttributes('categories')}
-            create={(name) => createAttribute('categories', { name })}
-            rename={(id, name) => updateAttribute('categories', id, { name })}
-            setStatus={(id, isActive) =>
-              setAttributeStatus('categories', id, isActive)
-            }
-            canCreate={canCreate}
-            canEdit={canEdit}
-            canActivate={canActivate}
-          />
-        ) : (
+        {section === PASSOUT_YEARS ? (
           <PassoutYearsEditor
             key={section}
             load={listPassoutYears}
             create={createPassoutYear}
             save={updatePassoutYear}
             setStatus={setPassoutYearStatus}
+            canCreate={canCreate}
+            canEdit={canEdit}
+            canActivate={canActivate}
+          />
+        ) : (
+          <LookupEditor
+            key={section}
+            load={() => listAttributes(section as LookupKind)}
+            create={(name) => createAttribute(section as LookupKind, { name })}
+            rename={(id, name) =>
+              updateAttribute(section as LookupKind, id, { name })
+            }
+            setStatus={(id, isActive) =>
+              setAttributeStatus(section as LookupKind, id, isActive)
+            }
+            // Statuses alone carry a default — it is what CR View shows for a
+            // (role × year) with nothing recorded, so every new passout year
+            // reads as it again.
+            defaultMarker={
+              section === 'current-statuses'
+                ? {
+                    key: 'is_default',
+                    label: 'Default',
+                    actionLabel: 'Make default',
+                    set: (id) => setAttributeDefault('current-statuses', id),
+                  }
+                : undefined
+            }
             canCreate={canCreate}
             canEdit={canEdit}
             canActivate={canActivate}

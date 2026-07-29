@@ -1,4 +1,4 @@
-import { Check, Loader2, Pencil, Plus, Search, X } from 'lucide-react'
+import { Check, Loader2, Pencil, Plus, Search, Star, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -11,7 +11,8 @@ import { cn } from '@/lib/utils'
 /**
  * The list-and-edit half of an "attributes" configuration screen: add, search,
  * rename and activate/deactivate the values of one lookup kind, plus whatever
- * boolean `flags` and numeric `numberFields` that kind carries.
+ * boolean `flags`, numeric `numberFields` and exclusive `defaultMarker` that
+ * kind carries.
  *
  * Deliberately domain-free — it knows nothing about which screen hosts it or
  * what its lookups mean. The page owns the kind switcher and adapts its own
@@ -56,6 +57,26 @@ export interface LookupNumberField {
  */
 export type LookupExtras = Record<string, boolean | number | null>
 
+/**
+ * An EXCLUSIVE marker: at most one value in the list carries it — e.g. the
+ * current status a CR View record shows before anything is recorded.
+ *
+ * Deliberately not a `flag`. Flags are independent per-row booleans and
+ * `toggleFlag` merges them on the one row it was given, so using one here would
+ * never clear the previous holder. This one MOVES, so the host owns a single
+ * "make this the default" call and the list is reloaded from the server rather
+ * than patched locally. There is no unset — the marker only ever moves.
+ */
+export interface LookupDefaultMarker {
+  /** Row property holding the flag, e.g. `is_default`. */
+  key: string
+  /** Badge on the row that carries it, e.g. "Default". */
+  label: string
+  /** Button label / tooltip on the rows that don't, e.g. "Make default". */
+  actionLabel: string
+  set: (id: number) => Promise<unknown>
+}
+
 interface LookupEditorProps<T extends LookupRow> {
   load: () => Promise<T[]>
   create: (name: string, extras: LookupExtras) => Promise<unknown>
@@ -69,6 +90,8 @@ interface LookupEditorProps<T extends LookupRow> {
   flagsMessage?: string
   /** Numeric columns edited alongside the name. Saved through `rename`. */
   numberFields?: LookupNumberField[]
+  /** When given, one row in the list is marked as the kind's default. */
+  defaultMarker?: LookupDefaultMarker
   /**
    * Cross-field rules the host owns (this component knows nothing about what a
    * field means). Return a message to block the add/save, or null to allow it.
@@ -176,6 +199,7 @@ export default function LookupEditor<T extends LookupRow>({
   setFlags,
   flagsMessage,
   numberFields,
+  defaultMarker,
   validateExtras,
   formatRow,
   searchPlaceholder = 'Search values…',
@@ -198,6 +222,7 @@ export default function LookupEditor<T extends LookupRow>({
   const [editId, setEditId] = useState<number | null>(null)
   const [editName, setEditName] = useState('')
   const [editNumbers, setEditNumbers] = useState<Record<string, string>>({})
+  const [markingId, setMarkingId] = useState<number | null>(null)
 
   async function reload() {
     setValues(null)
@@ -304,7 +329,34 @@ export default function LookupEditor<T extends LookupRow>({
     }
   }
 
+  async function makeDefault(row: T) {
+    // Both of these are constraints the server also enforces — saying so beats
+    // firing a request that would come back 400.
+    if (!row.is_active) {
+      toast.info('Activate this value before making it the default.')
+      return
+    }
+    setMarkingId(row.id)
+    try {
+      await defaultMarker!.set(row.id)
+      toast.success('Default updated.')
+      // A full reload rather than a local patch: the marker moved off some
+      // other row too, and only the server knows which.
+      await reload()
+    } catch (e) {
+      toast.error(msg(e, 'Could not update.'))
+    } finally {
+      setMarkingId(null)
+    }
+  }
+
   async function toggleActive(row: T) {
+    // The marker has no unset, so deactivating its holder would leave whatever
+    // reads the default pointing at a value nobody can pick.
+    if (defaultMarker && row.is_active && flagOf(row, defaultMarker.key)) {
+      toast.info('Make another value the default first.')
+      return
+    }
     try {
       await setStatus(row.id, !row.is_active)
       await reload()
@@ -436,12 +488,35 @@ export default function LookupEditor<T extends LookupRow>({
                           {formatRow(v)}
                         </Badge>
                       )}
+                      {defaultMarker && flagOf(v, defaultMarker.key) && (
+                        <Badge variant="success" className="ml-2 gap-1">
+                          <Star className="size-3" />
+                          {defaultMarker.label}
+                        </Badge>
+                      )}
                       {!v.is_active && (
                         <Badge variant="muted" className="ml-2">
                           Inactive
                         </Badge>
                       )}
                     </span>
+                    {defaultMarker && canEdit && !flagOf(v, defaultMarker.key) && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-8"
+                        title={defaultMarker.actionLabel}
+                        aria-label={defaultMarker.actionLabel}
+                        disabled={markingId !== null}
+                        onClick={() => void makeDefault(v)}
+                      >
+                        {markingId === v.id ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Star className="size-3.5" />
+                        )}
+                      </Button>
+                    )}
                     {hasFlags && (
                       <div className="flex items-center gap-3 pr-1">
                         {flags!.map((f) => (

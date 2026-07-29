@@ -14,6 +14,8 @@ import EmployeeBirthdaysPage from '@/pages/employee/birthdays'
 import EmployeeCompanyAttributesPage from '@/pages/employee/corporate-relations-company-attributes'
 import EmployeeCompanyFormPage from '@/pages/employee/corporate-relations-company-form'
 import EmployeeCompanyManagementPage from '@/pages/employee/corporate-relations-company-management'
+import EmployeeCrViewPage from '@/pages/employee/corporate-relations-cr-view'
+import EmployeeJobRolesPage from '@/pages/employee/corporate-relations-job-roles'
 import EmployeeDriveAttributesPage from '@/pages/employee/drive-management-drive-attributes'
 import EmployeeDriveDetailPage from '@/pages/employee/drive-management-drive-detail'
 import EmployeeDriveFormPage from '@/pages/employee/drive-management-drive-form'
@@ -159,6 +161,21 @@ const companyAttributesRoute = createRoute({
   component: EmployeeCompanyAttributesPage,
 })
 
+const jobRolesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/corporate-relations/job-roles',
+  component: EmployeeJobRolesPage,
+})
+
+// Per-passout-year view of the same roles. The path must stay byte-identical to
+// `web_route` on corporate_relations.cr_view.view — the sidebar links straight
+// at the catalog value, so a mismatch renders a nav item that 404s.
+const crViewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/corporate-relations/cr-view',
+  component: EmployeeCrViewPage,
+})
+
 const driveAttributesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/drive-management/drive-attributes',
@@ -294,6 +311,8 @@ const routeTree = rootRoute.addChildren([
   companyCreateRoute,
   companyEditRoute,
   companyAttributesRoute,
+  jobRolesRoute,
+  crViewRoute,
   driveAttributesRoute,
   drivesRoute,
   driveCreateRoute,

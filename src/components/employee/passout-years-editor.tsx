@@ -111,8 +111,11 @@ function DraftFields({
       {yearLocked ? (
         // Spans the year box + its preview (8rem + gap + 6rem) so an editing
         // row's dates stay aligned with the add row's.
-        <span className="w-[14.5rem] text-sm">
-          {year === null ? draft.year : deriveDisplayYear(year)}
+        <span className="flex w-[14.5rem] items-baseline gap-2 text-sm">
+          <span className="w-32 font-medium tabular-nums">{draft.year}</span>
+          <span className="w-24 whitespace-nowrap text-xs text-muted-foreground">
+            {year === null ? '—' : deriveDisplayYear(year)}
+          </span>
         </span>
       ) : (
         <>
@@ -366,16 +369,27 @@ export default function PassoutYearsEditor({
                   </>
                 ) : (
                   <>
-                    <span className="flex-1 text-sm">
-                      {v.display_year}
-                      <Badge variant="secondary" className="ml-2 font-normal">
-                        {formatDate(v.start_date)} → {formatDate(v.end_date)}
-                      </Badge>
-                      {!v.is_active && (
-                        <Badge variant="muted" className="ml-2">
-                          Inactive
+                    {/* The passout year is what the rest of the system keys
+                        off, so it leads; the academic span it derives to
+                        follows it. Widths mirror the add row's year box and
+                        preview so every column lines up. */}
+                    <span className="flex flex-1 items-baseline gap-2 text-sm">
+                      <span className="w-32 font-medium tabular-nums">
+                        {v.passout_year}
+                      </span>
+                      <span className="w-24 whitespace-nowrap text-xs text-muted-foreground">
+                        {v.display_year}
+                      </span>
+                      <span>
+                        <Badge variant="secondary" className="font-normal">
+                          {formatDate(v.start_date)} → {formatDate(v.end_date)}
                         </Badge>
-                      )}
+                        {!v.is_active && (
+                          <Badge variant="muted" className="ml-2">
+                            Inactive
+                          </Badge>
+                        )}
+                      </span>
                     </span>
                     {canEdit && (
                       <Button

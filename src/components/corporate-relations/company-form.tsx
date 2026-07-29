@@ -9,11 +9,10 @@ import { EmployeePicker } from '@/components/employee/employee-picker'
 import { Field, SearchableMultiSelect } from '@/components/corporate-relations/bits'
 import { ApiError } from '@/lib/api'
 import {
-  createCompany,
-  updateCompany,
-  uploadCompanyLogo,
+  companyManagementApi,
   type CompanyDetail,
   type CompanyPayload,
+  type CompanyWriteApi,
   type FormOptions,
 } from '@/lib/corporate-relations'
 
@@ -29,6 +28,14 @@ interface RoleDraft {
 
 let uidCounter = 0
 const nextUid = () => `r${++uidCounter}`
+
+/**
+ * The action bar as the full-page host needs it: bled out to the page gutters
+ * and pinned to the bottom of the portal's scroll container, whose `py-6` is
+ * what `-bottom-6`/`-mb-6` cancel.
+ */
+const FOOTER_ON_PAGE =
+  'sticky -bottom-6 z-10 -mx-4 -mb-6 flex justify-end gap-2 border-t bg-background px-4 pb-6 pt-4 sm:-mx-6 sm:px-6'
 
 interface FS {
   name: string
@@ -86,6 +93,8 @@ export function CompanyForm({
   options,
   readOnly = false,
   canEditStatus = false,
+  api = companyManagementApi,
+  footerClassName = FOOTER_ON_PAGE,
   onSaved,
   onCancel,
 }: {
@@ -95,6 +104,18 @@ export function CompanyForm({
   readOnly?: boolean
   /** The `activate` grant; without it the Active switch is display-only. */
   canEditStatus?: boolean
+  /**
+   * Which screen's endpoints to write through. Defaults to Company Management;
+   * the Roles or Designations screen hands in its own, which is authorised by
+   * a different RBAC screen.
+   */
+  api?: CompanyWriteApi
+  /**
+   * Position of the sticky action bar. The default is tuned to the page's
+   * `py-6`/`px-4 sm:px-6` gutters; a host with different padding (a sheet)
+   * passes its own bleed offsets.
+   */
+  footerClassName?: string
   onSaved: (saved: CompanyDetail) => void
   onCancel: () => void
 }) {
@@ -202,18 +223,18 @@ export function CompanyForm({
       // has to ride in the payload to be approved with everything else.
       let stagedKey: string | undefined
       if (logoFile && company) {
-        stagedKey = (await uploadCompanyLogo(company.id, logoFile)).logo_key
+        stagedKey = (await api.uploadLogo(company.id, logoFile)).logo_key
       }
 
       const saved = company
-        ? await updateCompany(company.id, payload(stagedKey))
-        : await createCompany(payload())
+        ? await api.update(company.id, payload(stagedKey))
+        : await api.create(payload())
 
       if (logoFile && !company) {
         // A logo failure must not read as "company not saved" — the row (and
         // its approval request) persisted.
         try {
-          await uploadCompanyLogo(saved.id, logoFile)
+          await api.uploadLogo(saved.id, logoFile)
         } catch (logoErr) {
           toast.error(
             logoErr instanceof ApiError || logoErr instanceof Error
@@ -391,7 +412,7 @@ export function CompanyForm({
       </section>
 
       {!readOnly && (
-        <div className="sticky -bottom-6 z-10 -mx-4 -mb-6 flex justify-end gap-2 border-t bg-background px-4 pb-6 pt-4 sm:-mx-6 sm:px-6">
+        <div className={footerClassName}>
           <Button variant="outline" onClick={onCancel} disabled={busy}>
             Cancel
           </Button>
