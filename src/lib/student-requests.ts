@@ -22,7 +22,11 @@ export const OPEN_REQUEST_STATUSES: RequestStatus[] = ['pending', 'sent_back']
 /** Per-item verdict inside a decided request (e.g. one profile field). */
 export type ItemOutcome = 'approved' | 'rejected'
 
-export type RequestType = 'profile_update'
+/**
+ * Every request type the framework knows. Shared by both portals: the student
+ * portal only ever sees `profile_update`, but the vocabulary lives in one file.
+ */
+export type RequestType = 'profile_update' | 'company_approval'
 
 export type BadgeVariant =
   | 'default'

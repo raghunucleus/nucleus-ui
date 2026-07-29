@@ -2,10 +2,8 @@ import { useSearch } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
-  ArrowRight,
   Check,
   CircleAlert,
-  ExternalLink,
   Inbox,
   RefreshCw,
   Undo2,
@@ -13,18 +11,25 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { formatDate, Textarea } from '@/components/corporate-relations/bits'
+import { formatDate } from '@/components/corporate-relations/bits'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { ApproversList } from '@/components/requests/approvers-list'
+import {
+  DecisionDialog,
+  SendBackDialog,
+  type DecisionPlan,
+} from '@/components/requests/decision-dialogs'
 import {
   RequestFilters,
   type DateRange,
   type SortDir,
 } from '@/components/requests/request-filters'
+import { RequestAvatar } from '@/components/requests/request-avatar'
 import {
   RequestModulesPanel,
   type TypeFilter,
 } from '@/components/requests/request-modules-panel'
+import { rendererFor } from '@/components/requests/payloads'
 import { RequestTimeline } from '@/components/requests/request-timeline'
 import {
   StatusChips,
@@ -32,14 +37,6 @@ import {
 } from '@/components/requests/status-chips'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Pagination } from '@/components/ui/pagination'
 import {
   Table,
@@ -52,23 +49,15 @@ import {
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import { ApiError } from '@/lib/api'
 import {
-  decideApproval,
-  decideApprovalMixed,
   fetchApproval,
   fetchApprovalCatalog,
   fetchApprovalCounts,
   fetchApprovals,
-  sendBackApproval,
   type ApprovalDetail as ApprovalDetailData,
   type ApprovalRow,
   type Paginated,
 } from '@/lib/employee-requests'
 import {
-  changeCertificateUrl,
-  changeFromText,
-  changeToText,
-  labelForChange,
-  PROFILE_FIELD_LABELS,
   REQUEST_STATUS_LABELS,
   requestStatusVariant,
   typeLabel,
@@ -78,7 +67,6 @@ import {
   type RequestStatusCounts,
   type RequestType,
 } from '@/lib/student-requests'
-import { cn } from '@/lib/utils'
 
 const SCREEN_KEY = 'requests.approvals.review'
 const PAGE_SIZE = 20
@@ -258,7 +246,7 @@ function Approvals({ actions }: { actions: string[] }) {
               </h3>
               <p className="max-w-sm text-xs text-muted-foreground">
                 {status === 'pending'
-                  ? 'Profile-update requests from students of your batches will appear here.'
+                  ? 'Requests awaiting your decision will appear here.'
                   : 'Requests with this status will appear here.'}
               </p>
             </div>
@@ -268,8 +256,9 @@ function Approvals({ actions }: { actions: string[] }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Programme</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                  <TableHead>Requester</TableHead>
+                  <TableHead>Context</TableHead>
                   <TableHead>Request</TableHead>
                   <TableHead>Submitted</TableHead>
                   <TableHead>Status</TableHead>
@@ -283,25 +272,23 @@ function Approvals({ actions }: { actions: string[] }) {
                     onClick={() => setSelected(row)}
                   >
                     <TableCell>
-                      <p className="font-medium">{row.student.display_name}</p>
+                      <RequestAvatar row={row} catalog={catalog} />
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-medium">{row.requester.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {row.student.student_id}
+                        {row.requester.code}
                       </p>
                     </TableCell>
                     <TableCell>
-                      <p className="text-sm">{row.student.programme_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {row.student.admission_year_display}
-                      </p>
+                      <p className="text-sm">{row.requester.subtitle ?? '—'}</p>
                     </TableCell>
                     <TableCell>
                       <p className="text-sm">
                         {typeLabel(catalog, row.request_type)}
                       </p>
                       <p className="max-w-52 truncate text-xs text-muted-foreground">
-                        {(row.payload.changes ?? [])
-                          .map((c) => labelForChange(c))
-                          .join(', ')}
+                        {rendererFor(row.request_type).summary(row)}
                       </p>
                     </TableCell>
                     <TableCell className="text-sm">
@@ -351,22 +338,24 @@ function ApprovalDetail({
   const canReject = actions.includes('reject')
   const canSendBack = actions.includes('send_back')
   const decidable = row.status === 'pending' && (canApprove || canReject)
-  // Per-field verdicts — every field defaults to approve; the submit button
-  // adapts to the split (approve all / reject all / mixed).
+  const renderer = rendererFor(row.request_type)
+
+  // Per-item verdicts (types that support them) and the approver's own edits.
+  // Both are seeded by the renderer, which owns the payload's shape.
   const [verdicts, setVerdicts] = useState<Record<string, ItemOutcome>>(() =>
-    Object.fromEntries(
-      (row.payload.changes ?? []).map((c) => [c.field, 'approved']),
-    ),
+    renderer.initialVerdicts ? renderer.initialVerdicts(row) : {},
+  )
+  const [overrides, setOverrides] = useState<Record<string, unknown>>(() =>
+    renderer.initialOverrides ? renderer.initialOverrides(row) : {},
   )
   const [confirming, setConfirming] = useState(false)
+  // Whole-request types get an explicit Reject button, so its confirmation is
+  // tracked separately from the primary (approve) one.
+  const [rejecting, setRejecting] = useState(false)
   const [sendingBack, setSendingBack] = useState(false)
   // The row from the list has no approvers/timeline — fetch the full view.
   // Rendering starts from `row` so the page doesn't flash a skeleton.
   const [detail, setDetail] = useState<ApprovalDetailData | null>(null)
-
-  // Prefer the detail payload once loaded: the server enriches it per view
-  // (presigned certificate links exist only there). Same item keys either way.
-  const changes = (detail ?? row).payload.changes ?? []
 
   useEffect(() => {
     let cancelled = false
@@ -380,16 +369,20 @@ function ApprovalDetail({
     }
   }, [row.id])
 
-  const values = changes.map((c) => verdicts[c.field] ?? 'approved')
+  // Per-item types derive the plan from the verdict split; whole-request types
+  // are approved or rejected outright, so the approver picks explicitly.
+  const values = Object.values(verdicts)
   const approvedCount = values.filter((v) => v === 'approved').length
-  const plan: DecisionPlan =
-    approvedCount === values.length
+  const plan: DecisionPlan = !renderer.perItem
+    ? { kind: 'approve' }
+    : approvedCount === values.length
       ? { kind: 'approve' }
       : approvedCount === 0
         ? { kind: 'reject' }
         : { kind: 'mixed', verdicts }
-  const planLabel =
-    plan.kind === 'approve'
+  const planLabel = !renderer.perItem
+    ? 'Approve'
+    : plan.kind === 'approve'
       ? 'Approve all'
       : plan.kind === 'reject'
         ? 'Reject all'
@@ -425,6 +418,15 @@ function ApprovalDetail({
                 <Undo2 className="size-4" /> Send back
               </Button>
             )}
+            {!renderer.perItem && canReject && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setRejecting(true)}
+              >
+                <X className="size-4" /> Reject
+              </Button>
+            )}
             <Button
               size="sm"
               variant={plan.kind === 'reject' ? 'destructive' : 'default'}
@@ -444,16 +446,13 @@ function ApprovalDetail({
       <div className="grid gap-4 lg:grid-cols-[20rem_1fr] lg:items-start">
         <div className="rounded-lg border bg-card p-4">
           <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Student
+            {row.requester.kind === 'student' ? 'Student' : 'Raised by'}
           </p>
-          <p className="mt-1.5 font-medium">{row.student.display_name}</p>
-          <p className="text-sm text-muted-foreground">
-            {row.student.student_id}
-          </p>
-          <p className="mt-2 text-sm">{row.student.programme_name}</p>
-          <p className="text-xs text-muted-foreground">
-            Admission year {row.student.admission_year_display}
-          </p>
+          <p className="mt-1.5 font-medium">{row.requester.name}</p>
+          <p className="text-sm text-muted-foreground">{row.requester.code}</p>
+          {row.requester.subtitle && (
+            <p className="mt-2 text-sm">{row.requester.subtitle}</p>
+          )}
 
           {detail && (
             <>
@@ -478,72 +477,29 @@ function ApprovalDetail({
           <div className="rounded-lg border bg-card">
             <div className="flex items-center justify-between border-b px-4 py-2.5">
               <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Requested changes
+                {renderer.title}
               </p>
-              {decidable && (
+              {decidable && renderer.perItem && (
                 <p className="text-[11px] text-muted-foreground">
                   Decide each field, then submit
                 </p>
               )}
             </div>
-            {/* The extended profile can put dozens of items on one request —
-                cap the list and scroll inside it. */}
-            <div className="max-h-[32rem] space-y-1.5 overflow-y-auto p-3">
-              {changes.map((c) => {
-                const certificateUrl = changeCertificateUrl(c)
-                return (
-                  <div
-                    key={c.field}
-                    className="flex flex-wrap items-start gap-2 rounded-md bg-muted/30 px-3 py-2 text-sm"
-                  >
-                    <span className="w-32 shrink-0 pt-0.5 text-xs font-medium text-muted-foreground">
-                      {labelForChange(c)}
-                    </span>
-                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
-                      <span className="min-w-0 text-muted-foreground line-through break-words">
-                        {changeFromText(c)}
-                      </span>
-                      <ArrowRight className="size-3.5 shrink-0 text-muted-foreground" />
-                      <span className="min-w-0 font-medium break-words">
-                        {changeToText(c)}
-                        {certificateUrl && (
-                          <a
-                            href={certificateUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                          >
-                            <ExternalLink className="size-3" /> View certificate
-                          </a>
-                        )}
-                      </span>
-                    </div>
-                    {decidable ? (
-                      <VerdictToggle
-                        value={verdicts[c.field] ?? 'approved'}
-                        onChange={(v) =>
-                          setVerdicts((prev) => ({ ...prev, [c.field]: v }))
-                        }
-                      />
-                    ) : c.outcome ? (
-                      <Badge
-                        variant={
-                          c.outcome === 'approved' ? 'success' : 'destructive'
-                        }
-                      >
-                        {c.outcome === 'approved' ? 'Approved' : 'Rejected'}
-                      </Badge>
-                    ) : null}
-                  </div>
-                )
-              })}
-            </div>
+            <renderer.Body
+              row={row}
+              detail={detail}
+              editable={decidable}
+              verdicts={verdicts}
+              setVerdicts={setVerdicts}
+              overrides={overrides}
+              setOverrides={setOverrides}
+            />
           </div>
 
           {row.requester_note && (
             <div className="rounded-lg border bg-card p-4">
               <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Student's note
+                Requester's note
               </p>
               <p className="mt-1 text-sm">{row.requester_note}</p>
             </div>
@@ -575,8 +531,14 @@ function ApprovalDetail({
 
       <DecisionDialog
         row={row}
-        plan={confirming ? plan : null}
-        onOpenChange={(open) => !open && setConfirming(false)}
+        plan={confirming ? plan : rejecting ? { kind: 'reject' } : null}
+        overrides={overrides}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirming(false)
+            setRejecting(false)
+          }
+        }}
         onDone={onDecided}
       />
       <SendBackDialog
@@ -586,307 +548,5 @@ function ApprovalDetail({
         onDone={onDecided}
       />
     </div>
-  )
-}
-
-/**
- * Send-back confirmation. The note is REQUIRED — it is the only thing telling
- * the student what to fix, so the button stays disabled until there is one.
- */
-function SendBackDialog({
-  row,
-  open,
-  onOpenChange,
-  onDone,
-}: {
-  row: ApprovalRow
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onDone: () => void
-}) {
-  const [note, setNote] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    if (open) setNote('')
-  }, [open])
-
-  async function onConfirm() {
-    if (!note.trim()) return
-    setBusy(true)
-    try {
-      await sendBackApproval(row.id, note.trim())
-      toast.success('Sent back to the student for changes.')
-      onDone()
-    } catch (err) {
-      toast.error(errMsg(err, 'Could not send the request back.'))
-      // 409 = someone decided it first; refresh so the stale view goes away.
-      if (err instanceof ApiError && err.status === 409) onDone()
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !busy && onOpenChange(v)}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Send back for changes?</DialogTitle>
-          <DialogDescription>
-            Nothing is applied to {row.student.display_name}&apos;s profile.
-            They can revise the request and resubmit it, or cancel it.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-1.5">
-          <label
-            htmlFor="send-back-note"
-            className="text-sm font-medium leading-none"
-          >
-            What needs changing?
-          </label>
-          <Textarea
-            id="send-back-note"
-            placeholder="Tell the student exactly what to fix — this is all they will see"
-            value={note}
-            maxLength={1000}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </div>
-        <DialogFooter>
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            disabled={busy || !note.trim()}
-            onClick={() => void onConfirm()}
-          >
-            {busy ? 'Sending…' : 'Send back'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-/** Small Approve/Reject segmented toggle for one change row. */
-function VerdictToggle({
-  value,
-  onChange,
-}: {
-  value: ItemOutcome
-  onChange: (v: ItemOutcome) => void
-}) {
-  return (
-    <div className="flex shrink-0 overflow-hidden rounded-md border">
-      <button
-        type="button"
-        aria-pressed={value === 'approved'}
-        onClick={() => onChange('approved')}
-        className={cn(
-          'flex items-center gap-1 px-2 py-1 text-xs font-medium transition-colors',
-          value === 'approved'
-            ? 'bg-success/15 text-success'
-            : 'bg-card text-muted-foreground hover:bg-muted/40',
-        )}
-      >
-        <Check className="size-3" /> Approve
-      </button>
-      <button
-        type="button"
-        aria-pressed={value === 'rejected'}
-        onClick={() => onChange('rejected')}
-        className={cn(
-          'flex items-center gap-1 border-l px-2 py-1 text-xs font-medium transition-colors',
-          value === 'rejected'
-            ? 'bg-destructive/15 text-destructive'
-            : 'bg-card text-muted-foreground hover:bg-muted/40',
-        )}
-      >
-        <X className="size-3" /> Reject
-      </button>
-    </div>
-  )
-}
-
-type DecisionPlan =
-  | { kind: 'approve' }
-  | { kind: 'reject' }
-  | { kind: 'mixed'; verdicts: Record<string, ItemOutcome> }
-
-function DecisionDialog({
-  row,
-  plan,
-  onOpenChange,
-  onDone,
-}: {
-  row: ApprovalRow
-  plan: DecisionPlan | null
-  onOpenChange: (open: boolean) => void
-  onDone: () => void
-}) {
-  const [note, setNote] = useState('')
-  // Mixed verdicts don't get their own status — the approver marks the
-  // request Approved or Rejected here.
-  const [overall, setOverall] = useState<ItemOutcome>('approved')
-  const [busy, setBusy] = useState(false)
-
-  useEffect(() => {
-    if (plan) {
-      setNote('')
-      setOverall('approved')
-    }
-  }, [plan])
-
-  async function onConfirm() {
-    if (!plan) return
-    setBusy(true)
-    try {
-      if (plan.kind === 'mixed') {
-        await decideApprovalMixed(
-          row.id,
-          plan.verdicts,
-          overall,
-          note.trim() || undefined,
-        )
-        toast.success(
-          'Decision recorded — approved fields applied to the student profile.',
-        )
-      } else {
-        await decideApproval(row.id, plan.kind, note.trim() || undefined)
-        toast.success(
-          plan.kind === 'approve'
-            ? 'Request approved — changes applied to the student profile.'
-            : 'Request rejected.',
-        )
-      }
-      onDone()
-    } catch (err) {
-      // 409s cover both "someone else decided first" and "value now clashes";
-      // surface the server message and refresh either way.
-      toast.error(errMsg(err, 'Could not record the decision.'))
-      if (err instanceof ApiError && err.status === 409) onDone()
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const kind = plan?.kind ?? 'approve'
-  const rejectedLabels =
-    plan?.kind === 'mixed'
-      ? Object.entries(plan.verdicts)
-          .filter(([, v]) => v === 'rejected')
-          .map(
-            ([f]) =>
-              PROFILE_FIELD_LABELS[f] ??
-              (f.startsWith('certification:') ? 'a certification' : f),
-          )
-          .join(', ')
-      : ''
-
-  return (
-    <Dialog open={plan !== null} onOpenChange={(v) => !busy && onOpenChange(v)}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {kind === 'approve'
-              ? 'Approve request?'
-              : kind === 'reject'
-                ? 'Reject request?'
-                : 'Submit mixed decision?'}
-          </DialogTitle>
-          <DialogDescription>
-            {kind === 'approve'
-              ? `The requested changes will be applied to ${row.student.display_name}'s profile immediately.`
-              : kind === 'reject'
-                ? `${row.student.display_name} will be notified that the request was rejected.`
-                : `Approved fields will be applied to ${row.student.display_name}'s profile immediately; the rest are rejected (${rejectedLabels}).`}
-          </DialogDescription>
-        </DialogHeader>
-        {kind === 'mixed' && (
-          <div className="space-y-1.5">
-            <p className="text-sm font-medium leading-none">
-              Mark the request as
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                aria-pressed={overall === 'approved'}
-                onClick={() => setOverall('approved')}
-                className={cn(
-                  'flex-1 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
-                  overall === 'approved'
-                    ? 'border-success/40 bg-success/10 text-success'
-                    : 'bg-card text-muted-foreground hover:bg-muted/40',
-                )}
-              >
-                Approved
-              </button>
-              <button
-                type="button"
-                aria-pressed={overall === 'rejected'}
-                onClick={() => setOverall('rejected')}
-                className={cn(
-                  'flex-1 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors',
-                  overall === 'rejected'
-                    ? 'border-destructive/40 bg-destructive/10 text-destructive'
-                    : 'bg-card text-muted-foreground hover:bg-muted/40',
-                )}
-              >
-                Rejected
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              The per-field results are kept either way — this is the status
-              the request shows overall.
-            </p>
-          </div>
-        )}
-        <div className="space-y-1.5">
-          <label
-            htmlFor="decision-note"
-            className="text-sm font-medium leading-none"
-          >
-            Note (optional)
-          </label>
-          <Textarea
-            id="decision-note"
-            placeholder="Visible to the student"
-            value={note}
-            maxLength={1000}
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </div>
-        <DialogFooter>
-          <Button
-            variant="outline"
-            disabled={busy}
-            onClick={() => onOpenChange(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant={
-              kind === 'reject' || (kind === 'mixed' && overall === 'rejected')
-                ? 'destructive'
-                : 'default'
-            }
-            disabled={busy}
-            onClick={() => void onConfirm()}
-          >
-            {busy
-              ? 'Saving…'
-              : kind === 'approve'
-                ? 'Approve'
-                : kind === 'reject'
-                  ? 'Reject'
-                  : 'Submit decision'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }

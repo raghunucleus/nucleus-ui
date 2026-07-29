@@ -29,6 +29,20 @@ export interface ComboboxProps {
   invalid?: boolean
   id?: string
   className?: string
+  /**
+   * Supply this to drive the options from a SERVER search: the query is handed
+   * back on every keystroke and the local filter is skipped, because `options`
+   * are already the answer to it.
+   */
+  onQueryChange?: (query: string) => void
+  /** Shown in the panel while a server search is in flight. */
+  loading?: boolean
+  /**
+   * The selected row when it isn't in `options` — unavoidable with a server
+   * search, where the current page rarely contains the saved selection. Used
+   * for the trigger label only.
+   */
+  selectedOption?: ComboboxOption
 }
 
 export function Combobox({
@@ -43,6 +57,9 @@ export function Combobox({
   invalid,
   id,
   className,
+  onQueryChange,
+  loading,
+  selectedOption,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState('')
@@ -59,7 +76,10 @@ export function Combobox({
   const panelRef = React.useRef<HTMLDivElement>(null)
   const labelRef = React.useRef<HTMLSpanElement>(null)
 
+  // Server-driven options are already filtered — re-filtering them locally
+  // would hide rows the server matched on a field we don't render.
   const filtered = React.useMemo(() => {
+    if (onQueryChange) return options
     const q = query.trim().toLowerCase()
     if (!q) return options
     return options.filter(
@@ -67,7 +87,7 @@ export function Combobox({
         o.label.toLowerCase().includes(q) ||
         (o.sublabel ?? '').toLowerCase().includes(q),
     )
-  }, [options, query])
+  }, [options, query, onQueryChange])
 
   // List of "rows": the optional clear sentinel + filtered options. Indexing
   // here is what keyboard nav and aria-activedescendant track.
@@ -81,7 +101,9 @@ export function Combobox({
     return out
   }, [clearLabel, filtered])
 
-  const selected = options.find((o) => o.value === value) ?? null
+  const selected =
+    options.find((o) => o.value === value) ??
+    (selectedOption?.value === value ? selectedOption : null)
 
   // Open: reset query, focus the search input, set active row to the selected
   // option (or row 0). Close: clear query.
@@ -265,7 +287,10 @@ export function Combobox({
               ref={inputRef}
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value)
+                onQueryChange?.(e.target.value)
+              }}
               onKeyDown={onKeyDown}
               placeholder={searchPlaceholder}
               className="h-7 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
@@ -298,7 +323,7 @@ export function Combobox({
           >
             {rows.length === 0 ? (
               <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-                {emptyMessage}
+                {loading ? 'Searching…' : emptyMessage}
               </div>
             ) : (
               rows.map((row, idx) => {

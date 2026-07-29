@@ -1,15 +1,14 @@
 import { useParams } from '@tanstack/react-router'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Info, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { CompanyForm } from '@/components/corporate-relations/company-form'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import {
-  getAssignableEmployees,
   getCompany,
   getFormOptions,
-  type AssignableEmployee,
   type CompanyDetail,
   type FormOptions,
 } from '@/lib/corporate-relations'
@@ -25,6 +24,47 @@ const LIST_ROUTE = '/corporate-relations/company-management'
 function navigateTo(route: string) {
   window.history.pushState({}, '', route)
   window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+/** What actually happened on save, which depends on whether the company is live. */
+function savedMessage(company: CompanyDetail | null): string {
+  if (!company) return 'Company created and sent for approval.'
+  if (company.approval_status === 'approved') {
+    return 'Changes sent for approval — the company keeps its current details until approved.'
+  }
+  return company.open_request?.status === 'sent_back'
+    ? 'Resubmitted for approval.'
+    : 'Saved and sent for approval.'
+}
+
+/** Explains, before they type, what saving will and won't do. */
+function Banner({ company }: { company: CompanyDetail | null }) {
+  const pending = company?.open_request?.status === 'pending'
+  const sentBack = company?.open_request?.status === 'sent_back'
+  const live = company?.approval_status === 'approved'
+
+  const text = pending
+    ? 'A change to this company is already awaiting approval. Cancel it from My Requests, or wait for a decision, before editing again.'
+    : sentBack
+      ? 'This request was sent back for changes. Saving resubmits it for approval.'
+      : live
+        ? 'Changes to an approved company need sign-off — the catalog keeps the current details until an approver approves them.'
+        : company
+          ? 'This company is not live yet. Saving updates it and re-sends it for approval.'
+          : 'New companies need approval before they appear in the live catalog.'
+
+  return (
+    <div
+      className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-sm ${
+        pending
+          ? 'border-warning/40 bg-warning/10 text-warning'
+          : 'bg-muted/40 text-muted-foreground'
+      }`}
+    >
+      <Info className="mt-0.5 size-4 shrink-0" />
+      <p>{text}</p>
+    </div>
+  )
 }
 
 /**
@@ -46,7 +86,6 @@ export default function EmployeeCompanyFormPage() {
 
   const [company, setCompany] = useState<CompanyDetail | null>(null)
   const [options, setOptions] = useState<FormOptions | null>(null)
-  const [employees, setEmployees] = useState<AssignableEmployee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -61,14 +100,12 @@ export default function EmployeeCompanyFormPage() {
     setLoading(true)
     setError(null)
     Promise.all([
-      getFormOptions('management'),
-      getAssignableEmployees(),
-      isEdit ? getCompany('management', editId) : Promise.resolve(null),
+      getFormOptions(),
+      isEdit ? getCompany(editId) : Promise.resolve(null),
     ])
-      .then(([o, e, c]) => {
+      .then(([o, c]) => {
         if (cancelled) return
         setOptions(o)
-        setEmployees(e)
         setCompany(c)
       })
       .catch((err) => {
@@ -84,6 +121,10 @@ export default function EmployeeCompanyFormPage() {
       cancelled = true
     }
   }, [isEdit, editId])
+
+  // A change already under review can't be edited on top of — there would be
+  // two competing proposals for one company.
+  const locked = company?.open_request?.status === 'pending'
 
   // Access gate: create needs `create`, edit needs `edit`.
   const requiredAction = isEdit ? 'edit' : 'create'
@@ -119,7 +160,7 @@ export default function EmployeeCompanyFormPage() {
           <p className="text-sm text-muted-foreground">
             {isEdit
               ? company?.name ?? 'Update the company record.'
-              : 'Add a company to the CRM.'}
+              : 'Add a company to the catalog.'}
           </p>
         </div>
       </div>
@@ -133,15 +174,26 @@ export default function EmployeeCompanyFormPage() {
           {error ?? 'Could not load the form.'}
         </p>
       ) : (
-        <CompanyForm
-          company={company}
-          options={options}
-          employees={employees}
-          onCancel={() => navigateTo(LIST_ROUTE)}
-          onSaved={(saved) => {
-            navigateTo(`${LIST_ROUTE}?open=${saved.id}`)
-          }}
-        />
+        <>
+          <Banner company={company} />
+          <CompanyForm
+            company={company}
+            options={options}
+            readOnly={locked}
+            canEditStatus={actions.includes('activate')}
+            onCancel={() => navigateTo(LIST_ROUTE)}
+            onSaved={(saved) => {
+              toast.success(savedMessage(company))
+              // A just-created / just-changed company is rarely in the default
+              // "approved + active" view, so land on the state it's actually in.
+              navigateTo(
+                saved.approval_status === 'approved'
+                  ? LIST_ROUTE
+                  : `${LIST_ROUTE}?approval=pending`,
+              )
+            }}
+          />
+        </>
       )}
     </div>
   )

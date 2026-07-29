@@ -1,30 +1,8 @@
 import { useState } from 'react'
-import {
-  Briefcase,
-  ChevronDown,
-  ClipboardList,
-  LayoutGrid,
-  UserRound,
-  type LucideIcon,
-} from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CatalogModule } from '@/lib/student-requests'
-
-/**
- * Same shape as employee-portal-layout's ICON_MAP: the server sends an icon
- * NAME, and only names listed here resolve — an unknown one falls back rather
- * than crashing the panel. Add new names as request modules ship.
- */
-const ICON_MAP: Record<string, LucideIcon> = {
-  UserRound,
-  ClipboardList,
-  LayoutGrid,
-  Briefcase,
-}
-
-function iconFor(name: string): LucideIcon {
-  return ICON_MAP[name] ?? LayoutGrid
-}
+import { iconFor } from './module-icons'
 
 /** `null` = no type filter ("All requests"). */
 export type TypeFilter = string | null

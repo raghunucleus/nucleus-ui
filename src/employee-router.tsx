@@ -11,7 +11,6 @@ import EmployeeAttendanceMarkPage from '@/pages/employee/attendance-mark'
 import EmployeeAttendanceMarkSessionPage from '@/pages/employee/attendance-mark-session'
 import EmployeeAcademicHolidaysPage from '@/pages/employee/academic-holidays'
 import EmployeeBirthdaysPage from '@/pages/employee/birthdays'
-import EmployeeCompaniesPage from '@/pages/employee/corporate-relations-companies'
 import EmployeeCompanyAttributesPage from '@/pages/employee/corporate-relations-company-attributes'
 import EmployeeCompanyFormPage from '@/pages/employee/corporate-relations-company-form'
 import EmployeeCompanyManagementPage from '@/pages/employee/corporate-relations-company-management'
@@ -140,10 +139,6 @@ const companyManagementRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/corporate-relations/company-management',
   component: EmployeeCompanyManagementPage,
-  validateSearch: (search: Record<string, unknown>) => {
-    const raw = Number(search.open)
-    return { open: Number.isFinite(raw) && raw > 0 ? raw : undefined }
-  },
 })
 
 const companyCreateRoute = createRoute({
@@ -156,12 +151,6 @@ const companyEditRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/corporate-relations/company-management/$companyId/edit',
   component: EmployeeCompanyFormPage,
-})
-
-const companiesRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/corporate-relations/companies',
-  component: EmployeeCompaniesPage,
 })
 
 const companyAttributesRoute = createRoute({
@@ -304,7 +293,6 @@ const routeTree = rootRoute.addChildren([
   companyManagementRoute,
   companyCreateRoute,
   companyEditRoute,
-  companiesRoute,
   companyAttributesRoute,
   driveAttributesRoute,
   drivesRoute,

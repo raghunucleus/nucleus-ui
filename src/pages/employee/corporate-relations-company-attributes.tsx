@@ -42,29 +42,38 @@ export default function EmployeeCompanyAttributesPage() {
             Company Attributes
           </h1>
           <p className="text-sm text-muted-foreground">
-            Configure the classifiers companies can be tagged with.
+            Configure the categories companies can be tagged with.
           </p>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
-        <nav className="flex gap-1 overflow-x-auto sm:flex-col sm:overflow-visible">
-          {LOOKUP_KINDS.map((k) => (
-            <button
-              key={k.key}
-              type="button"
-              onClick={() => setKind(k.key)}
-              className={cn(
-                'whitespace-nowrap rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
-                kind === k.key
-                  ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-accent hover:text-accent-foreground',
-              )}
-            >
-              {k.label}
-            </button>
-          ))}
-        </nav>
+      {/* Categories is the only kind today — the picker only earns its column
+          back if a second one is added. */}
+      <div
+        className={cn(
+          'grid gap-4',
+          LOOKUP_KINDS.length > 1 && 'sm:grid-cols-[200px_1fr]',
+        )}
+      >
+        {LOOKUP_KINDS.length > 1 && (
+          <nav className="flex gap-1 overflow-x-auto sm:flex-col sm:overflow-visible">
+            {LOOKUP_KINDS.map((k) => (
+              <button
+                key={k.key}
+                type="button"
+                onClick={() => setKind(k.key)}
+                className={cn(
+                  'whitespace-nowrap rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
+                  kind === k.key
+                    ? 'bg-primary text-primary-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground',
+                )}
+              >
+                {k.label}
+              </button>
+            ))}
+          </nav>
+        )}
 
         {/* key={kind} remounts the editor per kind, resetting its list, search
             and in-progress edits. */}

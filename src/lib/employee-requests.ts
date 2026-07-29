@@ -3,7 +3,6 @@ import { withEmployeeAuth } from './employee-auth'
 import type {
   CatalogModule,
   ItemOutcome,
-  ProfileUpdateChange,
   RequestApprover,
   RequestEvent,
   RequestStatus,
@@ -14,7 +13,7 @@ import type {
 /**
  * Employee side of the approval-requests framework: the Approvals inbox
  * (requests from students of batches the employee verifies) and the
- * employee's own My Requests (no employee-creatable types yet).
+ * employee's own My Requests.
  * Shared vocabulary (statuses, type labels, payload shapes) lives in
  * `student-requests.ts` — one source for both portals.
  */
@@ -26,17 +25,34 @@ export interface Paginated<T> {
   limit: number
 }
 
+/** Who raised a request — a student or an employee, in one shape. */
+export interface RequestRequester {
+  kind: 'student' | 'employee'
+  id: number
+  /** display_name / emp_display_name. */
+  name: string
+  /** student_id / emp_code. */
+  code: string
+  /** "B.Tech CSE · 2022" or "Assistant Professor · CSE". */
+  subtitle: string | null
+}
+
 export interface ApprovalRow {
   id: number
   request_type: RequestType
   status: RequestStatus
-  payload: { changes?: ProfileUpdateChange[] }
+  /** Type-specific — each payload renderer casts it to its own shape. */
+  payload: Record<string, unknown>
   requester_note: string | null
   decision_note: string | null
   decided_at: string | null
   decided_by: { id: number; emp_display_name: string } | null
   created_at: string
-  student: {
+  /** The routing action for employee-raised requests; null for student ones. */
+  action_key: string | null
+  requester: RequestRequester
+  /** @deprecated Read `requester`. Present on student requests only. */
+  student?: {
     id: number
     student_id: string
     display_name: string
@@ -60,6 +76,13 @@ export interface EmployeeOwnRequest {
   decision_note: string | null
   decided_at: string | null
   created_at: string
+  action_key: string | null
+}
+
+/** One of the caller's own requests, with the approver pool and history. */
+export interface EmployeeOwnRequestDetail extends EmployeeOwnRequest {
+  approvers: RequestApprover[]
+  timeline: RequestEvent[]
 }
 
 export interface ApprovalsQuery {
@@ -132,15 +155,21 @@ export function sendBackApproval(
   )
 }
 
+/**
+ * `overrides` carries type-specific edits the approver made while deciding
+ * (e.g. reassigning who owns a company job role). Opaque to this client — the
+ * type's payload renderer produces it and the server's handler validates it.
+ */
 export function decideApproval(
   id: number,
   action: DecisionAction,
   note?: string,
+  overrides?: Record<string, unknown>,
 ): Promise<ApprovalRow> {
   return withEmployeeAuth((token) =>
     apiFetch(`/employee/requests/approvals/${id}/${action}`, {
       method: 'POST',
-      body: { note: note || undefined },
+      body: { note: note || undefined, overrides },
       token,
     }),
   )
@@ -157,18 +186,48 @@ export function decideApprovalMixed(
   decisions: Record<string, ItemOutcome>,
   overall: ItemOutcome,
   note?: string,
+  overrides?: Record<string, unknown>,
 ): Promise<ApprovalRow> {
   return withEmployeeAuth((token) =>
     apiFetch(`/employee/requests/approvals/${id}/decide`, {
       method: 'POST',
-      body: { decisions, overall, note: note || undefined },
+      body: { decisions, overall, note: note || undefined, overrides },
       token,
     }),
   )
 }
 
+// --- My requests ----------------------------------------------------------
+
 export function fetchMyEmployeeRequests(): Promise<EmployeeOwnRequest[]> {
   return withEmployeeAuth((token) =>
     apiFetch('/employee/requests/mine', { token }),
+  )
+}
+
+/** One of the caller's own requests in full — the pool, the history, the payload. */
+export function fetchMyEmployeeRequest(
+  id: number,
+): Promise<EmployeeOwnRequestDetail> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`/employee/requests/mine/${id}`, { token }),
+  )
+}
+
+export function fetchMyEmployeeRequestCounts(): Promise<RequestStatusCounts> {
+  return withEmployeeAuth((token) =>
+    apiFetch('/employee/requests/mine/counts', { token }),
+  )
+}
+
+/** Withdraw one of your own requests while it is still open. */
+export function cancelMyEmployeeRequest(
+  id: number,
+): Promise<EmployeeOwnRequest> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`/employee/requests/mine/${id}/cancel`, {
+      method: 'POST',
+      token,
+    }),
   )
 }

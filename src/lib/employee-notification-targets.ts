@@ -32,7 +32,7 @@ export type EmployeeNotificationRoute =
   | '/birthdays'
   | '/id-card'
   | '/profile'
-  | '/corporate-relations/companies'
+  | '/corporate-relations/company-management'
   | '/exports'
 
 /** A TanStack-Router navigation target. */
@@ -58,6 +58,12 @@ const REGISTRY: Partial<Record<EmployeeNotificationModuleKey, ModuleResolver>> =
         if (t.type === 'request' && t.id != null) {
           return { to: '/requests/approvals', search: { open: Number(t.id) } }
         }
+        // A decision on YOUR OWN request. Deliberately a different target from
+        // 'request': the raiser usually isn't an approver, so sending them to
+        // the Approvals inbox would 404 the fetch on arrival.
+        if (t.type === 'my-request' && t.id != null) {
+          return { to: '/requests/mine', search: { open: Number(t.id) } }
+        }
         return null
       },
     },
@@ -67,7 +73,9 @@ const REGISTRY: Partial<Record<EmployeeNotificationModuleKey, ModuleResolver>> =
     birthdays: { home: { to: '/birthdays' } },
     'id-card': { home: { to: '/id-card' } },
     profile: { home: { to: '/profile' } },
-    'corporate-relations': { home: { to: '/corporate-relations/companies' } },
+    'corporate-relations': {
+      home: { to: '/corporate-relations/company-management' },
+    },
     exports: {
       home: { to: '/exports' },
       resolve: (t) => {

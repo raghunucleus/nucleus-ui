@@ -71,59 +71,11 @@ export function Field({
   )
 }
 
-/** Toggle-chip multi-select over a lookup list. */
-export function ChipMultiSelect({
-  options,
-  selected,
-  onChange,
-  empty = 'No options configured yet.',
-}: {
-  options: Chip[]
-  selected: number[]
-  onChange: (ids: number[]) => void
-  empty?: string
-}) {
-  if (options.length === 0) {
-    return <p className="text-xs text-muted-foreground">{empty}</p>
-  }
-  const toggle = (id: number) =>
-    onChange(
-      selected.includes(id)
-        ? selected.filter((x) => x !== id)
-        : [...selected, id],
-    )
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {options.map((o) => {
-        const on = selected.includes(o.id)
-        return (
-          <button
-            key={o.id}
-            type="button"
-            aria-pressed={on}
-            onClick={() => toggle(o.id)}
-            className={cn(
-              'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-              on
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'bg-card hover:bg-accent hover:text-accent-foreground',
-            )}
-          >
-            {o.name}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 /**
- * Searchable multi-select over a lookup list. Unlike ChipMultiSelect (which
- * renders every option as a toggle-chip up front), this keeps the list hidden
- * behind a trigger + search popover — nothing shows until you open it — and
- * surfaces the current selection as removable chips beneath the trigger. Suits
- * long, optional catalogs (industries, roles, …) where dumping every option is
- * noisy.
+ * Searchable multi-select over a lookup list. The options stay hidden behind a
+ * trigger + search popover — nothing shows until you open it — and the current
+ * selection surfaces as removable chips beneath the trigger. Suits long,
+ * optional catalogs where dumping every option up front is noisy.
  */
 export function SearchableMultiSelect({
   options,
@@ -553,7 +505,7 @@ export function CompanyLogo({
   React.useEffect(() => setFailed(false), [logoUrl])
 
   // The image fills a fixed-size, overflow-hidden box with `object-cover` (the
-  // same treatment as the company-detail header). Using `object-cover` on a
+  // same treatment as the company list row). Using `object-cover` on a
   // sized wrapper — rather than `object-contain` on the <img> itself — keeps
   // non-square logos (wide wordmarks) filling the box instead of collapsing to
   // an invisible sliver.
@@ -669,19 +621,4 @@ export function titleCase(s: string): string {
   return s
     .replace(/[_-]/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-export function relationshipVariant(
-  status: string,
-): 'success' | 'warning' | 'muted' | 'default' {
-  switch (status) {
-    case 'strategic':
-      return 'success'
-    case 'active':
-      return 'default'
-    case 'dormant':
-      return 'warning'
-    default:
-      return 'muted'
-  }
 }

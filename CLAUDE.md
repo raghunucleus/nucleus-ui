@@ -121,7 +121,7 @@ All colors, radii, and surface treatments live as CSS variables in [src/index.cs
 - Use the two shared primitives, don't hand-roll:
   - [src/components/ui/back-button.tsx](src/components/ui/back-button.tsx) — `<BackButton label onClick />`, the one standardized back control (ghost button + `ArrowLeft`). Put the navigation in `onClick` (router `useNavigate` / the `navigateTo` helper) — never `window.location`.
   - [src/components/ui/sticky-header.tsx](src/components/ui/sticky-header.tsx) — `<StickyHeader className>` wraps the pinned region with `sticky top-0 z-10 bg-background`. Supply padding, a `border-b` divider, and `space-y-*` via `className`.
-- The pinned bar **must be opaque** (`bg-background` — the employee portal is light-only) so scrolled content doesn't bleed through, and use `z-10` so it stays below popovers/sheets (`z-50`). Reference: [src/components/corporate-relations/company-detail.tsx](src/components/corporate-relations/company-detail.tsx) pins its back button + header card + `TabBar` together.
+- The pinned bar **must be opaque** (`bg-background` — the employee portal is light-only) so scrolled content doesn't bleed through, and use `z-10` so it stays below popovers/sheets (`z-50`). Reference: [src/pages/employee/drive-management-drive-detail.tsx](src/pages/employee/drive-management-drive-detail.tsx) pins its back button + header + `TabBar` together.
 
 ## What NOT to do
 

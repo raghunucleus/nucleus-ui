@@ -1,167 +1,133 @@
-import { Building2, Loader2, Upload } from 'lucide-react'
+import { Building2, Loader2, Plus, Trash2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
-import { Combobox } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import {
-  Field,
-  NativeSelect,
-  SearchableMultiSelect,
-  Textarea,
-  titleCase,
-} from '@/components/corporate-relations/bits'
+import { EmployeePicker } from '@/components/employee/employee-picker'
+import { Field, SearchableMultiSelect } from '@/components/corporate-relations/bits'
 import { ApiError } from '@/lib/api'
 import {
   createCompany,
   updateCompany,
   uploadCompanyLogo,
-  type AssignableEmployee,
   type CompanyDetail,
   type CompanyPayload,
   type FormOptions,
-  type Surface,
 } from '@/lib/corporate-relations'
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024
 
-interface FS {
-  name: string
-  short_name: string
-  website: string
-  linkedin_url: string
-  description: string
-  founded_year: string
-  glassdoor_rating: string
-  general_email: string
-  general_phone: string
-  ownership_type: string
-  tier: string
-  relationship_status: string
-  partnership_since: string
-  gstin: string
-  cin: string
-  pan: string
-  registration_number: string
-  package_min: string
-  package_max: string
-  offers_internships: boolean
-  offers_ppo: boolean
-  responsible_employee_id: string
-  address_line1: string
-  address_line2: string
-  city: string
-  state: string
-  country: string
-  pincode: string
-  category_ids: number[]
-  industry_ids: number[]
-  type_ids: number[]
-  size_ids: number[]
-  source_ids: number[]
-  hiring_mode_ids: number[]
-  role_ids: number[]
-  tag_ids: number[]
-  eligible_branch_ids: number[]
+/** A job-role row. `uid` is a stable local key so React survives reordering. */
+interface RoleDraft {
+  uid: string
+  id: number | null
+  role_name: string
+  responsible_employee_id: number | null
 }
 
-const ids = (list: { id: number }[] | undefined) => (list ?? []).map((x) => x.id)
+let uidCounter = 0
+const nextUid = () => `r${++uidCounter}`
 
-function initial(c: CompanyDetail | null): FS {
+interface FS {
+  name: string
+  website: string
+  category_ids: number[]
+  roles: RoleDraft[]
+  is_active: boolean
+}
+
+function initial(c: CompanyDetail | null, defaultOwnerId: number | null): FS {
+  const roles: RoleDraft[] =
+    c && c.roles.length > 0
+      ? c.roles.map((r) => ({
+          uid: nextUid(),
+          id: r.id,
+          role_name: r.role_name,
+          responsible_employee_id: r.responsible_employee?.id ?? null,
+        }))
+      : // New company (or a grandfathered one with no roles): start with one
+        // row owned by whoever is filling the form in.
+        [
+          {
+            uid: nextUid(),
+            id: null,
+            role_name: '',
+            responsible_employee_id: defaultOwnerId,
+          },
+        ]
+
   return {
     name: c?.name ?? '',
-    short_name: c?.short_name ?? '',
     website: c?.website ?? '',
-    linkedin_url: c?.linkedin_url ?? '',
-    description: c?.description ?? '',
-    founded_year: c?.founded_year ? String(c.founded_year) : '',
-    glassdoor_rating: c?.glassdoor_rating ?? '',
-    general_email: c?.general_email ?? '',
-    general_phone: c?.general_phone ?? '',
-    ownership_type: c?.ownership_type ?? '',
-    tier: c?.tier ?? '',
-    relationship_status: c?.relationship_status ?? 'prospect',
-    partnership_since: c?.partnership_since ?? '',
-    gstin: c?.gstin ?? '',
-    cin: c?.cin ?? '',
-    pan: c?.pan ?? '',
-    registration_number: c?.registration_number ?? '',
-    package_min: c?.package_min ?? '',
-    package_max: c?.package_max ?? '',
-    offers_internships: c?.offers_internships ?? false,
-    offers_ppo: c?.offers_ppo ?? false,
-    responsible_employee_id: c?.responsible_employee
-      ? String(c.responsible_employee.id)
-      : '',
-    address_line1: c?.address_line1 ?? '',
-    address_line2: c?.address_line2 ?? '',
-    city: c?.city ?? '',
-    state: c?.state ?? '',
-    country: c?.country ?? '',
-    pincode: c?.pincode ?? '',
-    category_ids: ids(c?.categories),
-    industry_ids: ids(c?.industries),
-    type_ids: ids(c?.types),
-    size_ids: ids(c?.sizes),
-    source_ids: ids(c?.sources),
-    hiring_mode_ids: ids(c?.hiring_modes),
-    role_ids: ids(c?.roles),
-    tag_ids: ids(c?.tags),
-    eligible_branch_ids: ids(c?.eligible_branches),
+    category_ids: (c?.categories ?? []).map((x) => x.id),
+    roles,
+    // A company awaiting approval has no status yet; the first approval makes
+    // it active, so that is the sensible proposal.
+    is_active: c?.is_active ?? true,
   }
 }
 
 const s = (v: string) => (v.trim() === '' ? null : v.trim())
-const n = (v: string) => (v.trim() === '' ? null : Number(v))
 
 /**
- * Full-width company create/edit form body. Create vs edit is keyed on whether
- * a `company` is passed. Rendered inside the dedicated full-screen form route
- * (see `corporate-relations-company-form.tsx`) and inline on the Overview tab.
+ * Company create/edit form: name, URL, logo, categories, and the job roles the
+ * company recruits for with the employee accountable for each.
  *
- * `surface` routes the save (manager vs officer endpoint). On the officer
- * surface the name is locked (`lockName`) and the responsible-officer field is
- * hidden (`showAssignment=false`) — the server enforces both regardless.
- * `embedded` drops the sticky full-bleed footer so it sits inside a card.
- *
- * `showLogo` (default `!embedded`) renders an inline logo picker. The logo lives
- * behind a dedicated multipart endpoint that needs an existing company id, so the
- * picked file is staged and uploaded right after create/update returns — the only
- * point at which an id exists. The embedded Overview usage keeps it off because the
- * detail header already carries its own "Logo" button.
+ * Nothing here is applied directly to an APPROVED company — saving stages the
+ * whole proposal on an approval request and the caller says so. For a company
+ * that isn't live yet the row is written immediately and re-sent for approval.
+ * The form itself doesn't branch on that; the server decides, and `banner`
+ * carries the right message.
  */
 export function CompanyForm({
   company,
   options,
-  employees,
+  readOnly = false,
+  canEditStatus = false,
   onSaved,
   onCancel,
-  surface = 'management',
-  lockName = false,
-  showAssignment = surface === 'management',
-  embedded = false,
-  showLogo = !embedded,
 }: {
   company: CompanyDetail | null
   options: FormOptions
-  employees: AssignableEmployee[]
+  /** A pending request is being reviewed — show the values, take no edits. */
+  readOnly?: boolean
+  /** The `activate` grant; without it the Active switch is display-only. */
+  canEditStatus?: boolean
   onSaved: (saved: CompanyDetail) => void
   onCancel: () => void
-  surface?: Surface
-  lockName?: boolean
-  showAssignment?: boolean
-  embedded?: boolean
-  showLogo?: boolean
 }) {
-  const [f, setF] = useState<FS>(() => initial(company))
+  const [f, setF] = useState<FS>(() => initial(company, options.me?.id ?? null))
   const [busy, setBusy] = useState(false)
   const set = <K extends keyof FS>(k: K, v: FS[K]) =>
     setF((prev) => ({ ...prev, [k]: v }))
 
-  // Staged logo file + preview. Preview seeds from the server URL on edit; once a
-  // new file is picked we show a local blob URL (revoked on replace/unmount).
+  const patchRole = (uid: string, partial: Partial<RoleDraft>) =>
+    setF((prev) => ({
+      ...prev,
+      roles: prev.roles.map((r) => (r.uid === uid ? { ...r, ...partial } : r)),
+    }))
+  const addRole = () =>
+    setF((prev) => ({
+      ...prev,
+      roles: [
+        ...prev.roles,
+        {
+          uid: nextUid(),
+          id: null,
+          role_name: '',
+          // Same default as the first row — the person adding the role owns it
+          // until someone says otherwise.
+          responsible_employee_id: options.me?.id ?? null,
+        },
+      ],
+    }))
+  const removeRole = (uid: string) =>
+    setF((prev) => ({ ...prev, roles: prev.roles.filter((r) => r.uid !== uid) }))
+
+  // Staged logo file + preview. Preview seeds from the server URL on edit; once
+  // a new file is picked we show a local blob URL (revoked on replace/unmount).
   const fileRef = useRef<HTMLInputElement>(null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(
@@ -190,63 +156,62 @@ export function CompanyForm({
     setLogoPreview(url)
   }
 
-  function payload(): CompanyPayload {
+  function validate(): string | null {
+    if (!f.name.trim()) return 'Company name is required.'
+    if (f.roles.length === 0) return 'Add at least one job role.'
+    const seen = new Set<string>()
+    for (const r of f.roles) {
+      if (!r.role_name.trim()) return 'Give every job role a name.'
+      if (r.responsible_employee_id === null) {
+        return `Pick who is responsible for "${r.role_name.trim()}".`
+      }
+      const key = r.role_name.trim().toLowerCase()
+      if (seen.has(key)) {
+        return `"${r.role_name.trim()}" is listed twice — job roles must be distinct.`
+      }
+      seen.add(key)
+    }
+    return null
+  }
+
+  function payload(logoKey?: string): CompanyPayload {
     return {
       name: f.name.trim(),
-      short_name: s(f.short_name),
       website: s(f.website),
-      linkedin_url: s(f.linkedin_url),
-      description: s(f.description),
-      founded_year: n(f.founded_year),
-      glassdoor_rating: n(f.glassdoor_rating),
-      general_email: s(f.general_email),
-      general_phone: s(f.general_phone),
-      ownership_type: s(f.ownership_type),
-      tier: s(f.tier),
-      relationship_status: f.relationship_status,
-      partnership_since: s(f.partnership_since),
-      gstin: s(f.gstin),
-      cin: s(f.cin),
-      pan: s(f.pan),
-      registration_number: s(f.registration_number),
-      package_min: n(f.package_min),
-      package_max: n(f.package_max),
-      offers_internships: f.offers_internships,
-      offers_ppo: f.offers_ppo,
-      responsible_employee_id: f.responsible_employee_id
-        ? Number(f.responsible_employee_id)
-        : null,
-      address_line1: s(f.address_line1),
-      address_line2: s(f.address_line2),
-      city: s(f.city),
-      state: s(f.state),
-      country: s(f.country),
-      pincode: s(f.pincode),
       category_ids: f.category_ids,
-      industry_ids: f.industry_ids,
-      type_ids: f.type_ids,
-      size_ids: f.size_ids,
-      source_ids: f.source_ids,
-      hiring_mode_ids: f.hiring_mode_ids,
-      role_ids: f.role_ids,
-      tag_ids: f.tag_ids,
-      eligible_branch_ids: f.eligible_branch_ids,
+      roles: f.roles.map((r) => ({
+        id: r.id,
+        role_name: r.role_name.trim(),
+        responsible_employee_id: r.responsible_employee_id!,
+      })),
+      ...(logoKey ? { logo_key: logoKey } : {}),
+      is_active: f.is_active,
     }
   }
 
   async function save() {
-    if (!f.name.trim()) {
-      toast.error('Company name is required.')
+    const problem = validate()
+    if (problem) {
+      toast.error(problem)
       return
     }
     setBusy(true)
     try {
+      // A NEW company has no id to upload against, so its logo is staged after
+      // the row exists. An existing one uploads first, because the returned key
+      // has to ride in the payload to be approved with everything else.
+      let stagedKey: string | undefined
+      if (logoFile && company) {
+        stagedKey = (await uploadCompanyLogo(company.id, logoFile)).logo_key
+      }
+
       const saved = company
-        ? await updateCompany(company.id, payload(), surface)
+        ? await updateCompany(company.id, payload(stagedKey))
         : await createCompany(payload())
-      // The company row now exists, so the logo can be uploaded against its id.
-      // A logo failure must not read as "company not saved" — the row persisted.
-      if (logoFile) {
+
+      if (logoFile && !company) {
+        // A logo failure must not read as "company not saved" — the row (and
+        // its approval request) persisted.
         try {
           await uploadCompanyLogo(saved.id, logoFile)
         } catch (logoErr) {
@@ -259,7 +224,6 @@ export function CompanyForm({
           return
         }
       }
-      toast.success(company ? 'Company updated.' : 'Company created.')
       onSaved(saved)
     } catch (err) {
       toast.error(
@@ -272,348 +236,171 @@ export function CompanyForm({
     }
   }
 
-  const officerOptions = employees.map((e) => ({
-    value: e.id,
-    label: e.name,
-    sublabel: e.emp_code,
-  }))
+  const disabled = busy || readOnly
+  const statusLocked = company !== null && company.approval_status !== 'approved'
 
   return (
     <div className="space-y-6">
-      <Section title="Identity">
-        {showLogo && (
-          <div className="flex items-center gap-4">
-            <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted">
-              {logoPreview ? (
-                <img
-                  src={logoPreview}
-                  alt=""
-                  className="size-full object-cover"
-                />
-              ) : (
-                <Building2 className="size-6 text-muted-foreground" />
-              )}
-            </div>
-            <div className="space-y-1">
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={onLogoPicked}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={busy}
-                onClick={() => fileRef.current?.click()}
-              >
-                <Upload className="size-4" /> Upload logo
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                PNG or JPG, up to 2 MB.
-                {company ? '' : ' Saved when you create the company.'}
-              </p>
-            </div>
+      <section className="space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted">
+            {logoPreview ? (
+              <img src={logoPreview} alt="" className="size-full object-cover" />
+            ) : (
+              <Building2 className="size-6 text-muted-foreground" />
+            )}
           </div>
-        )}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label={lockName ? 'Name' : 'Name *'} htmlFor="f-name">
+          <div className="space-y-1">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onLogoPicked}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={() => fileRef.current?.click()}
+            >
+              <Upload className="size-4" /> Upload logo
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              PNG or JPG, up to 2 MB. Applied when the change is approved.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Name *" htmlFor="f-name">
             <Input
               id="f-name"
               value={f.name}
+              disabled={disabled}
               onChange={(e) => set('name', e.target.value)}
-              disabled={lockName}
             />
           </Field>
-          <Field label="Short name" htmlFor="f-short">
-            <Input
-              id="f-short"
-              value={f.short_name}
-              onChange={(e) => set('short_name', e.target.value)}
-            />
-          </Field>
-          <Field label="Website" htmlFor="f-web">
+          <Field label="URL" htmlFor="f-web">
             <Input
               id="f-web"
               value={f.website}
+              disabled={disabled}
+              placeholder="https://…"
               onChange={(e) => set('website', e.target.value)}
             />
           </Field>
-          <Field label="LinkedIn" htmlFor="f-li">
-            <Input
-              id="f-li"
-              value={f.linkedin_url}
-              onChange={(e) => set('linkedin_url', e.target.value)}
+          <Field label="Categories">
+            <SearchableMultiSelect
+              options={options.categories}
+              selected={f.category_ids}
+              onChange={(v) => set('category_ids', v)}
+              placeholder="Select…"
+              searchPlaceholder="Search categories…"
             />
           </Field>
-          <Field label="Founded year" htmlFor="f-founded">
-            <Input
-              id="f-founded"
-              type="number"
-              value={f.founded_year}
-              onChange={(e) => set('founded_year', e.target.value)}
-            />
-          </Field>
-          <Field label="Glassdoor rating" htmlFor="f-gd">
-            <Input
-              id="f-gd"
-              type="number"
-              step="0.1"
-              value={f.glassdoor_rating}
-              onChange={(e) => set('glassdoor_rating', e.target.value)}
-            />
-          </Field>
-          <Field label="General email" htmlFor="f-gemail">
-            <Input
-              id="f-gemail"
-              value={f.general_email}
-              onChange={(e) => set('general_email', e.target.value)}
-            />
-          </Field>
-          <Field label="General phone" htmlFor="f-gphone">
-            <Input
-              id="f-gphone"
-              value={f.general_phone}
-              onChange={(e) => set('general_phone', e.target.value)}
-            />
-          </Field>
-        </div>
-        <Field label="Description" htmlFor="f-desc">
-          <Textarea
-            id="f-desc"
-            value={f.description}
-            onChange={(e) => set('description', e.target.value)}
-          />
-        </Field>
-      </Section>
-
-      <Section title="Relationship & ownership">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {showAssignment && (
-            <Field label="Responsible officer" htmlFor="f-resp">
-              <Combobox
-                id="f-resp"
-                value={
-                  f.responsible_employee_id
-                    ? Number(f.responsible_employee_id)
-                    : null
-                }
-                options={officerOptions}
-                onChange={(v) =>
-                  set('responsible_employee_id', v === null ? '' : String(v))
-                }
-                placeholder="— unassigned —"
-                searchPlaceholder="Search officers…"
-                clearLabel="— unassigned —"
-                emptyMessage="No officers found"
+          <Field
+            label="Status"
+            hint={
+              statusLocked
+                ? 'Set once the company is approved.'
+                : 'Deactivating also needs approval.'
+            }
+          >
+            <label className="flex h-9 items-center gap-2 text-sm">
+              <Switch
+                checked={f.is_active}
+                disabled={disabled || statusLocked || !canEditStatus}
+                onCheckedChange={(v) => set('is_active', v)}
               />
-            </Field>
+              {f.is_active ? 'Active' : 'Inactive'}
+            </label>
+          </Field>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Job roles
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Who is accountable for each role this company recruits for.
+            </p>
+          </div>
+          {!readOnly && (
+            <Button type="button" variant="outline" size="sm" onClick={addRole}>
+              <Plus className="size-4" /> Add role
+            </Button>
           )}
-          <Field label="Relationship status" htmlFor="f-rel">
-            <NativeSelect
-              id="f-rel"
-              value={f.relationship_status}
-              onChange={(e) => set('relationship_status', e.target.value)}
+        </div>
+
+        <div className="space-y-3">
+          {f.roles.map((r, i) => (
+            <div
+              key={r.uid}
+              className="space-y-3 rounded-lg border bg-background p-3"
             >
-              {options.relationship_statuses.map((r) => (
-                <option key={r} value={r}>
-                  {titleCase(r)}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-          <Field label="Partner since" htmlFor="f-psince">
-            <Input
-              id="f-psince"
-              type="date"
-              value={f.partnership_since}
-              onChange={(e) => set('partnership_since', e.target.value)}
-            />
-          </Field>
-          <Field label="Ownership" htmlFor="f-own">
-            <NativeSelect
-              id="f-own"
-              value={f.ownership_type}
-              onChange={(e) => set('ownership_type', e.target.value)}
-            >
-              <option value="">—</option>
-              {options.ownership_types.map((o) => (
-                <option key={o} value={o}>
-                  {titleCase(o)}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
-          <Field label="Tier" htmlFor="f-tier">
-            <NativeSelect
-              id="f-tier"
-              value={f.tier}
-              onChange={(e) => set('tier', e.target.value)}
-            >
-              <option value="">—</option>
-              {options.tiers.map((t) => (
-                <option key={t} value={t}>
-                  Tier {t}
-                </option>
-              ))}
-            </NativeSelect>
-          </Field>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Role {i + 1}
+                </span>
+                {/* The last row can't be removed — a company must always have
+                    someone accountable for it. */}
+                {!readOnly && f.roles.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:text-destructive"
+                    aria-label={`Remove role ${i + 1}`}
+                    onClick={() => removeRole(r.uid)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Job role" htmlFor={`role-${r.uid}`}>
+                  <Input
+                    id={`role-${r.uid}`}
+                    value={r.role_name}
+                    disabled={disabled}
+                    placeholder="e.g. Software Engineer"
+                    onChange={(e) =>
+                      patchRole(r.uid, { role_name: e.target.value })
+                    }
+                  />
+                </Field>
+                <Field label="Responsible person" htmlFor={`own-${r.uid}`}>
+                  <EmployeePicker
+                    id={`own-${r.uid}`}
+                    value={r.responsible_employee_id}
+                    disabled={disabled}
+                    onChange={(v) =>
+                      patchRole(r.uid, { responsible_employee_id: v })
+                    }
+                  />
+                </Field>
+              </div>
+            </div>
+          ))}
         </div>
-      </Section>
+      </section>
 
-      <Section title="Placement">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="CTC min (LPA)" htmlFor="f-pmin">
-            <Input
-              id="f-pmin"
-              type="number"
-              step="0.1"
-              value={f.package_min}
-              onChange={(e) => set('package_min', e.target.value)}
-            />
-          </Field>
-          <Field label="CTC max (LPA)" htmlFor="f-pmax">
-            <Input
-              id="f-pmax"
-              type="number"
-              step="0.1"
-              value={f.package_max}
-              onChange={(e) => set('package_max', e.target.value)}
-            />
-          </Field>
+      {!readOnly && (
+        <div className="sticky -bottom-6 z-10 -mx-4 -mb-6 flex justify-end gap-2 border-t bg-background px-4 pb-6 pt-4 sm:-mx-6 sm:px-6">
+          <Button variant="outline" onClick={onCancel} disabled={busy}>
+            Cancel
+          </Button>
+          <Button onClick={() => void save()} disabled={busy}>
+            {busy && <Loader2 className="size-4 animate-spin" />}
+            {company ? 'Send changes for approval' : 'Create and send for approval'}
+          </Button>
         </div>
-        <div className="flex flex-wrap gap-6">
-          <label className="flex items-center gap-2 text-sm">
-            <Switch
-              checked={f.offers_internships}
-              onCheckedChange={(v) => set('offers_internships', v)}
-            />
-            Offers internships
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <Switch
-              checked={f.offers_ppo}
-              onCheckedChange={(v) => set('offers_ppo', v)}
-            />
-            Offers PPO
-          </label>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Multi label="Roles offered" options={options.roles} value={f.role_ids} onChange={(v) => set('role_ids', v)} />
-          <Multi label="Hiring modes" options={options.hiring_modes} value={f.hiring_mode_ids} onChange={(v) => set('hiring_mode_ids', v)} />
-          <Multi label="Eligible branches" options={options.departments} value={f.eligible_branch_ids} onChange={(v) => set('eligible_branch_ids', v)} />
-        </div>
-      </Section>
-
-      <Section title="Classification">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Multi label="Categories" options={options.categories} value={f.category_ids} onChange={(v) => set('category_ids', v)} />
-          <Multi label="Industries" options={options.industries} value={f.industry_ids} onChange={(v) => set('industry_ids', v)} />
-          <Multi label="Company types" options={options.types} value={f.type_ids} onChange={(v) => set('type_ids', v)} />
-          <Multi label="Company sizes" options={options.sizes} value={f.size_ids} onChange={(v) => set('size_ids', v)} />
-          <Multi label="Sources" options={options.sources} value={f.source_ids} onChange={(v) => set('source_ids', v)} />
-          <Multi label="Tags" options={options.tags} value={f.tag_ids} onChange={(v) => set('tag_ids', v)} />
-        </div>
-      </Section>
-
-      <Section title="Legal & registration">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="GSTIN" htmlFor="f-gst">
-            <Input id="f-gst" value={f.gstin} onChange={(e) => set('gstin', e.target.value)} />
-          </Field>
-          <Field label="CIN" htmlFor="f-cin">
-            <Input id="f-cin" value={f.cin} onChange={(e) => set('cin', e.target.value)} />
-          </Field>
-          <Field label="PAN" htmlFor="f-pan">
-            <Input id="f-pan" value={f.pan} onChange={(e) => set('pan', e.target.value)} />
-          </Field>
-          <Field label="Registration no." htmlFor="f-reg">
-            <Input id="f-reg" value={f.registration_number} onChange={(e) => set('registration_number', e.target.value)} />
-          </Field>
-        </div>
-      </Section>
-
-      <Section title="Address">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Line 1" htmlFor="f-a1">
-            <Input id="f-a1" value={f.address_line1} onChange={(e) => set('address_line1', e.target.value)} />
-          </Field>
-          <Field label="Line 2" htmlFor="f-a2">
-            <Input id="f-a2" value={f.address_line2} onChange={(e) => set('address_line2', e.target.value)} />
-          </Field>
-          <Field label="City" htmlFor="f-city">
-            <Input id="f-city" value={f.city} onChange={(e) => set('city', e.target.value)} />
-          </Field>
-          <Field label="State" htmlFor="f-state">
-            <Input id="f-state" value={f.state} onChange={(e) => set('state', e.target.value)} />
-          </Field>
-          <Field label="Country" htmlFor="f-country">
-            <Input id="f-country" value={f.country} onChange={(e) => set('country', e.target.value)} />
-          </Field>
-          <Field label="Pincode" htmlFor="f-pin">
-            <Input id="f-pin" value={f.pincode} onChange={(e) => set('pincode', e.target.value)} />
-          </Field>
-        </div>
-      </Section>
-
-      <div
-        className={
-          embedded
-            ? 'flex justify-end gap-2 border-t pt-4'
-            : 'sticky -bottom-6 z-10 -mx-4 -mb-6 flex justify-end gap-2 border-t bg-background px-4 pb-6 pt-4 sm:-mx-6 sm:px-6'
-        }
-      >
-        <Button variant="outline" onClick={onCancel} disabled={busy}>
-          Cancel
-        </Button>
-        <Button onClick={() => void save()} disabled={busy}>
-          {busy && <Loader2 className="size-4 animate-spin" />}
-          {company ? 'Save changes' : 'Create company'}
-        </Button>
-      </div>
+      )}
     </div>
-  )
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <section className="space-y-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h3>
-      {children}
-    </section>
-  )
-}
-
-function Multi({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string
-  options: { id: number; name: string }[]
-  value: number[]
-  onChange: (ids: number[]) => void
-}) {
-  return (
-    <Field label={label}>
-      <SearchableMultiSelect
-        options={options}
-        selected={value}
-        onChange={onChange}
-        placeholder="Select…"
-        searchPlaceholder={`Search ${label.toLowerCase()}…`}
-      />
-    </Field>
   )
 }
