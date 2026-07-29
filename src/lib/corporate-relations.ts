@@ -256,5 +256,66 @@ export function setAttributeStatus(
   )
 }
 
+// --- Passout years --------------------------------------------------------
+
+/**
+ * The passout-year master, configured from the same screen but on its own
+ * endpoints: these rows carry no free-text name (the label is derived from the
+ * year server-side) and hold an academic date window.
+ */
+export interface PassoutYearValue {
+  id: number
+  passout_year: number
+  /** Derived server-side, e.g. "2025-2026". Never sent up. */
+  display_year: string
+  /** 'YYYY-MM-DD'. */
+  start_date: string
+  end_date: string
+  is_active: boolean
+}
+
+/** The dates a year carries; omit one and the server fills its default. */
+export interface PassoutYearWindow {
+  start_date?: string
+  end_date?: string
+}
+
+const PASSOUT_ROOT = '/employee/corporate-relations/passout-years'
+
+export function listPassoutYears(): Promise<PassoutYearValue[]> {
+  return withEmployeeAuth((token) => apiFetch(PASSOUT_ROOT, { token }))
+}
+
+export function createPassoutYear(
+  body: { passout_year: number } & PassoutYearWindow,
+): Promise<PassoutYearValue> {
+  return withEmployeeAuth((token) =>
+    apiFetch(PASSOUT_ROOT, { method: 'POST', body, token }),
+  )
+}
+
+/** An edit moves the window only — the year is fixed once the row exists. */
+export function updatePassoutYear(
+  id: number,
+  body: PassoutYearWindow,
+): Promise<PassoutYearValue> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${PASSOUT_ROOT}/${id}`, { method: 'PATCH', body, token }),
+  )
+}
+
+export function setPassoutYearStatus(
+  id: number,
+  isActive: boolean,
+): Promise<PassoutYearValue> {
+  return withEmployeeAuth((token) =>
+    apiFetch(`${PASSOUT_ROOT}/${id}/status`, {
+      method: 'PATCH',
+      body: { is_active: isActive },
+      token,
+    }),
+  )
+}
+
 /** Absolute URL for an API path (rarely needed; kept for parity with peers). */
 export const apiUrl = (path: string) => `${API_BASE_URL}${path}`
