@@ -46,6 +46,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -3006,17 +3007,18 @@ function RescheduleSheet({
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-3">
             <div className="space-y-1.5">
-              <Label htmlFor="resched-date">Move to date</Label>
-              <Input
-                id="resched-date"
-                type="date"
+              <Label>Move to date</Label>
+              {/* The app's calendar, not `<input type="date">` — Chromium
+                  dismisses the native popup on month navigation in the sheet. */}
+              <DatePicker
                 value={targetDate}
                 min={todayIso}
-                onChange={(e) => {
-                  setTargetDate(e.target.value)
+                onChange={(iso) => {
+                  setTargetDate(iso)
                   setTargetPeriodId(null)
                 }}
-                className="h-9 w-44"
+                aria-label="Move to date"
+                className="w-44 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start"
               />
               {session && session.session_date < todayIso ? (
                 <p className="text-[11px] text-muted-foreground">

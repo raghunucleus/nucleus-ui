@@ -21,6 +21,7 @@ export function DatePicker({
   hideIcon,
   clearable,
   placeholder = 'Pick a date',
+  min,
   'aria-label': ariaLabel = 'Pick a date',
 }: {
   /** 'YYYY-MM-DD' — the empty string means "nothing picked" (see `clearable`). */
@@ -35,6 +36,8 @@ export function DatePicker({
    * offers a Clear action that reports `onChange('')`. */
   clearable?: boolean
   placeholder?: string
+  /** Earliest pickable 'YYYY-MM-DD' — days before it render disabled. */
+  min?: string
   'aria-label'?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -93,6 +96,7 @@ export function DatePicker({
         >
           <CalendarPanel
             value={value}
+            min={min}
             onPick={(iso) => {
               onChange(iso)
               setOpen(false)
@@ -123,12 +127,15 @@ export function CalendarPanel({
   value,
   onPick,
   onClear,
+  min,
 }: {
   /** Selected 'YYYY-MM-DD' — '' or `null` for no selection. */
   value: string | null
   onPick: (iso: string) => void
   /** When provided, a Clear action sits opposite Today in the footer. */
   onClear?: () => void
+  /** Earliest pickable 'YYYY-MM-DD' — days before it render disabled. */
+  min?: string
 }) {
   // Month the grid is currently showing — seeded from the selected date.
   const [viewMonth, setViewMonth] = useState(() =>
@@ -189,15 +196,19 @@ export function CalendarPanel({
           const isSelected = iso === value
           const isToday = sameDay(cell, today)
           const isOutside = cell.getMonth() !== viewMonth.getMonth()
+          // ISO dates compare lexicographically, so a plain < is a date test.
+          const isDisabled = min !== undefined && iso < min
           return (
             <button
               key={iso}
               type="button"
+              disabled={isDisabled}
               onClick={() => onPick(iso)}
               className={cn(
                 'flex h-8 items-center justify-center rounded-md text-sm tabular-nums transition-colors',
                 'hover:bg-accent hover:text-accent-foreground',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60',
+                'disabled:pointer-events-none disabled:text-muted-foreground/30',
                 isOutside && !isSelected && 'text-muted-foreground/50',
                 isToday &&
                   !isSelected &&
@@ -229,6 +240,7 @@ export function CalendarPanel({
           type="button"
           variant="ghost"
           size="sm"
+          disabled={min !== undefined && toIso(new Date()) < min}
           onClick={() => onPick(toIso(new Date()))}
         >
           Today

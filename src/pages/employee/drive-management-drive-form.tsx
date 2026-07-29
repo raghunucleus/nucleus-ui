@@ -21,6 +21,7 @@ import {
 } from '@/components/drive-management/scoped-fields'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { LazyRichTextEditor } from '@/components/ui/lazy-rich-text-editor'
 import type { RichTextValue } from '@/components/ui/lazy-rich-text-editor'
@@ -659,20 +660,46 @@ export default function EmployeeDriveFormPage() {
               placeholder="Phone"
             />
           </Field>
-          <Field label="Registration end (date & time)" htmlFor="drive-reg-end">
-            <Input
-              id="drive-reg-end"
-              type="datetime-local"
-              value={registrationEnd}
-              onChange={(e) => setRegistrationEnd(e.target.value)}
-            />
+          {/* The app's calendar, not native date/datetime-local inputs —
+              Chromium dismisses the native popup on month navigation. The
+              deadline splits into a date picker + a time input; a first date
+              pick defaults the time to 23:59 (it is a deadline). */}
+          <Field label="Registration end (date & time)">
+            <div className="flex gap-2">
+              <DatePicker
+                value={registrationEnd.slice(0, 10)}
+                clearable
+                onChange={(iso) =>
+                  setRegistrationEnd(
+                    iso
+                      ? `${iso}T${registrationEnd.slice(11, 16) || '23:59'}`
+                      : '',
+                  )
+                }
+                aria-label="Registration end date"
+                className="flex-1 [&>button]:h-9 [&>button]:w-full [&>button]:justify-start"
+              />
+              <Input
+                type="time"
+                value={registrationEnd.slice(11, 16)}
+                disabled={!registrationEnd}
+                onChange={(e) =>
+                  setRegistrationEnd(
+                    `${registrationEnd.slice(0, 10)}T${e.target.value || '23:59'}`,
+                  )
+                }
+                aria-label="Registration end time"
+                className="w-28"
+              />
+            </div>
           </Field>
-          <Field label="Drive date" htmlFor="drive-date">
-            <Input
-              id="drive-date"
-              type="date"
+          <Field label="Drive date">
+            <DatePicker
               value={driveDate}
-              onChange={(e) => setDriveDate(e.target.value)}
+              onChange={setDriveDate}
+              clearable
+              aria-label="Drive date"
+              className="[&>button]:h-9 [&>button]:w-full [&>button]:justify-start"
             />
           </Field>
         </div>

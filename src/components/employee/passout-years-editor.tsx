@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { formatDate } from '@/components/corporate-relations/bits'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import type { PassoutYearValue } from '@/lib/corporate-relations'
@@ -138,26 +139,21 @@ function DraftFields({
           </span>
         </>
       )}
-      <Input
-        type="date"
+      {/* The app's calendar, not `<input type="date">` — Chromium dismisses
+          the native popup on month navigation here. */}
+      <DatePicker
         value={draft.start}
-        autoFocus={autoFocus && yearLocked}
-        onChange={(e) =>
-          onChange({ ...draft, start: e.target.value, datesTouched: true })
-        }
-        onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
+        onChange={(iso) => onChange({ ...draft, start: iso, datesTouched: true })}
+        placeholder="Start date"
         aria-label="Start date"
-        className="h-8 w-40"
+        className="w-40 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start"
       />
-      <Input
-        type="date"
+      <DatePicker
         value={draft.end}
-        onChange={(e) =>
-          onChange({ ...draft, end: e.target.value, datesTouched: true })
-        }
-        onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
+        onChange={(iso) => onChange({ ...draft, end: iso, datesTouched: true })}
+        placeholder="End date"
         aria-label="End date"
-        className="h-8 w-40"
+        className="w-40 [&>button]:h-8 [&>button]:w-full [&>button]:justify-start"
       />
     </>
   )
