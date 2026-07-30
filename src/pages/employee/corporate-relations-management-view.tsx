@@ -35,7 +35,6 @@ import {
   AppliedFilterChip,
   CompanyLogo,
   CompanyStatusBadge,
-  Field,
   GroupHeaderRow,
   NativeSelect,
   TabBar,
@@ -831,34 +830,52 @@ export default function EmployeeManagementViewPage() {
         </div>
       ) : (
         <>
-          {/* The year drives both tabs, and the applied chips sit above the tab
-              bar so a filter is visible from the charts as well as the list. */}
+          {/* One row: the tabs, and the two controls that drive BOTH of them —
+              the year and the filters. The divider lives on this wrapper so it
+              spans the full width instead of underlining only the tabs. The
+              applied chips sit below it, visible from the charts as well as the
+              list. */}
           <div className="space-y-3">
-            <div className="flex flex-wrap items-end gap-3">
-              <Field label="Passout year" className="w-56">
+            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b">
+              <TabBar
+                tabs={TABS}
+                active={tab}
+                onChange={(k) => setTab(k as PanelTab)}
+                className="border-b-0"
+              />
+              <div className="flex items-center gap-2 pb-1.5">
+                {/* The value reads as its own label ("2026-2027"), so the
+                    visible caption is dropped for height — named for screen
+                    readers instead. */}
+                <label htmlFor="mv-year" className="sr-only">
+                  Passout year
+                </label>
                 <Combobox
+                  id="mv-year"
+                  className="w-40"
                   value={yearId}
                   options={scope.years.map((y) => ({
                     value: y.id,
                     label: y.display_year,
                   }))}
                   onChange={changeYear}
-                  placeholder="Select a passout year…"
+                  placeholder="Passout year…"
                   searchPlaceholder="Search years…"
                 />
-              </Field>
-              <Button
-                variant={activeFilterCount > 0 ? 'default' : 'outline'}
-                onClick={() => setFiltersOpen(true)}
-              >
-                <SlidersHorizontal className="size-4" />
-                Filters
-                {activeFilterCount > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {activeFilterCount}
-                  </Badge>
-                )}
-              </Button>
+                <Button
+                  size="sm"
+                  variant={activeFilterCount > 0 ? 'default' : 'outline'}
+                  onClick={() => setFiltersOpen(true)}
+                >
+                  <SlidersHorizontal className="size-4" />
+                  Filters
+                  {activeFilterCount > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {activeFilterCount}
+                    </Badge>
+                  )}
+                </Button>
+              </div>
             </div>
 
             {appliedChips.length > 0 && (
@@ -880,12 +897,6 @@ export default function EmployeeManagementViewPage() {
                 </button>
               </div>
             )}
-
-            <TabBar
-              tabs={TABS}
-              active={tab}
-              onChange={(k) => setTab(k as PanelTab)}
-            />
           </div>
 
           {loading && !rows ? (
