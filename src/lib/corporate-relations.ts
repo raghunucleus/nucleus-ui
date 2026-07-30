@@ -528,12 +528,21 @@ export function upsertCrViewRecord(
 // over the in-memory row set, a flattened header-sentinel display list, and
 // collapsed groups contributing only their header.
 
-export type CrViewGroupBy = 'none' | 'status' | 'follow_up' | 'company'
+/**
+ * `'cr'` groups by the responsible employee and is Management View only — CR
+ * View never offers it, since every one of its rows has the same CR. The row
+ * type carries `responsible_employee` optionally for exactly that reason.
+ */
+export type CrViewGroupBy = 'none' | 'status' | 'follow_up' | 'company' | 'cr'
 
-export interface CrViewGroup {
+/**
+ * Generic over the row so a Management View row keeps its extra fields through
+ * grouping — the table's cell renderer needs `responsible_employee` back out.
+ */
+export interface CrViewGroup<T extends CrViewRow = CrViewRow> {
   key: string
   label: string
-  rows: CrViewRow[]
+  rows: T[]
 }
 
 /** What the status dimension needs from scope: master order + the default. */
@@ -545,9 +554,9 @@ export interface CrViewGroupContext {
 }
 
 /** A grouped table body: header sentinels + the rows of every open group. */
-export type CrViewDisplayItem =
+export type CrViewDisplayItem<T extends CrViewRow = CrViewRow> =
   | { kind: 'header'; key: string; label: string; count: number; open: boolean }
-  | { kind: 'row'; row: CrViewRow }
+  | { kind: 'row'; row: T }
 
 /** Local calendar date as 'YYYY-MM-DD' — the format records store. */
 function crIsoDate(d: Date): string {
@@ -589,13 +598,17 @@ function followUpBucketKey(
  * sort keeps working inside buckets; only the group order is fixed per
  * dimension.
  */
-export function groupCrViewRows(
-  rows: CrViewRow[],
+export function groupCrViewRows<
+  T extends CrViewRow & {
+    responsible_employee?: { id: number; emp_display_name: string }
+  },
+>(
+  rows: T[],
   groupBy: Exclude<CrViewGroupBy, 'none'>,
   ctx: CrViewGroupContext,
-): CrViewGroup[] {
-  const buckets = new Map<string, CrViewGroup>()
-  const push = (key: string, label: string, row: CrViewRow) => {
+): CrViewGroup<T>[] {
+  const buckets = new Map<string, CrViewGroup<T>>()
+  const push = (key: string, label: string, row: T) => {
     const bucket = buckets.get(key)
     if (bucket) bucket.rows.push(row)
     else buckets.set(key, { key, label, rows: [row] })
@@ -603,6 +616,17 @@ export function groupCrViewRows(
 
   if (groupBy === 'company') {
     for (const r of rows) push(String(r.company.id), r.company.name, r)
+    return [...buckets.values()].sort((a, b) => a.label.localeCompare(b.label))
+  }
+
+  if (groupBy === 'cr') {
+    // Management View only. The field is always present on those rows; the
+    // fallback bucket exists so the type stays honest rather than asserted.
+    for (const r of rows) {
+      const cr = r.responsible_employee
+      if (cr) push(String(cr.id), cr.emp_display_name, r)
+      else push('null', 'Unassigned', r)
+    }
     return [...buckets.values()].sort((a, b) => a.label.localeCompare(b.label))
   }
 
@@ -645,16 +669,20 @@ export function groupCrViewRows(
   return FOLLOW_UP_BUCKETS.flatMap((b) => buckets.get(b.key) ?? [])
 }
 
-export function buildCrViewDisplayItems(
-  rows: CrViewRow[],
+export function buildCrViewDisplayItems<
+  T extends CrViewRow & {
+    responsible_employee?: { id: number; emp_display_name: string }
+  },
+>(
+  rows: T[],
   groupBy: CrViewGroupBy,
   collapsed: ReadonlySet<string>,
   ctx: CrViewGroupContext,
-): CrViewDisplayItem[] {
+): CrViewDisplayItem<T>[] {
   if (groupBy === 'none') {
     return rows.map((row) => ({ kind: 'row' as const, row }))
   }
-  const items: CrViewDisplayItem[] = []
+  const items: CrViewDisplayItem<T>[] = []
   for (const g of groupCrViewRows(rows, groupBy, ctx)) {
     const open = !collapsed.has(g.key)
     items.push({

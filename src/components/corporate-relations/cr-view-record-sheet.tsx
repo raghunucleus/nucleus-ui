@@ -59,9 +59,11 @@ function withSaved(options: Chip[], saved: Chip[]): Chip[] {
 /**
  * The record's reference code (`CR-2027-00042`) with copy-to-clipboard — the
  * stable key for this exact (role × year) conversation, quotable in drive
- * management and anywhere else. Shown ONLY here in the edit sheet.
+ * management and anywhere else. Shown ONLY in a full-row sheet — never in the
+ * table — which is why Management View's read-only sheet imports this one rather
+ * than growing its own.
  */
-function RecordCodePill({ code }: { code: string }) {
+export function RecordCodePill({ code }: { code: string }) {
   const [copied, setCopied] = React.useState(false)
   const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   React.useEffect(

@@ -20,11 +20,20 @@ function errMsg(e: unknown, fallback: string): string {
   return e instanceof ApiError || e instanceof Error ? e.message : fallback
 }
 
+/** How the dialog loads its entries — injectable so both surfaces can use it. */
+export type StatusHistoryFetcher = (
+  jobRoleId: number,
+  passoutYearId: number,
+) => Promise<CrViewStatusLogEntry[]>
+
 /**
  * Read-only status history for one (job role × passout year) — every status
  * transition with when and by whom, newest first. Opened from the small clock
  * icon in the Current status cell; the log itself is written server-side
  * inside the record's save transaction, so this is purely a viewer.
+ *
+ * `fetcher` defaults to CR View's own (self-scoped) endpoint. Management View
+ * passes its unscoped one — the rendering is identical, only the reach differs.
  */
 export function CrViewStatusHistoryDialog({
   open,
@@ -37,6 +46,7 @@ export function CrViewStatusHistoryDialog({
   subtitle: string
   jobRoleId: number
   passoutYearId: number
+  fetcher?: StatusHistoryFetcher
   onOpenChange: (open: boolean) => void
 }) {
   // Unmounted while closed, so each open MOUNTS fresh and fetches anew —
@@ -50,12 +60,14 @@ function StatusHistoryBody({
   subtitle,
   jobRoleId,
   passoutYearId,
+  fetcher = getCrViewStatusHistory,
   onOpenChange,
 }: {
   title: string
   subtitle: string
   jobRoleId: number
   passoutYearId: number
+  fetcher?: StatusHistoryFetcher
   onOpenChange: (open: boolean) => void
 }) {
   const [loading, setLoading] = React.useState(true)
@@ -64,7 +76,7 @@ function StatusHistoryBody({
 
   React.useEffect(() => {
     let cancelled = false
-    getCrViewStatusHistory(jobRoleId, passoutYearId)
+    fetcher(jobRoleId, passoutYearId)
       .then((rows) => {
         if (!cancelled) setEntries(rows)
       })
@@ -77,7 +89,7 @@ function StatusHistoryBody({
     return () => {
       cancelled = true
     }
-  }, [jobRoleId, passoutYearId])
+  }, [fetcher, jobRoleId, passoutYearId])
 
   return (
     <Dialog open onOpenChange={onOpenChange}>

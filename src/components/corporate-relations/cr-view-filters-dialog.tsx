@@ -15,90 +15,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import type { Chip, CrViewScope } from '@/lib/corporate-relations'
-
-/**
- * Rows whose record has no status (or no record at all) render the master's
- * default status — this sentinel id lets the status facet select exactly those.
- * Safe because lookup ids are positive serials.
- */
-export const NO_STATUS_ID = 0
-
-export const FOLLOW_UP_PRESETS = [
-  'any',
-  'overdue',
-  'today',
-  'this_week',
-  'this_month',
-  'not_set',
-] as const
-export type FollowUpPreset = (typeof FOLLOW_UP_PRESETS)[number]
-
-const FOLLOW_UP_LABELS: Record<FollowUpPreset, string> = {
-  any: 'Any',
-  overdue: 'Overdue',
-  today: 'Today',
-  this_week: 'This week',
-  this_month: 'This month',
-  not_set: 'Not set',
-}
-
-export const TRI_STATE = ['any', 'yes', 'no'] as const
-export type TriState = (typeof TRI_STATE)[number]
-
-const TRI_STATE_LABELS: Record<TriState, string> = {
-  any: 'Any',
-  yes: 'Yes',
-  no: 'No',
-}
-
-/** The committed facet state. Empty arrays / 'any' = that facet is off. */
-export interface CrViewFilters {
-  category_ids: number[]
-  relationship_type_ids: number[]
-  /** May contain {@link NO_STATUS_ID} for "no status recorded". */
-  status_ids: number[]
-  designation_ids: number[]
-  programme_ids: number[]
-  location_ids: number[]
-  follow_up: FollowUpPreset
-  has_contacts: TriState
-  has_remarks: TriState
-}
-
-export const EMPTY_CR_VIEW_FILTERS: CrViewFilters = {
-  category_ids: [],
-  relationship_type_ids: [],
-  status_ids: [],
-  designation_ids: [],
-  programme_ids: [],
-  location_ids: [],
-  follow_up: 'any',
-  has_contacts: 'any',
-  has_remarks: 'any',
-}
-
-/** How many facets are active, for the Filters button / dialog badges. */
-export function countActiveCrViewFilters(f: CrViewFilters): number {
-  let n = 0
-  if (f.category_ids.length > 0) n++
-  if (f.relationship_type_ids.length > 0) n++
-  if (f.status_ids.length > 0) n++
-  if (f.designation_ids.length > 0) n++
-  if (f.programme_ids.length > 0) n++
-  if (f.location_ids.length > 0) n++
-  if (f.follow_up !== 'any') n++
-  if (f.has_contacts !== 'any') n++
-  if (f.has_remarks !== 'any') n++
-  return n
-}
-
-export function followUpLabel(p: FollowUpPreset): string {
-  return FOLLOW_UP_LABELS[p]
-}
-
-export function triStateLabel(t: TriState): string {
-  return TRI_STATE_LABELS[t]
-}
+import {
+  EMPTY_CR_VIEW_FILTERS,
+  FOLLOW_UP_PRESETS,
+  NO_STATUS_ID,
+  TRI_STATE,
+  countActiveCrViewFilters,
+  followUpLabel,
+  triStateLabel,
+  type CrViewFilters,
+} from '@/lib/cr-view-filters'
 
 /**
  * The CR View facet dialog. Unlike the Drives filter dialog there is no
@@ -111,6 +37,8 @@ export function CrViewFiltersDialog({
   onOpenChange,
   scope,
   categoryOptions,
+  crOptions,
+  companyOptions,
   value,
   onChange,
 }: {
@@ -119,6 +47,13 @@ export function CrViewFiltersDialog({
   scope: CrViewScope
   /** Derived from the loaded rows — the only place categories exist here. */
   categoryOptions: Chip[]
+  /**
+   * Management View only — every CR who owns a job role. Omitted on CR View,
+   * where the answer is always "you", and the facet is then not rendered at all.
+   */
+  crOptions?: Chip[]
+  /** Management View only — the companies present in the loaded rows. */
+  companyOptions?: Chip[]
   value: CrViewFilters
   onChange: (f: CrViewFilters) => void
 }) {
@@ -144,6 +79,33 @@ export function CrViewFiltersDialog({
         </DialogHeader>
 
         <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+          {(crOptions || companyOptions) && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {crOptions && (
+                <FilterField label="CR (responsible person)">
+                  <SearchableMultiSelect
+                    options={crOptions}
+                    selected={value.cr_ids}
+                    onChange={(v) => patch('cr_ids', v)}
+                    placeholder="Any CR"
+                    noOptions="No job roles are assigned yet."
+                  />
+                </FilterField>
+              )}
+              {companyOptions && (
+                <FilterField label="Company">
+                  <SearchableMultiSelect
+                    options={companyOptions}
+                    selected={value.company_ids}
+                    onChange={(v) => patch('company_ids', v)}
+                    placeholder="Any company"
+                    noOptions="No companies loaded."
+                  />
+                </FilterField>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FilterField label="Current status">
               <SearchableMultiSelect
@@ -191,7 +153,7 @@ export function CrViewFiltersDialog({
                 selected={value.category_ids}
                 onChange={(v) => patch('category_ids', v)}
                 placeholder="Any category"
-                noOptions="No categories on your companies."
+                noOptions="No categories on these companies."
               />
             </FilterField>
           </div>

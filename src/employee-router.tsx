@@ -15,6 +15,7 @@ import EmployeeCompanyAttributesPage from '@/pages/employee/corporate-relations-
 import EmployeeCompanyFormPage from '@/pages/employee/corporate-relations-company-form'
 import EmployeeCompanyManagementPage from '@/pages/employee/corporate-relations-company-management'
 import EmployeeCrViewPage from '@/pages/employee/corporate-relations-cr-view'
+import EmployeeManagementViewPage from '@/pages/employee/corporate-relations-management-view'
 import EmployeeJobRolesPage from '@/pages/employee/corporate-relations-job-roles'
 import EmployeeDriveAttributesPage from '@/pages/employee/drive-management-drive-attributes'
 import EmployeeDriveDetailPage from '@/pages/employee/drive-management-drive-detail'
@@ -176,6 +177,14 @@ const crViewRoute = createRoute({
   component: EmployeeCrViewPage,
 })
 
+// The same rows unscoped, read-only, plus the insight charts. Byte-identical to
+// `web_route` on corporate_relations.management_view.view, for the same reason.
+const managementViewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/corporate-relations/management-view',
+  component: EmployeeManagementViewPage,
+})
+
 const driveAttributesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/drive-management/drive-attributes',
@@ -313,6 +322,7 @@ const routeTree = rootRoute.addChildren([
   companyAttributesRoute,
   jobRolesRoute,
   crViewRoute,
+  managementViewRoute,
   driveAttributesRoute,
   drivesRoute,
   driveCreateRoute,

@@ -540,6 +540,29 @@ export function CompanyLogo({
   )
 }
 
+/**
+ * A company's approval / active pill — the same three words every corporate
+ * relations list uses. `is_active` is a TRI-state: `null` means the company is
+ * still awaiting approval, so it is checked before the boolean.
+ */
+export function CompanyStatusBadge({
+  company,
+}: {
+  company: { approval_status: string; is_active: boolean | null }
+}) {
+  if (company.approval_status === 'rejected') {
+    return <Badge variant="destructive">Rejected</Badge>
+  }
+  if (company.is_active === null) {
+    return <Badge variant="warning">Awaiting approval</Badge>
+  }
+  return (
+    <Badge variant={company.is_active ? 'success' : 'destructive'}>
+      {company.is_active ? 'Active' : 'Inactive'}
+    </Badge>
+  )
+}
+
 /** Read-only chip row for the detail view. */
 export function ChipRow({ items }: { items: Chip[] | { id: number; name: string }[] }) {
   if (!items || items.length === 0) {
@@ -562,18 +585,26 @@ export interface TabDef {
   icon?: React.ComponentType<{ className?: string }>
 }
 
-/** Bottom-bordered button-row tab switcher (shared inner tabs). */
+/**
+ * Bottom-bordered button-row tab switcher (shared inner tabs).
+ *
+ * `className` exists so a caller that puts the bar in a row with other controls
+ * can move the divider to that row's wrapper (`border-b-0` here, `border-b`
+ * there) instead of underlining only the tabs.
+ */
 export function TabBar({
   tabs,
   active,
   onChange,
+  className,
 }: {
   tabs: TabDef[]
   active: string
   onChange: (key: string) => void
+  className?: string
 }) {
   return (
-    <div className="flex gap-1 overflow-x-auto border-b">
+    <div className={cn('flex gap-1 overflow-x-auto border-b', className)}>
       {tabs.map((t) => {
         const on = t.key === active
         const Icon = t.icon
