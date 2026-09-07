@@ -6,6 +6,7 @@ import {
 
 import { EmployeePortalLayout } from '@/components/employee-portal-layout'
 import NotFound from '@/pages/not-found'
+import EmployeeAttendanceAnalyticsPage from '@/pages/employee/attendance-analytics'
 import EmployeeAttendanceHistoryPage from '@/pages/employee/attendance-history'
 import EmployeeAttendanceMarkPage from '@/pages/employee/attendance-mark'
 import EmployeeAttendanceMarkSessionPage from '@/pages/employee/attendance-mark-session'
@@ -118,6 +119,16 @@ const attendanceHistoryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/attendance/history',
   component: EmployeeAttendanceHistoryPage,
+})
+
+// Group-wise analytics for an attendance-group incharge. The path must stay
+// byte-identical to `web_route` on attendance.incharge.analytics.view — the
+// sidebar links straight at the catalog value, so a mismatch renders a nav
+// item that 404s.
+const attendanceAnalyticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/attendance/analytics',
+  component: EmployeeAttendanceAnalyticsPage,
 })
 
 const inchargeTemplatesRoute = createRoute({
@@ -313,6 +324,7 @@ const routeTree = rootRoute.addChildren([
   attendanceMarkRoute,
   attendanceMarkSessionRoute,
   attendanceHistoryRoute,
+  attendanceAnalyticsRoute,
   inchargeTemplatesRoute,
   inchargeTemplateDetailRoute,
   inchargeScheduleRoute,

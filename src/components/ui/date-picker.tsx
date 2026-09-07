@@ -18,6 +18,7 @@ export function DatePicker({
   onChange,
   disabled,
   className,
+  triggerClassName,
   hideIcon,
   clearable,
   placeholder = 'Pick a date',
@@ -28,7 +29,12 @@ export function DatePicker({
   value: string
   onChange: (iso: string) => void
   disabled?: boolean
+  /** Styles the positioning wrapper — NOT the trigger. A width here sets the
+   *  popover's anchor box; use `triggerClassName` to size the button itself. */
   className?: string
+  /** Extra classes for the trigger button, e.g. `h-9 w-full` to make it fill
+   *  and line up with `h-9` neighbours in a toolbar row. */
+  triggerClassName?: string
   /** Drop the leading calendar glyph — useful when several pickers sit inside
    * a single labelled group and one shared icon already conveys the affordance. */
   hideIcon?: boolean
@@ -75,7 +81,7 @@ export function DatePicker({
         aria-controls={open ? popoverId : undefined}
         aria-label={ariaLabel}
         onClick={() => setOpen((v) => !v)}
-        className="gap-2 font-normal"
+        className={cn('gap-2 font-normal', triggerClassName)}
       >
         {hideIcon ? null : (
           <CalendarDays className="size-4 text-muted-foreground" />
