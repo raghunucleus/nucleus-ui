@@ -12,8 +12,13 @@ export type TypeFilter = string | null
  * type filters the list beside it; the status chips above are global and do
  * not recount.
  *
- * Modules start expanded — there is one module with one type today, and a
- * collapsed-by-default tree would hide the only thing in it.
+ * The catalog arrives already filtered to the request types the caller's portal
+ * can raise, so every branch here is one that can actually return rows. Whether
+ * the tree is worth a column at all is the page's call — see `my-requests.tsx`,
+ * which hides it while there is only one type to pick.
+ *
+ * Modules start expanded — the tree is shallow, and a collapsed-by-default one
+ * would hide the very leaves it exists to offer.
  */
 export function RequestModulesPanel({
   catalog,

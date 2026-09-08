@@ -32,6 +32,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ApiError } from '@/lib/api'
+import { cn } from '@/lib/utils'
 import {
   cancelRequest,
   fetchMyRequest,
@@ -74,8 +75,9 @@ function formatDate(iso: string | null): string {
  * an existing request, not a new one, so it is actioned here via the profile
  * module's own dialog in edit mode.
  *
- * Layout: Modules panel (filters by request type) beside the list; status chips
- * across the top are GLOBAL and do not recount as the panel filters.
+ * Layout: Modules panel (filters by request type) beside the list, shown only
+ * once there is more than one type to pick; status chips across the top are
+ * GLOBAL and do not recount as the panel filters.
  */
 export default function MyRequests() {
   const signOut = useAuthStore((state) => state.signOut)
@@ -139,11 +141,20 @@ export default function MyRequests() {
     )
   }
 
+  // The catalog arrives filtered to what a student can raise, which today is a
+  // single type. A one-choice filter is not a filter, so the panel only earns
+  // its column once a second type exists — same rule the phone already applies.
+  const typeLeafCount = catalog.reduce((n, m) => n + m.types.length, 0)
+  const showModules = typeLeafCount > 1
+  // Without the panel there is no way to clear a type filter, so don't let one
+  // stay active behind its own UI.
+  const activeType = showModules ? typeFilter : null
+
   const visible = requests
     .filter(
       (r) =>
         (statusFilter === 'all' || r.status === statusFilter) &&
-        (typeFilter === null || r.request_type === typeFilter) &&
+        (activeType === null || r.request_type === activeType) &&
         inDateRange(r.created_at, dateRange),
     )
     .sort((a, b) => {
@@ -176,12 +187,19 @@ export default function MyRequests() {
         onSortChange={setSortDir}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start">
-        <RequestModulesPanel
-          catalog={catalog}
-          value={typeFilter}
-          onChange={setTypeFilter}
-        />
+      <div
+        className={cn(
+          'grid gap-4',
+          showModules && 'lg:grid-cols-[16rem_minmax(0,1fr)] lg:items-start',
+        )}
+      >
+        {showModules && (
+          <RequestModulesPanel
+            catalog={catalog}
+            value={typeFilter}
+            onChange={setTypeFilter}
+          />
+        )}
 
         <div className="min-w-0">
           {visible.length === 0 ? (
@@ -195,7 +213,9 @@ export default function MyRequests() {
               description={
                 requests.length === 0
                   ? 'Requests you raise from other screens will show up here.'
-                  : 'Try a different status, module or date.'
+                  : showModules
+                    ? 'Try a different status, module or date.'
+                    : 'Try a different status or date.'
               }
             />
           ) : (
