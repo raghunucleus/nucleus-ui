@@ -9,6 +9,11 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { BrandPanel } from '@/components/auth/brand-panel'
 import { ApiError } from '@/lib/api'
 import {
+  acceptInvite,
+  validateInvite,
+  type InviteInfo,
+} from '@/lib/account-invite'
+import {
   clearTokens,
   storeTokens,
   studentChangePassword,
@@ -38,15 +43,31 @@ export default function StudentLogin({
   const [resetToken] = useState(() =>
     new URLSearchParams(window.location.search).get('reset-token'),
   )
+  // …and an account-invitation email with ?invite-token=…
+  const [inviteToken] = useState(() =>
+    new URLSearchParams(window.location.search).get('invite-token'),
+  )
 
   useEffect(() => {
-    document.title = 'Sign in — Nucleus'
-  }, [])
+    document.title = inviteToken
+      ? 'Set your password — Nucleus'
+      : 'Sign in — Nucleus'
+  }, [inviteToken])
 
   if (resetToken) {
     return (
       <PageShell>
         <ResetPasswordPanel token={resetToken} />
+      </PageShell>
+    )
+  }
+
+  // Checked after the reset branch: holding both links at once is not a real
+  // situation, and a reset is the more recent, more deliberate action.
+  if (inviteToken) {
+    return (
+      <PageShell>
+        <AcceptInvitePanel token={inviteToken} />
       </PageShell>
     )
   }
@@ -577,6 +598,182 @@ function ResetPasswordPanel({ token }: { token: string }) {
 
       <Button type="submit" size="lg" className="w-full" disabled={submitting}>
         {submitting ? 'Saving…' : 'Update password'}
+      </Button>
+    </form>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Account invitation ("set your password")
+// ---------------------------------------------------------------------------
+
+type InvitePhase =
+  | { k: 'checking' }
+  | { k: 'invalid'; reason: 'expired' | 'invalid' }
+  | { k: 'ready'; info: InviteInfo }
+  | { k: 'done' }
+
+/**
+ * Landing screen for an emailed invitation link.
+ *
+ * Unlike the reset panel this has a lookup phase: the token is checked before
+ * the form renders, so the student is greeted by name and an expired link says
+ * so up front instead of after they have typed a password twice.
+ */
+function AcceptInvitePanel({ token }: { token: string }) {
+  const [phase, setPhase] = useState<InvitePhase>({ k: 'checking' })
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    validateInvite(token)
+      .then((res) => {
+        if (cancelled) return
+        setPhase(
+          res.valid
+            ? { k: 'ready', info: res }
+            : { k: 'invalid', reason: res.reason },
+        )
+      })
+      // A transport failure is indistinguishable from a bad token here, and
+      // "invalid" is the safe thing to show — it points at the same recovery.
+      .catch(() => {
+        if (!cancelled) setPhase({ k: 'invalid', reason: 'invalid' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
+  async function handleSubmit(event: { preventDefault: () => void }) {
+    event.preventDefault()
+    if (submitting) return
+    setError(null)
+
+    const policyError = validateNewPassword(newPassword)
+    if (policyError) return setError(policyError)
+    if (newPassword !== confirmPassword) {
+      return setError('The passwords do not match.')
+    }
+
+    setSubmitting(true)
+    try {
+      await withGlobalLoader(
+        () => acceptInvite(token, newPassword),
+        'Setting your password…',
+      )
+      setPhase({ k: 'done' })
+    } catch (err) {
+      setError(toMessage(err))
+      setSubmitting(false)
+    }
+  }
+
+  if (phase.k === 'checking') {
+    return (
+      <div className="space-y-4 text-center">
+        <div
+          className="mx-auto size-8 animate-spin rounded-full border-2 border-muted border-t-primary"
+          aria-hidden="true"
+        />
+        <p className="text-sm text-muted-foreground">
+          Checking your invitation…
+        </p>
+      </div>
+    )
+  }
+
+  if (phase.k === 'invalid') {
+    return (
+      <div className="space-y-5 text-center">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {phase.reason === 'expired'
+            ? 'This invitation link has expired'
+            : "This invitation link isn't valid"}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {phase.reason === 'expired'
+            ? 'Invitation links are single-use and time-limited. Use “Forgot password?” on the sign-in screen, or ask your college office to send a new invitation.'
+            : 'It may already have been used, or replaced by a newer invitation. Use “Forgot password?” on the sign-in screen, or ask your college office to send a new one.'}
+        </p>
+        <Button
+          type="button"
+          size="lg"
+          className="w-full"
+          onClick={() => {
+            window.location.href = window.location.pathname
+          }}
+        >
+          Go to sign in
+        </Button>
+      </div>
+    )
+  }
+
+  if (phase.k === 'done') {
+    return (
+      <div className="space-y-5 text-center">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Your account is ready
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Your password has been set. You can now sign in with it.
+        </p>
+        <Button
+          type="button"
+          size="lg"
+          className="w-full"
+          onClick={() => {
+            window.location.href = window.location.pathname
+          }}
+        >
+          Go to sign in
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <form className="space-y-5" onSubmit={handleSubmit}>
+      <header className="space-y-2">
+        <h2 className="text-3xl font-semibold tracking-tight">
+          Welcome, {phase.info.display_name}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Choose a password to finish setting up your Nucleus student account.
+          You will sign in with student ID{' '}
+          <span className="font-medium text-foreground">
+            {phase.info.login_identifier}
+          </span>
+          .
+        </p>
+      </header>
+
+      {error && <FormError message={error} />}
+
+      <PasswordInput
+        id="invite-new-password"
+        label="New password"
+        value={newPassword}
+        onChange={setNewPassword}
+        autoComplete="new-password"
+        autoFocus
+      />
+      <PasswordInput
+        id="invite-confirm-password"
+        label="Confirm new password"
+        value={confirmPassword}
+        onChange={setConfirmPassword}
+        autoComplete="new-password"
+      />
+
+      <PasswordHint />
+
+      <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+        {submitting ? 'Saving…' : 'Set password'}
       </Button>
     </form>
   )

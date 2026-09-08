@@ -16,13 +16,16 @@ interface EmployeeAuthState {
 }
 
 /**
- * Optimistic initial state — a password-reset link must reach the login flow
- * even if stale tokens linger, so `?reset-token=...` forces a signed-out start.
+ * Optimistic initial state — an emailed password link must reach the login flow
+ * even if stale tokens linger, so both `?reset-token=...` (password reset) and
+ * `?invite-token=...` (account invitation) force a signed-out start.
  */
 function initialAuthed(): boolean {
+  const params = new URLSearchParams(window.location.search)
   return (
     hasStoredEmployeeSession() &&
-    !new URLSearchParams(window.location.search).has('reset-token')
+    !params.has('reset-token') &&
+    !params.has('invite-token')
   )
 }
 
