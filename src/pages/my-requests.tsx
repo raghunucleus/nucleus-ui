@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import {
   ArrowLeft,
@@ -11,6 +11,11 @@ import { toast } from 'sonner'
 
 import { PageHeader } from '@/components/portal-layout'
 import { ApproversList } from '@/components/requests/approvers-list'
+import {
+  LeaveAttachments,
+  LeaveFacts,
+  LeaveReason,
+} from '@/components/requests/payloads/leave-bits'
 import { RequestChanges } from '@/components/requests/request-changes'
 import {
   RequestFilters,
@@ -40,11 +45,14 @@ import {
   fetchMyRequests,
   fetchRequestCatalog,
   labelForChange,
+  leaveRequestSummary,
   OPEN_REQUEST_STATUSES,
   REQUEST_STATUS_LABELS,
   requestStatusVariant,
   typeLabel,
   type CatalogModule,
+  type LeaveApplyPayload,
+  type LeaveCancelPayload,
   type RequestStatusCounts,
   type StudentRequest,
   type StudentRequestDetail,
@@ -56,6 +64,98 @@ function errMsg(err: unknown, fallback: string): string {
     ? err.message
     : fallback
 }
+
+/**
+ * Per-type rendering for the student's own requests. The screen owns the
+ * chrome (status, notes, history, approvers, cancel); the type owns the
+ * one-line summary, the body, and where "Revise & resubmit" goes — the same
+ * split the employee Approvals screen makes with `payloads/`.
+ */
+/** The editor screens a sent-back request can be revised on. */
+type ReviseRoute = '/profile/request-changes' | '/leaves'
+
+interface StudentRequestRenderer {
+  summary: (r: StudentRequest) => string
+  /** Heading above the body. */
+  bodyTitle: string
+  Body: (props: { detail: StudentRequestDetail }) => ReactNode
+  /** Revise destination for a sent-back request; null when the type has none. */
+  reviseTo: (
+    detail: StudentRequestDetail,
+  ) => { to: ReviseRoute; search: Record<string, unknown> } | null
+}
+
+const profileUpdateRenderer: StudentRequestRenderer = {
+  summary: (r) => (r.payload.changes ?? []).map(labelForChange).join(', '),
+  bodyTitle: 'Requested changes',
+  Body: ({ detail }) => <RequestChanges changes={detail.payload.changes ?? []} />,
+  // Revising is a continuation of this request, actioned on the profile
+  // module's full-screen form in edit mode.
+  reviseTo: (d) => ({ to: '/profile/request-changes', search: { edit: d.id } }),
+}
+
+const leaveApplyRenderer: StudentRequestRenderer = {
+  summary: (r) => leaveRequestSummary(r.payload as unknown as LeaveApplyPayload),
+  bodyTitle: 'Leave details',
+  Body: ({ detail }) => {
+    const p = detail.payload as unknown as LeaveApplyPayload
+    return (
+      <div className="space-y-3">
+        <LeaveFacts
+          leaveType={p.leave_type?.name ?? 'Leave'}
+          from={p.from_date}
+          to={p.to_date}
+          days={p.days}
+        />
+        <LeaveReason reason={p.reason} />
+        <LeaveAttachments attachments={p.attachments ?? []} />
+      </div>
+    )
+  },
+  // The leave editor lives on the Leaves screen; `edit` is the LEAVE id.
+  reviseTo: (d) => {
+    const leaveId = (d.payload as unknown as LeaveApplyPayload).leave_id
+    return leaveId ? { to: '/leaves', search: { edit: leaveId } } : null
+  },
+}
+
+const leaveCancelRenderer: StudentRequestRenderer = {
+  summary: (r) =>
+    `Cancel · ${leaveRequestSummary(r.payload as unknown as LeaveCancelPayload)}`,
+  bodyTitle: 'Cancellation details',
+  Body: ({ detail }) => {
+    const p = detail.payload as unknown as LeaveCancelPayload
+    return (
+      <div className="space-y-3">
+        <LeaveFacts
+          leaveType={p.leave_type?.name ?? 'Leave'}
+          from={p.from_date}
+          to={p.to_date}
+          days={p.days}
+        />
+        <LeaveReason label="Reason for cancelling" reason={p.reason} />
+      </div>
+    )
+  },
+  // A sent-back cancellation is withdrawn and raised again from the leave.
+  reviseTo: () => null,
+}
+
+const FALLBACK_RENDERER: StudentRequestRenderer = {
+  summary: () => '—',
+  bodyTitle: 'Details',
+  Body: () => null,
+  reviseTo: () => null,
+}
+
+const RENDERERS: Record<string, StudentRequestRenderer> = {
+  profile_update: profileUpdateRenderer,
+  leave_apply: leaveApplyRenderer,
+  leave_cancel: leaveCancelRenderer,
+}
+
+const rendererFor = (type: string): StudentRequestRenderer =>
+  RENDERERS[type] ?? FALLBACK_RENDERER
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
@@ -245,7 +345,7 @@ function RequestRow({
   catalog: CatalogModule[]
   onOpen: () => void
 }) {
-  const changes = request.payload.changes ?? []
+  const summary = rendererFor(request.request_type).summary(request)
   return (
     <Card className="overflow-hidden">
       <button
@@ -266,8 +366,8 @@ function RequestRow({
             </Badge>
           </span>
           <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-            {changes.map((c) => labelForChange(c)).join(', ')}
-            {' · '}
+            {summary}
+            {summary ? ' · ' : ''}
             {formatDate(request.created_at)}
           </span>
         </span>
@@ -329,7 +429,8 @@ function RequestDetail({
   if (error) return <ErrorState message={error} onRetry={() => void load()} />
   if (!detail) return <RequestsSkeleton />
 
-  const changes = detail.payload.changes ?? []
+  const renderer = rendererFor(detail.request_type)
+  const reviseTo = rendererFor(detail.request_type).reviseTo(detail)
   const isOpen = OPEN_REQUEST_STATUSES.includes(detail.status)
   const isSentBack = detail.status === 'sent_back'
 
@@ -366,9 +467,9 @@ function RequestDetail({
             )}
 
             <h3 className="mt-4 mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Requested changes
+              {renderer.bodyTitle}
             </h3>
-            <RequestChanges changes={changes} />
+            <renderer.Body detail={detail} />
 
             {detail.requester_note && (
               <p className="mt-3 text-xs text-muted-foreground">
@@ -387,15 +488,15 @@ function RequestDetail({
 
             {isOpen && (
               <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-4">
-                {isSentBack && (
+                {isSentBack && reviseTo && (
                   <Button
                     size="sm"
                     onClick={() =>
                       // Revising is a continuation of this request, actioned on
-                      // the profile module's full-screen form in edit mode.
+                      // the owning module's own screen in edit mode.
                       void navigate({
-                        to: '/profile/request-changes',
-                        search: { edit: detail.id },
+                        to: reviseTo.to,
+                        search: reviseTo.search,
                       })
                     }
                   >

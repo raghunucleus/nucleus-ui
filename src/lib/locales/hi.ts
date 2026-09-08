@@ -256,6 +256,7 @@ export const hi: typeof en = {
     statusLate: 'देर से',
     statusOd: 'OD',
     statusExempt: 'छूट',
+    statusLeave: 'अवकाश',
     statusCancelled: 'रद्द',
     statusUnmarked: 'अंकित नहीं',
     statusUpcoming: 'आगामी',

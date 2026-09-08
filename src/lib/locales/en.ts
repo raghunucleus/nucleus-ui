@@ -264,6 +264,7 @@ export const en = {
     statusLate: 'Late',
     statusOd: 'OD',
     statusExempt: 'Exempt',
+    statusLeave: 'Leave',
     statusCancelled: 'Cancelled',
     statusUnmarked: 'Not marked',
     statusUpcoming: 'Upcoming',

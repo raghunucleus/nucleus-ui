@@ -226,6 +226,7 @@ type StatusKind =
   | 'late'
   | 'od'
   | 'exempt'
+  | 'leave'
   | 'cancelled'
   | 'unmarked'
   | 'upcoming'
@@ -236,6 +237,7 @@ const STATUS_LABEL_KEY: Record<StatusKind, string> = {
   late: 'subject.statusLate',
   od: 'subject.statusOd',
   exempt: 'subject.statusExempt',
+  leave: 'subject.statusLeave',
   cancelled: 'subject.statusCancelled',
   unmarked: 'subject.statusUnmarked',
   upcoming: 'subject.statusUpcoming',
@@ -248,6 +250,9 @@ function derivedSessionStatus(s: SubjectSessionRow): StatusKind {
   if (s.attendance_status === 'late') return 'late'
   if (s.attendance_status === 'od') return 'od'
   if (s.attendance_status === 'exempt') return 'exempt'
+  if (s.attendance_status === 'leave') return 'leave'
+  // Unmarked but covered by an approved leave — show the leave, not "Upcoming".
+  if (s.on_leave) return 'leave'
   if (isFutureDate(s.date)) return 'upcoming'
   return 'unmarked'
 }
@@ -265,6 +270,7 @@ function StatusPill({
     late: 'bg-warning/15 text-warning',
     od: 'bg-primary/15 text-primary',
     exempt: 'bg-primary/10 text-primary',
+    leave: 'bg-icon-violet/15 text-icon-violet',
     cancelled: 'bg-muted text-muted-foreground line-through',
     unmarked: 'bg-muted text-muted-foreground',
     upcoming: 'bg-muted text-muted-foreground',

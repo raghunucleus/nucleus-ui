@@ -12,10 +12,14 @@ export type TypeFilter = string | null
  * type filters the list beside it; the status chips above are global and do
  * not recount.
  *
- * The catalog arrives already filtered to the request types the caller's portal
- * can raise, so every branch here is one that can actually return rows. Whether
- * the tree is worth a column at all is the page's call — see `my-requests.tsx`,
- * which hides it while there is only one type to pick.
+ * What the catalog contains is the caller's call, and the two employee screens
+ * want opposite things: Approvals passes every type that exists (its whole job
+ * is to receive types an employee cannot raise — student leave, profile
+ * updates), while the raiser-facing screens narrow it first — see
+ * `employee/requests-mine.tsx`, which prunes to the types that employee has
+ * actually raised so no branch is a filter that can only come back empty.
+ * Whether the tree is worth a column at all is also the page's call — see
+ * `my-requests.tsx`, which hides it while there is only one type to pick.
  *
  * Modules start expanded — the tree is shallow, and a collapsed-by-default one
  * would hide the very leaves it exists to offer.

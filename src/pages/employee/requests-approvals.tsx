@@ -182,7 +182,8 @@ function Approvals({ actions }: { actions: string[] }) {
       <header>
         <h1 className="text-xl font-semibold tracking-tight">Approvals</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Requests from students of the batches you verify.
+          Requests routed to you — from students of the batches you verify, the
+          attendance groups you are in-charge of, and approvals assigned to you.
         </p>
       </header>
 

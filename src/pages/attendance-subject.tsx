@@ -223,6 +223,7 @@ type StatusKind =
   | 'late'
   | 'od'
   | 'exempt'
+  | 'leave'
   | 'cancelled'
   | 'unmarked'
   | 'upcoming'
@@ -242,6 +243,10 @@ function derivedSessionStatus(s: SubjectSessionRow): {
   if (s.attendance_status === 'od') return { kind: 'od', label: 'OD' }
   if (s.attendance_status === 'exempt')
     return { kind: 'exempt', label: 'Exempt' }
+  if (s.attendance_status === 'leave') return { kind: 'leave', label: 'Leave' }
+  // Not marked yet, but an approved leave covers the date — show the leave
+  // rather than "Upcoming"; the teacher's mark (if any) takes over above.
+  if (s.on_leave) return { kind: 'leave', label: 'Leave' }
   if (isFutureDate(s.date)) return { kind: 'upcoming', label: 'Upcoming' }
   return { kind: 'unmarked', label: 'Not marked' }
 }
@@ -259,6 +264,7 @@ function StatusPill({
     late: 'bg-warning/15 text-warning',
     od: 'bg-primary/15 text-primary',
     exempt: 'bg-primary/10 text-primary',
+    leave: 'bg-icon-violet/15 text-icon-violet',
     cancelled: 'bg-muted text-muted-foreground line-through',
     unmarked: 'bg-muted text-muted-foreground',
     upcoming: 'bg-muted text-muted-foreground',

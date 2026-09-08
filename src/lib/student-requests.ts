@@ -24,9 +24,14 @@ export type ItemOutcome = 'approved' | 'rejected'
 
 /**
  * Every request type the framework knows. Shared by both portals: the student
- * portal only ever sees `profile_update`, but the vocabulary lives in one file.
+ * portal sees `profile_update` and the two leave types, the employee portal
+ * additionally `company_approval`, but the vocabulary lives in one file.
  */
-export type RequestType = 'profile_update' | 'company_approval'
+export type RequestType =
+  | 'profile_update'
+  | 'company_approval'
+  | 'leave_apply'
+  | 'leave_cancel'
 
 export type BadgeVariant =
   | 'default'
@@ -265,11 +270,129 @@ export function changeCertificateUrl(
     : null
 }
 
+// --- leave payloads (owned by the leaves domain server-side) -----------------
+
+export interface LeaveAttachment {
+  key: string
+  name: string
+  mime: string
+  size: number
+  /** Presigned URL — present ONLY in detail views (never stored). */
+  url?: string
+}
+
+/** What approving/cancelling a leave does to attendance — detail views only. */
+export interface LeaveImpact {
+  absent_sessions: number
+  leave_sessions: number
+  attended_sessions: number
+  upcoming_sessions: number
+  /**
+   * Cancelled classes in range — shown, never acted on. A cancelled class is
+   * not held, so it neither flips nor moves the percentage; the approver sees
+   * it so a request naming only cancelled periods doesn't look empty.
+   */
+  cancelled_sessions: number
+}
+
+export interface LeaveApplyPayload {
+  v: 1
+  /** Stamped once the `student_leaves` row exists — always present on stored requests. */
+  leave_id?: number
+  leave_type: { id: number; name: string }
+  from_date: string
+  to_date: string
+  /** Partial-day window ('HH:MM:SS'), or both null for a full day. */
+  from_time: string | null
+  to_time: string | null
+  days: number
+  reason: string | null
+  attachments: LeaveAttachment[]
+  outcome?: ItemOutcome
+  impact?: LeaveImpact
+}
+
+export interface LeaveCancelPayload {
+  v: 1
+  leave_id: number
+  leave_type: { id: number; name: string }
+  from_date: string
+  to_date: string
+  from_time: string | null
+  to_time: string | null
+  days: number
+  /** Why the student wants it cancelled. */
+  reason: string | null
+  outcome?: ItemOutcome
+  impact?: LeaveImpact
+}
+
+export const isLeaveRequestType = (type: string): boolean =>
+  type === 'leave_apply' || type === 'leave_cancel'
+
+/** "12 Sep 2026" or "12 Sep – 14 Sep 2026" — mirrors the server's copy. */
+export function formatLeaveRange(from: string, to: string): string {
+  const fmt = (iso: string, withYear: boolean) => {
+    const d = new Date(`${iso}T00:00:00`)
+    if (Number.isNaN(d.getTime())) return iso
+    return d.toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      ...(withYear ? { year: 'numeric' } : {}),
+    })
+  }
+  if (from === to) return fmt(from, true)
+  const sameYear = from.slice(0, 4) === to.slice(0, 4)
+  return `${fmt(from, !sameYear)} – ${fmt(to, true)}`
+}
+
+/** 'HH:MM:SS' (or 'HH:MM') → 'HH:MM'. */
+export function shortTime(t: string): string {
+  return t.slice(0, 5)
+}
+
+/**
+ * The full "when" of a leave — the dates, plus the clock window when it is a
+ * part-day: "12 Sep 2026 · 10:00–12:40". Mirrors the server's copy.
+ */
+export function formatLeaveWhen(
+  from: string,
+  to: string,
+  fromTime: string | null | undefined,
+  toTime: string | null | undefined,
+): string {
+  const range = formatLeaveRange(from, to)
+  if (!fromTime || !toTime) return range
+  return `${range} · ${shortTime(fromTime)}–${shortTime(toTime)}`
+}
+
+/**
+ * "Sick Leave · 12 Sep – 14 Sep 2026 (3 days)", or for a part-day
+ * "Sick Leave · 12 Sep 2026 · 10:00–12:40" — list-row summary for either type.
+ */
+export function leaveRequestSummary(
+  p: Pick<
+    LeaveApplyPayload,
+    'leave_type' | 'from_date' | 'to_date' | 'days'
+  > &
+    Partial<Pick<LeaveApplyPayload, 'from_time' | 'to_time'>>,
+): string {
+  const name = p.leave_type?.name ?? 'Leave'
+  const when = formatLeaveWhen(p.from_date, p.to_date, p.from_time, p.to_time)
+  if (p.from_time && p.to_time) return `${name} · ${when}`
+  const n = p.days
+  return `${name} · ${when} (${n} day${n === 1 ? '' : 's'})`
+}
+
 export interface StudentRequest {
   id: number
   request_type: RequestType
   status: RequestStatus
-  payload: { v?: 2; changes?: ProfileUpdateChange[] }
+  /**
+   * Type-specific. `changes` is the profile-update shape and stays typed for
+   * the many call sites that read it; leave types cast to their own payload.
+   */
+  payload: Record<string, unknown> & { v?: number; changes?: ProfileUpdateChange[] }
   requester_note: string | null
   decision_note: string | null
   decided_at: string | null

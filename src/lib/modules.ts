@@ -11,6 +11,7 @@ import {
   Goal,
   IdCard,
   MessageCircle,
+  Plane,
   Stamp,
   UserRound,
   type LucideIcon,
@@ -30,6 +31,7 @@ export type ModuleRoute =
   | '/my-requests'
   | '/approvals'
   | '/placements'
+  | '/leaves'
 
 /**
  * The icon accent palette — one hue per module. The actual colors live as
@@ -148,6 +150,13 @@ export const MODULES: Module[] = [
     description: 'Drive invitations and your placement journey.',
     color: 'blue',
     to: '/placements',
+  },
+  {
+    icon: Plane,
+    title: 'Leaves',
+    description: 'Apply for leave and track its approval.',
+    color: 'violet',
+    to: '/leaves',
   },
   {
     icon: ClipboardList,

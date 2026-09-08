@@ -196,9 +196,10 @@ function MyRequests() {
     )
   }
 
-  // The server already narrows the catalog to what an employee CAN raise; prune
-  // it further to what this employee actually HAS raised, so no branch of the
-  // tree is a filter that can only ever come back empty.
+  // The catalog carries EVERY request type (the Approvals tree needs the ones
+  // an employee can only receive); prune it to what this employee actually HAS
+  // raised, so no branch of the tree is a filter that can only ever come back
+  // empty — and so student-only types never surface on a raiser's screen.
   // Derived from ALL requests, never the filtered list — otherwise picking a
   // module would collapse the tree to just that module.
   const ownTypes = new Set<string>(requests.map((r) => r.request_type))

@@ -11,6 +11,8 @@ export type AttendanceStatus =
   | 'late'
   | 'exempt'
   | 'od'
+  /** Sanctioned absence — the student has an approved leave for the date. */
+  | 'leave'
 
 export type ClassSessionStatus =
   | 'scheduled'
@@ -50,6 +52,10 @@ export interface RosterEntry {
   student_id: string
   display_name: string
   current_status: AttendanceStatus | null
+  /** An approved leave covers this session's date — pre-fill `leave`. */
+  on_leave: boolean
+  /** Leave type name when `on_leave`, for the badge. */
+  leave_type: string | null
 }
 
 export interface TeacherRosterResult {

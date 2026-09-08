@@ -1,5 +1,7 @@
 import type { RequestType } from '@/lib/student-requests'
 import { companyApprovalRenderer } from './company-approval'
+import { leaveApplyRenderer } from './leave-apply'
+import { leaveCancelRenderer } from './leave-cancel'
 import { profileUpdateRenderer } from './profile-update'
 import type { PayloadRenderer } from './types'
 
@@ -8,6 +10,8 @@ export type { PayloadRenderer, PayloadRendererProps } from './types'
 const RENDERERS: Record<RequestType, PayloadRenderer> = {
   profile_update: profileUpdateRenderer,
   company_approval: companyApprovalRenderer,
+  leave_apply: leaveApplyRenderer,
+  leave_cancel: leaveCancelRenderer,
 }
 
 /**

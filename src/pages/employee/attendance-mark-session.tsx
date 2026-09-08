@@ -1,5 +1,6 @@
 import { useParams } from '@tanstack/react-router'
 import {
+  CalendarOff,
   CheckCircle2,
   CircleAlert,
   ClipboardCheck,
@@ -40,15 +41,16 @@ function navigateTo(route: string) {
 }
 
 /**
- * The two statuses a teacher can mark directly in the room.
+ * The statuses a teacher works with in the room.
  *
- * The `class_session_attendance` table also supports `late`, `od` and
- * `exempt`, but those are admin-mediated (late = teacher's note for
- * discipline; OD / exempt = the student is officially excused, applied via
- * `attendance_adjustments` afterwards). Keeping the live marking surface
- * down to Present / Absent matches what teachers actually do day-to-day.
+ * Present / Absent are the two the teacher marks directly. `leave` is the
+ * third: a student with an approved leave for the day is pre-filled as Leave
+ * (the server enforces it on submit regardless) and the teacher may only
+ * override it to Present when the student actually turned up. The
+ * `class_session_attendance` table also supports `late`, `od` and `exempt`,
+ * but those are admin-mediated and collapse to Present / Absent here.
  */
-type MarkChoice = Extract<AttendanceStatus, 'present' | 'absent'>
+type MarkChoice = Extract<AttendanceStatus, 'present' | 'absent' | 'leave'>
 
 export default function EmployeeAttendanceMarkSessionPage() {
   const access = useScreenAccess('attendance.entry.daily')
@@ -78,10 +80,11 @@ export default function EmployeeAttendanceMarkSessionPage() {
       setData(res)
       // Seed selection from existing marks: any Late counts as Present here,
       // OD/Exempt collapse to Absent (the teacher should kick those upstairs
-      // to the admin via the adjustments flow). Unmarked → default Present.
+      // to the admin via the adjustments flow). Unmarked → default Present,
+      // or Leave when an approved leave covers the day.
       const seed: Record<number, MarkChoice> = {}
       for (const s of res.students) {
-        seed[s.id] = collapseToBinary(s.current_status)
+        seed[s.id] = seedChoice(s)
       }
       setStatuses(seed)
     } catch (err) {
@@ -115,11 +118,13 @@ export default function EmployeeAttendanceMarkSessionPage() {
   const counts = useMemo(() => {
     let present = 0
     let absent = 0
+    let leave = 0
     for (const id in statuses) {
       if (statuses[id] === 'present') present += 1
+      else if (statuses[id] === 'leave') leave += 1
       else absent += 1
     }
-    return { present, absent }
+    return { present, absent, leave }
   }, [statuses])
 
   if (!access) return <NoAccessEmptyState />
@@ -127,10 +132,15 @@ export default function EmployeeAttendanceMarkSessionPage() {
   const canUpdate = access.actions.includes('update')
   const isAmending = data?.status === 'completed'
 
-  function markAll(status: MarkChoice) {
+  function markAll(status: Extract<MarkChoice, 'present' | 'absent'>) {
     if (!data) return
     const next: Record<number, MarkChoice> = {}
-    for (const s of data.students) next[s.id] = status
+    // "Mark all absent" keeps students on approved leave as Leave — the
+    // server would coerce it anyway, and the teacher should see what will be
+    // stored. "Mark all present" is an explicit override for everyone.
+    for (const s of data.students) {
+      next[s.id] = status === 'absent' && s.on_leave ? 'leave' : status
+    }
     setStatuses(next)
   }
 
@@ -145,7 +155,7 @@ export default function EmployeeAttendanceMarkSessionPage() {
     try {
       const entries = data.students.map((s) => ({
         student_id: s.id,
-        status: statuses[s.id] ?? 'absent',
+        status: statuses[s.id] ?? seedChoice(s),
       }))
       await markTeacherAttendance(sessionId, {
         entries,
@@ -278,6 +288,9 @@ export default function EmployeeAttendanceMarkSessionPage() {
               absentees={data.students.filter(
                 (s) => statuses[s.id] === 'absent',
               )}
+              onLeave={data.students.filter(
+                (s) => statuses[s.id] === 'leave',
+              )}
               isAmending={!!isAmending}
               canUpdate={canUpdate}
               submitting={submitting}
@@ -306,9 +319,10 @@ function HeaderCard({
   data: TeacherRosterResult
   isAmending: boolean
   canUpdate: boolean
-  onMarkAll: (status: MarkChoice) => void
+  onMarkAll: (status: Extract<MarkChoice, 'present' | 'absent'>) => void
 }) {
   const title = isAmending ? 'Amend attendance' : 'Mark attendance'
+  const onLeaveCount = data.students.filter((s) => s.on_leave).length
   return (
     <Card className="p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -371,12 +385,23 @@ function HeaderCard({
           </span>
         ) : null}
       </div>
+
+      {onLeaveCount > 0 ? (
+        <p className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-icon-violet/10 px-2.5 py-1.5 text-xs text-icon-violet">
+          <CalendarOff className="size-3.5" />
+          {onLeaveCount} student{onLeaveCount === 1 ? ' is' : 's are'} on
+          approved leave today — pre-filled as Leave. Mark them Present only if
+          they actually attended.
+        </p>
+      ) : null}
     </Card>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Student cell — dense grid item with a binary Present/Absent toggle
+// Student cell — dense grid item with a Present/Absent toggle; students on
+// approved leave get Present/Leave instead (Leave is what the server stores
+// for them unless the teacher says they turned up).
 // ---------------------------------------------------------------------------
 
 function StudentCell({
@@ -394,6 +419,7 @@ function StudentCell({
 }) {
   const present = value === 'present'
   const absent = value === 'absent'
+  const leave = value === 'leave'
 
   return (
     <div
@@ -401,6 +427,7 @@ function StudentCell({
         'flex flex-col gap-2 rounded-lg border bg-card p-2.5 transition-colors',
         present && 'border-success/40 bg-success/5',
         absent && 'border-destructive/40 bg-destructive/5',
+        leave && 'border-icon-violet/40 bg-icon-violet/5',
       )}
     >
       {/* Identity block — roll number always on its own row so it's never
@@ -414,6 +441,15 @@ function StudentCell({
           <span className="whitespace-nowrap font-mono text-sm font-bold tracking-wide tabular-nums">
             {student.student_id}
           </span>
+          {student.on_leave ? (
+            <span
+              className="ml-auto inline-flex items-center gap-1 rounded-full bg-icon-violet/15 px-1.5 py-0.5 text-[10px] font-semibold text-icon-violet"
+              title={student.leave_type ?? 'On leave'}
+            >
+              <CalendarOff className="size-3" />
+              {student.leave_type ?? 'On leave'}
+            </span>
+          ) : null}
         </p>
         <p
           className="mt-0.5 truncate text-xs text-muted-foreground"
@@ -423,9 +459,8 @@ function StudentCell({
         </p>
       </div>
 
-      {/* Full-width Present/Absent toggle below. Each button takes 50% so the
-          row works at any cell width — no horizontal competition with the
-          roll number. */}
+      {/* Full-width toggle below. Each button takes 50% so the row works at
+          any cell width — no horizontal competition with the roll number. */}
       <div
         role="radiogroup"
         aria-label={`Attendance for ${student.display_name}`}
@@ -439,14 +474,25 @@ function StudentCell({
           label="Present"
           ariaLabel="Present"
         />
-        <ToggleButton
-          selected={absent}
-          tone="destructive"
-          disabled={disabled}
-          onClick={() => onChange('absent')}
-          label="Absent"
-          ariaLabel="Absent"
-        />
+        {student.on_leave ? (
+          <ToggleButton
+            selected={leave}
+            tone="leave"
+            disabled={disabled}
+            onClick={() => onChange('leave')}
+            label="Leave"
+            ariaLabel="On leave"
+          />
+        ) : (
+          <ToggleButton
+            selected={absent}
+            tone="destructive"
+            disabled={disabled}
+            onClick={() => onChange('absent')}
+            label="Absent"
+            ariaLabel="Absent"
+          />
+        )}
       </div>
     </div>
   )
@@ -461,7 +507,7 @@ function ToggleButton({
   ariaLabel,
 }: {
   selected: boolean
-  tone: 'success' | 'destructive'
+  tone: 'success' | 'destructive' | 'leave'
   disabled: boolean
   onClick: () => void
   label: string
@@ -470,7 +516,9 @@ function ToggleButton({
   const selectedCls =
     tone === 'success'
       ? 'bg-success text-success-foreground'
-      : 'bg-destructive text-destructive-foreground'
+      : tone === 'leave'
+        ? 'bg-icon-violet text-icon-on'
+        : 'bg-destructive text-destructive-foreground'
   return (
     <button
       type="button"
@@ -503,6 +551,7 @@ function SummaryAside({
   data,
   counts,
   absentees,
+  onLeave,
   isAmending,
   canUpdate,
   submitting,
@@ -510,8 +559,9 @@ function SummaryAside({
   onCancel,
 }: {
   data: TeacherRosterResult
-  counts: { present: number; absent: number }
+  counts: { present: number; absent: number; leave: number }
   absentees: RosterEntry[]
+  onLeave: RosterEntry[]
   isAmending: boolean
   canUpdate: boolean
   submitting: boolean
@@ -529,7 +579,12 @@ function SummaryAside({
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Summary
           </p>
-          <div className="grid grid-cols-2 gap-3">
+          <div
+            className={cn(
+              'grid gap-3',
+              counts.leave > 0 ? 'grid-cols-3' : 'grid-cols-2',
+            )}
+          >
             <SummaryTile
               label="Present"
               tone="success"
@@ -542,7 +597,23 @@ function SummaryAside({
               value={counts.absent}
               total={total}
             />
+            {counts.leave > 0 ? (
+              <SummaryTile
+                label="Leave"
+                tone="leave"
+                value={counts.leave}
+                total={total}
+              />
+            ) : null}
           </div>
+          {onLeave.length > 0 ? (
+            <p className="text-xs text-muted-foreground">
+              On leave:{' '}
+              <span className="font-mono font-medium text-foreground">
+                {onLeave.map((s) => s.student_id).join(', ')}
+              </span>
+            </p>
+          ) : null}
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -630,9 +701,14 @@ function SummaryTile({
   label: string
   value: number
   total: number
-  tone: 'success' | 'destructive'
+  tone: 'success' | 'destructive' | 'leave'
 }) {
-  const dot = tone === 'success' ? 'bg-success' : 'bg-destructive'
+  const dot =
+    tone === 'success'
+      ? 'bg-success'
+      : tone === 'leave'
+        ? 'bg-icon-violet'
+        : 'bg-destructive'
   const ratio =
     total > 0 ? ` / ${total}` : ''
   return (
@@ -680,16 +756,19 @@ function LoadingState() {
 }
 
 // ---------------------------------------------------------------------------
-// Status seeding — collapse server-side statuses to the binary the teacher
-// works in. Late counts as Present (the student did attend). OD / Exempt are
-// admin-mediated; default to Absent here so the teacher's submission doesn't
-// silently lose an admin's prior excusal — if those are set, the admin's
-// adjustment row in `attendance_adjustments` will still credit the student.
+// Status seeding — collapse server-side statuses to the three the teacher
+// works in. Late counts as Present (the student did attend). A stored `leave`
+// stays Leave. OD / Exempt are admin-mediated; default to Absent here so the
+// teacher's submission doesn't silently lose an admin's prior excusal.
+// Unmarked → Leave when an approved leave covers the day (what the server
+// will store anyway), else Present, the most common case.
 // ---------------------------------------------------------------------------
-function collapseToBinary(s: AttendanceStatus | null): MarkChoice {
+function seedChoice(entry: RosterEntry): MarkChoice {
+  const s: AttendanceStatus | null = entry.current_status
   if (s === 'present' || s === 'late') return 'present'
-  if (s === 'absent') return 'absent'
-  // null (unmarked) → default to present, the most common case.
-  // od / exempt → leave as absent; admin's adjustment row already credits them.
-  return s === null ? 'present' : 'absent'
+  if (s === 'absent') return entry.on_leave ? 'leave' : 'absent'
+  if (s === 'leave') return entry.on_leave ? 'leave' : 'absent'
+  if (s === null) return entry.on_leave ? 'leave' : 'present'
+  // od / exempt → absent; admin's adjustment row already credits them.
+  return entry.on_leave ? 'leave' : 'absent'
 }

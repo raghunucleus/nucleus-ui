@@ -1,6 +1,7 @@
 import {
   Briefcase,
   Building2,
+  CalendarOff,
   ClipboardList,
   LayoutGrid,
   UserRound,
@@ -20,6 +21,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   LayoutGrid,
   Briefcase,
   Building2,
+  CalendarOff,
 }
 
 export function iconFor(name: string): LucideIcon {

@@ -21,6 +21,7 @@ import Notifications from '@/pages/notifications'
 import AcademicHolidays from '@/pages/academic-holidays'
 import MyRequests from '@/pages/my-requests'
 import Approvals from '@/pages/approvals'
+import Leaves from '@/pages/leaves'
 import Placements from '@/pages/placements'
 import {
   DRIVE_FILTERS,
@@ -136,6 +137,28 @@ const approvalsRoute = createRoute({
   component: Approvals,
 })
 
+const leavesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/leaves',
+  component: Leaves,
+  // `?open=<id>` opens a leave's detail; `?edit=<id>` opens the apply form in
+  // revise mode for a sent-back application (My Requests → Revise);
+  // `?apply=1` opens the blank form.
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { open?: number; edit?: number; apply?: boolean } => ({
+    open:
+      search.open != null && Number.isFinite(Number(search.open))
+        ? Number(search.open)
+        : undefined,
+    edit:
+      search.edit != null && Number.isFinite(Number(search.edit))
+        ? Number(search.edit)
+        : undefined,
+    apply: search.apply === true || search.apply === 'true' ? true : undefined,
+  }),
+})
+
 const placementsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/placements',
@@ -206,6 +229,7 @@ const routeTree = rootRoute.addChildren([
   academicHolidaysRoute,
   myRequestsRoute,
   approvalsRoute,
+  leavesRoute,
   placementsRoute,
 ])
 

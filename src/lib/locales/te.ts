@@ -256,6 +256,7 @@ export const te: typeof en = {
     statusLate: 'ఆలస్యం',
     statusOd: 'OD',
     statusExempt: 'మినహాయింపు',
+    statusLeave: 'సెలవు',
     statusCancelled: 'రద్దు',
     statusUnmarked: 'గుర్తించలేదు',
     statusUpcoming: 'రాబోయేది',

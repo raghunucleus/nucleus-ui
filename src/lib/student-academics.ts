@@ -43,6 +43,8 @@ export type AttendanceMarkStatus =
   | 'late'
   | 'exempt'
   | 'od'
+  /** Sanctioned absence — an approved leave covered the date. */
+  | 'leave'
 
 export interface WeekCell {
   date: string
@@ -64,6 +66,8 @@ export interface WeekCell {
   teacher_display_name: string | null
   status: ClassSessionStatus
   attendance_status: AttendanceMarkStatus | null
+  /** An approved leave covers this date — an unmarked session renders as "Leave". */
+  on_leave: boolean
   room: string | null
 }
 
@@ -185,6 +189,8 @@ export interface SubjectSessionRow {
   /** The student's own mark for this session. `null` means the teacher
    *  hasn't marked it yet (or the session is still in the future). */
   attendance_status: AttendanceMarkStatus | null
+  /** An approved leave covers this date — see WeekCell.on_leave. */
+  on_leave: boolean
   is_substitute: boolean
   teacher_display_name: string | null
   room: string | null

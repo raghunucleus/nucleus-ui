@@ -39,6 +39,7 @@ export const STATUS_CLASS: Record<string, string> = {
   absent: 'bg-icon-rose/15 text-icon-rose',
   od: 'bg-icon-blue/15 text-icon-blue',
   exempt: 'bg-muted text-muted-foreground',
+  leave: 'bg-icon-violet/15 text-icon-violet',
 }
 
 /** Indexed by ISO weekday (1 = Mon), matching `class_sessions.day_of_week`. */
