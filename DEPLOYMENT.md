@@ -8,9 +8,9 @@ DNS label at runtime and mounts the matching portal:
 
 | Hostname | `AppVariant` | Portal |
 | --- | --- | --- |
-| `employee.raghuenggcollege.com` | `employee` | Employee |
-| `parent.raghuenggcollege.com` | `parent` | Parent / guardian |
-| `student.raghuenggcollege.com` | `member` | Student |
+| `employee.raghuenggcollege.in` | `employee` | Employee |
+| `parent.raghuenggcollege.in` | `parent` | Parent / guardian |
+| `student.raghuenggcollege.in` | `member` | Student |
 
 There is no build-time variant flag — the same `dist/` is served on all three.
 Anything unrecognised falls through to the student portal, so a typo'd hostname
@@ -38,7 +38,7 @@ npm run build                                # tsc -b && vite build && postbuild
 automatically. Shell values win over the file, which is what CI should use:
 
 ```bash
-VITE_API_URL=https://api-nucleus.raghuenggcollege.com npm run build
+VITE_API_URL=https://api-nucleus.raghuenggcollege.in npm run build
 ```
 
 ### Environment
@@ -87,7 +87,7 @@ so a 404-only rule silently misses.
 ## Deploying to S3 + CloudFront
 
 ```bash
-VITE_API_URL=https://api-nucleus.raghuenggcollege.com \
+VITE_API_URL=https://api-nucleus.raghuenggcollege.in \
 VITE_STORAGE_ORIGIN=https://raghu-nucleus.s3.ap-south-1.amazonaws.com \
 VITE_GOOGLE_OIDC_CLIENT_ID=<client-id> \
   npm run build
@@ -113,8 +113,8 @@ unrelated screen.
 | Server var | Value |
 | --- | --- |
 | `CORS_ORIGINS` | Must list all three portal origins (plus the admin one). The default allowlist is localhost-only and applies whenever `NODE_ENV` is not `dev`. |
-| `STUDENT_APP_URL` | `https://student.raghuenggcollege.com` |
-| `EMPLOYEE_APP_URL` | `https://employee.raghuenggcollege.com` — **no** `?app=employee` query; that dev marker exists only because dev shares one origin. |
+| `STUDENT_APP_URL` | `https://student.raghuenggcollege.in` |
+| `EMPLOYEE_APP_URL` | `https://employee.raghuenggcollege.in` — **no** `?app=employee` query; that dev marker exists only because dev shares one origin. |
 
 The API endpoint must also terminate WebSocket upgrades, and the S3 bucket needs
 a CORS rule allowing these origins. Both are covered in

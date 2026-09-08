@@ -28,7 +28,7 @@ function assertApiUrl(env: Record<string, string>): void {
       'notifications) would retry against it forever.',
       '',
       'Set it in .env.production (see .env.production.example) or in the build environment:',
-      '  VITE_API_URL=https://api-nucleus.raghuenggcollege.com',
+      '  VITE_API_URL=https://api-nucleus.raghuenggcollege.in',
       '',
       'Note .env files without a mode suffix are loaded in EVERY mode, so a value parked',
       'there also satisfies this — keep deployment values in .env.production.',
