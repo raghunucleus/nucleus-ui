@@ -2,17 +2,36 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  lazyRouteComponent,
 } from '@tanstack/react-router'
 
 import { ParentPortalLayout } from '@/components/parent-portal-layout'
+import { RoutePending } from '@/components/route-pending'
 import NotFound from '@/pages/not-found'
-import ParentHome from '@/pages/parent/parent-home'
-import ParentTimetable from '@/pages/parent/parent-timetable'
-import ParentAttendance from '@/pages/parent/parent-attendance'
-import ParentAttendanceSubject from '@/pages/parent/parent-attendance-subject'
-import ParentExamResults from '@/pages/parent/parent-exam-results'
-import ParentHolidays from '@/pages/parent/parent-holidays'
-import ParentProfile from '@/pages/parent/parent-profile'
+
+// Every page is its own chunk, fetched on first navigation (or on link hover —
+// see `defaultPreload`). Only the layout and NotFound are static: they render
+// on every route. Never `import X from '@/pages/...'` here — one static import
+// drags that page (and whatever it pulls in) into the app chunk for everyone.
+const ParentHome = lazyRouteComponent(() => import('@/pages/parent/parent-home'))
+const ParentTimetable = lazyRouteComponent(
+  () => import('@/pages/parent/parent-timetable'),
+)
+const ParentAttendance = lazyRouteComponent(
+  () => import('@/pages/parent/parent-attendance'),
+)
+const ParentAttendanceSubject = lazyRouteComponent(
+  () => import('@/pages/parent/parent-attendance-subject'),
+)
+const ParentExamResults = lazyRouteComponent(
+  () => import('@/pages/parent/parent-exam-results'),
+)
+const ParentHolidays = lazyRouteComponent(
+  () => import('@/pages/parent/parent-holidays'),
+)
+const ParentProfile = lazyRouteComponent(
+  () => import('@/pages/parent/parent-profile'),
+)
 
 /**
  * Router for the parent/guardian portal. All routes live under
@@ -77,4 +96,8 @@ const routeTree = rootRoute.addChildren([
 export const parentRouter = createRouter({
   routeTree,
   defaultNotFoundComponent: NotFound,
+  // Suspense fallback while a page chunk downloads — inside the layout, so the
+  // chrome never unmounts. Hovering/focusing a <Link> prefetches its chunk.
+  defaultPendingComponent: RoutePending,
+  defaultPreload: 'intent',
 })

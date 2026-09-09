@@ -18,6 +18,17 @@ These are the approved libraries for each concern. Use them; do **not** introduc
 - All app routing goes through TanStack Router. Use file-based or code-based route definitions; never import from `react-router-dom`.
 - Use the typed `Link`, `useNavigate`, `useParams`, `useSearch` exports — never `window.location` for navigation.
 
+### Code splitting — every page is a lazy chunk
+The login page of one subdomain must never download the other portals or any page. The split is enforced by `import()` boundaries in three layers, and one stray static import silently undoes a layer.
+
+1. **Portal** — [src/portals/portal.tsx](src/portals/portal.tsx) maps the hostname to a `lazyRouteComponent(() => import('./<x>-portal'))`; [src/main.tsx](src/main.tsx) preloads it before mounting so the HTML splash hands straight to the login. `main.tsx` / `App.tsx` must not import anything portal-specific (that includes `@/lib/i18n`, which is parent-only and lives in `parent-portal.tsx`).
+2. **App shell** — each `src/portals/<x>-portal.tsx` statically imports its login screen and lazy-loads `./<x>-app.tsx` (the `RouterProvider`), preloading it while the login form is up so sign-in swaps with no loader.
+3. **Page** — in `src/router.tsx`, `src/employee-router.tsx`, `src/parent-router.tsx` every route is `component: lazyRouteComponent(() => import('@/pages/...'))`. Only the layout and `NotFound` are static. **Never `import X from '@/pages/...'`** in a router or any shared module; type-only imports (`import type`) are fine. Routers set `defaultPendingComponent: RoutePending` and `defaultPreload: 'intent'`.
+
+- Heavy libraries reachable from a page should still be loaded on demand inside the handler: `const XLSX = await loadXlsx()` from [src/lib/xlsx.ts](src/lib/xlsx.ts) — never `import * as XLSX from 'xlsx'` at module scope. Lexical follows the same rule via `LazyRichTextEditor` (below).
+- A dependency that is only reachable through `import()` must be listed in `optimizeDeps.include` in [vite.config.ts](vite.config.ts) (`i18next`, `react-i18next`, `xlsx` today), or the dev server answers its first request with a 504 and the lazy chunk fails to load.
+- Check with `npm run build`: the entry `index-*.js` should stay well under 300 kB, and `dist/index.html` must not `modulepreload` any page, portal or vendor-library chunk.
+
 ### Client state — `zustand`
 - For cross-component client state (auth user, UI state, persisted preferences). Define one store per concern in `src/stores/`.
 - Server state (anything fetched from the API) does **not** go in zustand — use TanStack Router loaders or a dedicated fetcher; never mirror server data into a store.
@@ -54,7 +65,7 @@ These are the approved libraries for each concern. Use them; do **not** introduc
 - The JSON is also read by `nucleus-mobile`'s React Native `RichTextView`. Adding a node type to `rich-text/nodes.ts` means teaching both renderers about it, or it degrades to plain text on read.
 
 ### Spreadsheets — `exceljs` and `xlsx`
-- **`xlsx` (SheetJS) for reading** user-uploaded spreadsheets — parsing rows from `.xlsx` / `.csv` uploads in bulk-import flows.
+- **`xlsx` (SheetJS) for reading** user-uploaded spreadsheets — parsing rows from `.xlsx` / `.csv` uploads in bulk-import flows. Load it on demand with `loadXlsx()` from [src/lib/xlsx.ts](src/lib/xlsx.ts) inside the handler (see "Code splitting" above).
 - **`exceljs` for writing** generated exports — when the output needs styling, column widths, multiple sheets, or formulas.
 - If you only need to emit a plain CSV with no styling, `xlsx` is also fine for the write side. Don't add a third spreadsheet library.
 

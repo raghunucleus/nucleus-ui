@@ -2,33 +2,46 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  lazyRouteComponent,
 } from '@tanstack/react-router'
 
 import { PortalLayout } from '@/components/portal-layout'
-import StudentHome from '@/pages/student-home'
+import { RoutePending } from '@/components/route-pending'
 import NotFound from '@/pages/not-found'
-import IdCard from '@/pages/id-card'
-import Profile from '@/pages/profile'
-import ProfileUpdateRequest from '@/pages/profile-update-request'
-import PrivacySettings from '@/pages/privacy-settings'
-import Timetable from '@/pages/timetable'
-import Attendance from '@/pages/attendance'
-import AttendanceSubject from '@/pages/attendance-subject'
-import ExamMarks from '@/pages/exam-marks'
-import Birthdays from '@/pages/birthdays'
-import Connect from '@/pages/connect'
-import Notifications from '@/pages/notifications'
-import AcademicHolidays from '@/pages/academic-holidays'
-import MyRequests from '@/pages/my-requests'
-import Approvals from '@/pages/approvals'
-import Leaves from '@/pages/leaves'
-import Placements from '@/pages/placements'
 import {
   DRIVE_FILTERS,
   INVITE_FILTERS,
   type DriveFilter,
   type InviteFilter,
 } from '@/lib/student-placements'
+
+// Every page is its own chunk, fetched on first navigation (or on link hover —
+// see `defaultPreload`). Only the layout and NotFound are static: they render
+// on every route. Never `import X from '@/pages/...'` here — one static import
+// drags that page (and whatever it pulls in) into the app chunk for everyone.
+const StudentHome = lazyRouteComponent(() => import('@/pages/student-home'))
+const IdCard = lazyRouteComponent(() => import('@/pages/id-card'))
+const Profile = lazyRouteComponent(() => import('@/pages/profile'))
+const ProfileUpdateRequest = lazyRouteComponent(
+  () => import('@/pages/profile-update-request'),
+)
+const PrivacySettings = lazyRouteComponent(() => import('@/pages/privacy-settings'))
+const Timetable = lazyRouteComponent(() => import('@/pages/timetable'))
+const Attendance = lazyRouteComponent(() => import('@/pages/attendance'))
+const AttendanceSubject = lazyRouteComponent(
+  () => import('@/pages/attendance-subject'),
+)
+const ExamMarks = lazyRouteComponent(() => import('@/pages/exam-marks'))
+const Birthdays = lazyRouteComponent(() => import('@/pages/birthdays'))
+const Connect = lazyRouteComponent(() => import('@/pages/connect'))
+const Notifications = lazyRouteComponent(() => import('@/pages/notifications'))
+const AcademicHolidays = lazyRouteComponent(
+  () => import('@/pages/academic-holidays'),
+)
+const MyRequests = lazyRouteComponent(() => import('@/pages/my-requests'))
+const Approvals = lazyRouteComponent(() => import('@/pages/approvals'))
+const Leaves = lazyRouteComponent(() => import('@/pages/leaves'))
+const Placements = lazyRouteComponent(() => import('@/pages/placements'))
 
 /** The signed-in student/parent portal. `PortalLayout` renders the chrome. */
 const rootRoute = createRootRoute({ component: PortalLayout })
@@ -236,6 +249,10 @@ const routeTree = rootRoute.addChildren([
 export const router = createRouter({
   routeTree,
   defaultNotFoundComponent: NotFound,
+  // Suspense fallback while a page chunk downloads — inside the layout, so the
+  // chrome never unmounts. Hovering/focusing a <Link> prefetches its chunk.
+  defaultPendingComponent: RoutePending,
+  defaultPreload: 'intent',
 })
 
 declare module '@tanstack/react-router' {

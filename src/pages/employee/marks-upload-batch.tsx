@@ -12,9 +12,9 @@ import {
   UploadCloud,
   X,
 } from 'lucide-react'
-import * as XLSX from 'xlsx'
 import { toast } from 'sonner'
 import { useScreenAccess } from '@/hooks/use-screen-access'
+import { loadXlsx } from '@/lib/xlsx'
 import {
   NoAccessEmptyState,
   NoScopeEmptyState,
@@ -267,7 +267,7 @@ export default function EmployeeMarksUploadBatchPage() {
     resetParsed()
     setFileName(file.name)
     try {
-      const buf = await file.arrayBuffer()
+      const [XLSX, buf] = await Promise.all([loadXlsx(), file.arrayBuffer()])
       const wb = XLSX.read(buf, { type: 'array' })
       const sheetName =
         wb.SheetNames.find((n) => n.toLowerCase() === 'sheet4') ??
@@ -399,7 +399,8 @@ export default function EmployeeMarksUploadBatchPage() {
     }
   }
 
-  function downloadTemplate() {
+  async function downloadTemplate() {
+    const XLSX = await loadXlsx()
     const ws = XLSX.utils.aoa_to_sheet([
       COLUMNS.map((c) => c.header),
       [
