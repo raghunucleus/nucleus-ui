@@ -35,6 +35,7 @@ import {
   useState,
 } from 'react'
 
+import { NucleusLoader, NucleusLogo, NucleusMark } from '@/components/brand'
 import { EmployeeNotificationBell } from '@/components/employee/notification-bell'
 import { employeeNavigate } from '@/components/employee/notification-navigate'
 import { EmployeeNotificationNotifier } from '@/components/employee/notification-notifier'
@@ -372,34 +373,11 @@ export function EmployeePortalLayout() {
  */
 function AccessLoading() {
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 text-center">
-      <div className="relative grid place-items-center">
-        {/* Expanding halo — a soft pulse radiating from the badge. */}
-        <span className="absolute size-14 animate-ping rounded-2xl bg-primary/20" />
-        {/* Brand badge — same gradient mark as the sidebar logo. */}
-        <div className="relative grid size-14 place-items-center rounded-2xl bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-lg shadow-primary/30">
-          <Briefcase className="size-6" />
-        </div>
-      </div>
-      <div className="space-y-2.5">
-        <p className="text-sm font-medium text-foreground">
-          Setting up your workspace…
-        </p>
-        {/* Three dots pulsing in sequence (reuses the `twinkle` keyframe). */}
-        <div className="flex items-center justify-center gap-1.5">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="size-2 rounded-full bg-primary/70"
-              style={{
-                animation: 'twinkle 1s ease-in-out infinite',
-                animationDelay: `${i * 0.18}s`,
-              }}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
+    <NucleusLoader
+      size={64}
+      message="Setting up your workspace…"
+      className="min-h-[60vh]"
+    />
   )
 }
 
@@ -618,18 +596,10 @@ function EmployeeSidebar({
           )}
           aria-label="Nucleus home"
         >
-          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-sm shadow-primary/30">
-            <Briefcase className="size-5" />
-          </div>
-          {!collapsed && (
-            <div className="overflow-hidden leading-tight">
-              <div className="truncate text-base font-semibold tracking-tight">
-                Nucleus
-              </div>
-              <div className="truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Staff portal
-              </div>
-            </div>
+          {collapsed ? (
+            <NucleusMark size={36} />
+          ) : (
+            <NucleusLogo eyebrow="Staff portal" />
           )}
         </Link>
       </div>

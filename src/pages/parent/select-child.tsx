@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
-import { ChevronRight, GraduationCap, LogOut, Users } from 'lucide-react'
+import { ChevronRight, LogOut, Users } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { NucleusLogo } from '@/components/brand'
 import { ParentLanguageSwitcher } from '@/components/parent-language-switcher'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
@@ -65,11 +66,8 @@ export default function SelectChild() {
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
       <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card/80 px-4 backdrop-blur sm:px-6">
-        <div className="flex items-center gap-2">
-          <div className="grid size-9 place-items-center rounded-lg bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-sm shadow-primary/30">
-            <GraduationCap className="size-5" />
-          </div>
-          <span className="text-base font-semibold tracking-tight">Nucleus</span>
+        <div className="flex items-center">
+          <NucleusLogo />
         </div>
         <div className="flex items-center gap-2">
           <ParentLanguageSwitcher />

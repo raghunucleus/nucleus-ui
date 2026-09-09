@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Eye, EyeOff, GraduationCap } from 'lucide-react'
+import { ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BrandPanel } from '@/components/auth/brand-panel'
+import { NucleusLogo } from '@/components/brand'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { cn } from '@/lib/utils'
 import { ApiError } from '@/lib/api'
@@ -78,13 +79,8 @@ function PageShell({ children }: { children: React.ReactNode }) {
 
       <main className="flex flex-1 flex-col px-6 py-8 sm:px-10 lg:w-[28rem] lg:flex-none lg:px-12">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 lg:hidden">
-            <div className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap className="size-5" />
-            </div>
-            <span className="text-base font-semibold tracking-tight">
-              Nucleus
-            </span>
+          <div className="flex items-center lg:hidden">
+            <NucleusLogo />
           </div>
           <div className="ml-auto flex items-center gap-2">
             <ThemeToggle />

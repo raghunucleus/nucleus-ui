@@ -1,4 +1,4 @@
-import { GraduationCap } from 'lucide-react'
+import { NucleusMark, NucleusWordmark } from '@/components/brand'
 
 type Props = { variant: 'employee' | 'parent' | 'member' }
 
@@ -36,10 +36,9 @@ export function BrandPanel({ variant }: Props) {
       />
 
       <div className="relative flex items-center gap-2.5">
-        <div className="grid size-10 place-items-center rounded-lg bg-brand-panel-foreground/10 ring-1 ring-brand-panel-foreground/15 backdrop-blur">
-          <GraduationCap className="size-5" />
-        </div>
-        <span className="text-lg font-semibold tracking-tight">Nucleus</span>
+        {/* White tile keeps the mark's colours true on the dark hero panel. */}
+        <NucleusMark tile size={40} />
+        <NucleusWordmark height={18} className="text-brand-panel-foreground" />
       </div>
 
       <div className="relative space-y-5">

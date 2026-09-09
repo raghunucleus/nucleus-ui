@@ -1,5 +1,6 @@
-import { CloudOff, GraduationCap, RefreshCw } from 'lucide-react'
+import { CloudOff, RefreshCw } from 'lucide-react'
 
+import { NucleusLogo } from '@/components/brand'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -45,11 +46,8 @@ export function ServerUnreachable({
         aria-live="assertive"
         className="flex flex-col items-center gap-6"
       >
-        <div className="inline-flex animate-in fade-in slide-in-from-bottom-2 items-center gap-2 duration-700">
-          <div className="grid size-8 place-items-center rounded-lg bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-sm shadow-primary/30">
-            <GraduationCap className="size-5" />
-          </div>
-          <span className="text-lg font-semibold tracking-tight">Nucleus</span>
+        <div className="inline-flex animate-in fade-in slide-in-from-bottom-2 items-center duration-700">
+          <NucleusLogo markSize={40} wordmarkHeight={18} />
         </div>
 
         {/* Radar/sonar: concentric rings pulse outward around the icon,

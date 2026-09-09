@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect } from 'react'
 import { RouterProvider } from '@tanstack/react-router'
 
+import { NucleusLoader } from '@/components/brand'
 import i18n, { getStoredParentLang } from '@/lib/i18n'
 import { detectAppVariant } from '@/lib/subdomain'
 import EmployeeLogin from '@/pages/employee-login'
@@ -82,11 +83,7 @@ function StudentPortal() {
 
 /** Brief full-screen splash while a persisted parent session re-hydrates. */
 function PortalBootSplash() {
-  return (
-    <div className="flex min-h-svh items-center justify-center bg-background">
-      <div className="size-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-    </div>
-  )
+  return <NucleusLoader fullScreen size={64} />
 }
 
 export default App

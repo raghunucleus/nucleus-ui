@@ -4,7 +4,6 @@ import {
   CalendarDays,
   ChevronDown,
   ClipboardCheck,
-  GraduationCap,
   Home,
   LogOut,
   type LucideIcon,
@@ -18,6 +17,7 @@ import {
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { NucleusLogo, NucleusMark } from '@/components/brand'
 import { ParentLanguageSwitcher } from '@/components/parent-language-switcher'
 import { Button } from '@/components/ui/button'
 import {
@@ -311,18 +311,10 @@ function ParentSidebar({
           )}
           aria-label={t('a11y.parentHome')}
         >
-          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-sm shadow-primary/30">
-            <GraduationCap className="size-5" />
-          </div>
-          {!collapsed && (
-            <div className="overflow-hidden text-left leading-tight">
-              <div className="truncate text-base font-semibold tracking-tight">
-                Nucleus
-              </div>
-              <div className="truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                {t('brand.parentPortal')}
-              </div>
-            </div>
+          {collapsed ? (
+            <NucleusMark size={36} />
+          ) : (
+            <NucleusLogo eyebrow={t('brand.parentPortal')} className="text-left" />
           )}
         </button>
       </div>

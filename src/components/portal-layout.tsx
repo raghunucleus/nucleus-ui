@@ -1,7 +1,6 @@
 import { Link, Outlet } from '@tanstack/react-router'
 import {
   ArrowLeft,
-  GraduationCap,
   Lock,
   LogOut,
   UserRound,
@@ -18,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { NucleusLogo } from '@/components/brand'
 import { ChatNotifier } from '@/components/chat-notifier'
 import { ConnectMenu } from '@/components/connect-menu'
 import { ModulesDrawer } from '@/components/modules-drawer'
@@ -58,13 +58,8 @@ export function PortalLayout() {
       <NotificationNotifier />
       <header className="sticky top-0 z-10 border-b bg-card/80 shadow-sm backdrop-blur">
         <div className="mx-auto grid h-16 max-w-5xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
-          <Link to="/" className="flex w-fit items-center gap-2">
-            <div className="grid size-9 place-items-center rounded-lg bg-gradient-to-br from-primary to-secondary text-primary-foreground shadow-sm shadow-primary/30">
-              <GraduationCap className="size-5" />
-            </div>
-            <span className="text-base font-semibold tracking-tight">
-              Nucleus
-            </span>
+          <Link to="/" className="flex w-fit items-center" aria-label="Nucleus home">
+            <NucleusLogo />
           </Link>
 
           <ModulesDrawer />
