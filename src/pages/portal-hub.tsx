@@ -15,8 +15,9 @@ type Portal = {
   icon: LucideIcon
 }
 
-// One line each. A chooser only has to say enough for someone to recognise
-// which door is theirs — the portal itself does the explaining after that.
+// One line each, and no feature list. A visitor here already knows which of the
+// three they are; naming screens they cannot see yet only adds reading, and any
+// such list would need policing against what each portal actually ships.
 const PORTALS: readonly Portal[] = [
   {
     role: 'member',
@@ -113,19 +114,15 @@ export default function PortalHub() {
           <LegacySessionNotice />
 
           <ul id="portals" className="grid gap-4">
-            {PORTALS.map((portal) => {
-              // Only the student card forwards the current path: `app.*` was the
-              // student portal, so only its deep links can be stale in that way.
-              const href = portalUrl(portal.role, { keepPath: portal.role === 'member' })
-              return (
-                <PortalCard
-                  key={portal.role}
-                  {...portal}
-                  href={href}
-                  hostLabel={new URL(portalUrl(portal.role)).host}
-                />
-              )
-            })}
+            {PORTALS.map((portal) => (
+              <PortalCard
+                key={portal.role}
+                {...portal}
+                // Only the student card forwards the current path: `app.*` was
+                // the student portal, so only its deep links can be stale.
+                href={portalUrl(portal.role, { keepPath: portal.role === 'member' })}
+              />
+            ))}
           </ul>
 
           <p className="mt-2 text-xs text-hub-ink-faint lg:hidden">

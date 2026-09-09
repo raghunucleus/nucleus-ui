@@ -15,28 +15,22 @@ export type PortalCardProps = {
   description: string
   icon: LucideIcon
   href: string
-  /** Target hostname, shown as small print so the destination is never a surprise. */
-  hostLabel: string
 }
 
 /**
- * One portal on the hub: a full-width row of icon → text → arrow.
+ * One portal on the hub: a full-width row of colour rail → icon → text → arrow.
  *
  * A row rather than a tall card because the page's job is to present three
  * choices and get out of the way — stacked rows put all three in the first
  * screenful at any width, and read as a menu instead of a pitch.
  *
- * `data-hub-role` re-points --hub-accent for everything inside (see index.css).
+ * The card carries no feature list on purpose. Someone who has arrived here
+ * already knows whether they are a student, a parent or staff; the only thing
+ * this screen owes them is an obvious door. Identity is carried by colour and
+ * icon instead of words: `data-hub-role` re-points --hub-accent for the rail,
+ * the tile, the spotlight and the arrow all at once (see index.css).
  */
-export function PortalCard({
-  role,
-  label,
-  title,
-  description,
-  icon: Icon,
-  href,
-  hostLabel,
-}: PortalCardProps) {
+export function PortalCard({ role, label, title, description, icon: Icon, href }: PortalCardProps) {
   const { ref, onPointerMove } = useSpotlight<HTMLLIElement>()
 
   return (
@@ -45,8 +39,9 @@ export function PortalCard({
       onPointerMove={onPointerMove}
       data-hub-role={role}
       className={cn(
-        'hub-glass hub-spotlight group relative flex items-center gap-4 rounded-2xl p-5 sm:gap-6 sm:p-6',
-        'transition duration-300 ease-out hover:border-hub-accent/45 hover:bg-hub-accent/[0.04]',
+        'hub-glass hub-spotlight group relative flex items-center gap-5 overflow-hidden',
+        'rounded-2xl p-6 pl-7 sm:gap-6 sm:p-7 sm:pl-8',
+        'transition duration-300 ease-out hover:border-hub-accent/45',
         // Focus lives on the inner <a>, but the row is what the user sees — so
         // project the focus treatment outward instead of ringing just the title.
         'has-[a:focus-visible]:border-hub-accent/60 has-[a:focus-visible]:ring-2',
@@ -55,20 +50,28 @@ export function PortalCard({
         'motion-reduce:transition-none',
       )}
     >
+      {/* Role colour rail. An element rather than a border-left utility, whose
+          precedence against hub-glass's own `border` shorthand would depend on
+          stylesheet order. */}
       <span
         aria-hidden
-        className="grid size-12 shrink-0 place-content-center rounded-xl border border-hub-accent/30 bg-hub-accent/10 text-hub-accent sm:size-14"
+        className="absolute inset-y-0 left-0 w-1 bg-hub-accent/70 transition-colors group-hover:bg-hub-accent"
+      />
+
+      <span
+        aria-hidden
+        className="grid size-12 shrink-0 place-content-center rounded-2xl border border-hub-accent/30 bg-hub-accent/10 text-hub-accent transition-colors group-hover:bg-hub-accent/15 sm:size-16"
       >
-        <Icon className="size-6 sm:size-7" />
+        <Icon className="size-6 sm:size-8" />
       </span>
 
-      {/* min-w-0 so the long hostnames can truncate instead of forcing the row wider. */}
+      {/* min-w-0 so long titles can shrink rather than forcing the row wider. */}
       <div className="min-w-0 flex-1">
-        <p className="text-[0.65rem] font-medium uppercase tracking-[0.16em] text-hub-accent">
+        <p className="text-[0.65rem] font-medium uppercase tracking-[0.18em] text-hub-accent">
           {label}
         </p>
 
-        <h2 className="mt-1 text-lg font-semibold tracking-tight text-hub-ink sm:text-xl">
+        <h2 className="mt-1 text-xl font-semibold tracking-tight text-hub-ink sm:text-2xl">
           {/* Stretched link: the ::after covers the whole row, so the entire
               surface is one large target and one tab stop, while the accessible
               name stays "Student portal" instead of the row's every word.
@@ -84,13 +87,16 @@ export function PortalCard({
         </h2>
 
         <p className="mt-1.5 text-sm leading-snug text-hub-ink-dim sm:text-base">{description}</p>
-        <p className="mt-2 truncate text-xs text-hub-ink-faint">{hostLabel}</p>
       </div>
 
-      <ArrowRight
+      {/* Hidden on phones: it costs ~56px of a 390px row and the whole card is
+          already the tap target, so the text is the better use of the width. */}
+      <span
         aria-hidden
-        className="size-5 shrink-0 text-hub-accent sm:size-6 transition-transform group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
-      />
+        className="hidden size-10 shrink-0 place-content-center self-center rounded-full border border-hub-line text-hub-accent transition-colors group-hover:border-hub-accent/50 group-hover:bg-hub-accent/10 sm:grid"
+      >
+        <ArrowRight className="size-5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
+      </span>
     </li>
   )
 }
