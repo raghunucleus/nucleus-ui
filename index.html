@@ -30,6 +30,15 @@
         } catch (e) {
           /* localStorage unavailable — fall back to the light splash. */
         }
+        // The portal hub (app.*) is dark whatever the saved theme, so tag <html>
+        // and let the [data-portal="hub"] rules below paint the splash on its
+        // canvas instead of flashing light before the hub renders.
+        // The `app` label mirrors LABEL_TO_VARIANT in src/lib/subdomain.ts, and
+        // `app=hub` mirrors its dev query override — keep all three in step.
+        var label = location.hostname.split('.')[0].toLowerCase();
+        if (label === 'app' || location.search.indexOf('app=hub') > -1) {
+          document.documentElement.setAttribute('data-portal', 'hub');
+        }
       })();
     </script>
     <style>
@@ -156,6 +165,34 @@
       }
       .dark .nucleus-splash__bar {
         background: rgba(255, 255, 255, 0.1);
+      }
+
+      /* Portal hub (app.*) — always dark, whatever the theme class above says,
+         so these come last and win. Values mirror the --hub-* tokens in
+         src/index.css; the mark uses the same dark palette as .dark. */
+      [data-portal="hub"] .nucleus-splash {
+        background: #060a18;
+      }
+      [data-portal="hub"] .nucleus-splash__logo {
+        --nucleus-p1: #7b58f5;
+        --nucleus-p2: #a98cff;
+        --nucleus-o1: #ffa826;
+        --nucleus-o2: #ff8f2e;
+        --nucleus-c1: #c9b0ff;
+        --nucleus-c2: #7b58f5;
+        --nucleus-c3: #3a2190;
+      }
+      [data-portal="hub"] .nucleus-splash__title {
+        color: #eaf1ff;
+      }
+      [data-portal="hub"] .nucleus-splash__hint {
+        color: rgba(234, 241, 255, 0.55);
+      }
+      [data-portal="hub"] .nucleus-splash__bar {
+        background: rgba(234, 241, 255, 0.12);
+      }
+      [data-portal="hub"] .nucleus-splash__bar::after {
+        background: linear-gradient(90deg, transparent 0%, #38bdf8 50%, transparent 100%);
       }
     </style>
   </head>

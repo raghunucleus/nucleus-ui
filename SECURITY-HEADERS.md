@@ -54,10 +54,15 @@ upgrade-insecure-requests
 - **The inline script hash.** `index.html` runs a small anti-flash script before
   first paint that reads `nucleus-ui-theme` from `localStorage` and sets `.dark`
   on `<html>`. Under a strict `script-src 'self'` the browser refuses to run it
-  and every dark-theme user sees a flash of light on every load. The hash is
-  computed from the **emitted** `index.html`, so it always matches what ships;
-  the build fails if no inline script is found rather than shipping a policy that
-  would block it.
+  and every dark-theme user sees a flash of light on every load. (It also tags
+  `<html>` with `data-portal="hub"` on `app.*`, so the boot splash paints on the
+  hub's dark canvas.) The hash is computed from the **emitted** `index.html`, so
+  it always matches what ships; the build fails if no inline script is found
+  rather than shipping a policy that would block it.
+
+  **Editing that script changes the hash.** Re-copy it into the CloudFront policy
+  in the *same* deploy, or the script is blocked on every hostname and the flash
+  comes back for everyone.
 - **`style-src 'unsafe-inline'`.** Radix, recharts and the Lexical editor set
   inline `style=""` for measured sizes, and static hosting has no nonce
   mechanism. It is the weakest line in the policy, and it is precisely why

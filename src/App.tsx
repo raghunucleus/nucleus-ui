@@ -6,6 +6,7 @@ import i18n, { getStoredParentLang } from '@/lib/i18n'
 import { detectAppVariant } from '@/lib/subdomain'
 import EmployeeLogin from '@/pages/employee-login'
 import ParentLogin from '@/pages/parent-login'
+import PortalHub from '@/pages/portal-hub'
 import StudentLogin from '@/pages/student-login'
 import SelectChild from '@/pages/parent/select-child'
 import { employeeRouter } from '@/employee-router'
@@ -18,8 +19,11 @@ import { useParentAuthStore } from '@/stores/parent-auth-store'
 /**
  * One subdomain → one audience → one portal, each with its own auth store and
  * localStorage namespace (see lib/subdomain.ts): `employee.*` → employee,
- * `parent.*` → parent/guardian, `app.*` → student. The three sessions never
+ * `parent.*` → parent/guardian, `student.*` → student. The three sessions never
  * overlap, so there is no cross-audience precedence to juggle here.
+ *
+ * `app.*` is the odd one out: a signed-out launcher that just points visitors at
+ * whichever of the three is theirs. It touches no auth store at all.
  */
 function App() {
   switch (detectAppVariant()) {
@@ -27,6 +31,8 @@ function App() {
       return <EmployeePortal />
     case 'parent':
       return <ParentPortal />
+    case 'hub':
+      return <PortalHub />
     default:
       return <StudentPortal />
   }
@@ -72,7 +78,7 @@ function ParentPortal() {
   return <RouterProvider router={parentRouter} />
 }
 
-/** Student portal (app.* subdomain): routed app once signed in, login otherwise. */
+/** Student portal (student.* subdomain): routed app once signed in, login otherwise. */
 function StudentPortal() {
   const authed = useAuthStore((state) => state.authed)
   const signIn = useAuthStore((state) => state.signIn)

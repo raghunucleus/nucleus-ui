@@ -33,6 +33,20 @@
   --nucleus-c3: #1a1560;        /* core shadow */
   --nucleus-wordmark: #041d55;  /* "nucleus" navy */
 
+  /* Dark-surface variants of the mark, declared here rather than only inside
+     .dark because two different things need them: the .dark theme (which just
+     aliases them below) and the portal hub, which is dark whatever the app
+     theme is. Without this a light-theme visitor to the hub would get the
+     deep-purple mark and the navy wordmark meant for white paper. */
+  --nucleus-dark-p1: #7b58f5;
+  --nucleus-dark-p2: #a98cff;
+  --nucleus-dark-o1: #ffa826;
+  --nucleus-dark-o2: #ff8f2e;
+  --nucleus-dark-c1: #c9b0ff;
+  --nucleus-dark-c2: #7b58f5;
+  --nucleus-dark-c3: #3a2190;
+  --nucleus-dark-wordmark: #f4f4f5;
+
   /* Radius scale */
   --radius: 0.5rem;
 
@@ -102,6 +116,35 @@
   --brand-panel-accent: #60a5fa;   /* blue-400 */
   --brand-panel-glow: #7dd3fc;     /* sky-300 */
 
+  /* ---------------------------------------------------------------------------
+     PORTAL HUB (app.* — the launcher that sends visitors to their portal).
+     Always dark whatever the app theme, exactly like --brand-panel above: the
+     hub has no theme toggle and nothing to remember. Declared only here, never
+     redefined in .dark.
+
+     Palette is the marketing site's canvas (nucleus-website/src/style.css) so
+     the public site and the front door read as one family.
+     ------------------------------------------------------------------------- */
+  --hub-bg: #060a18;
+  --hub-bg-soft: #0a1024;
+  --hub-ink: #eaf1ff;
+  --hub-ink-dim: color-mix(in srgb, var(--hub-ink) 62%, transparent);
+  /* ~3.5:1 on --hub-bg — non-essential metadata only, never body copy. */
+  --hub-ink-faint: color-mix(in srgb, var(--hub-ink) 38%, transparent);
+  --hub-hairline: #8caaff;
+  --hub-line: color-mix(in srgb, var(--hub-hairline) 14%, transparent);
+  --hub-glass: color-mix(in srgb, var(--hub-bg-soft) 55%, transparent);
+
+  /* Per-role identity colours — the same hues nucleus-website gives each
+     audience's section, so a role keeps its colour across both properties. */
+  --hub-role-member: #38bdf8;     /* sky     — student  */
+  --hub-role-employee: #34d399;   /* emerald — employee */
+  --hub-role-parent: #fbbf24;     /* amber   — parent   */
+
+  /* The live accent. Re-pointed per card by [data-hub-role] further down, which
+     is how one set of utilities colours three differently-tinted cards. */
+  --hub-accent: var(--hub-role-member);
+
   /* Third-party brand colors (exempt from theme switching). */
   --google-blue: #4285f4;
   --google-green: #34a853;
@@ -117,15 +160,16 @@
   --brand-secondary: #38bdf8;   /* sky-400 */
   --brand-accent: #7dd3fc;      /* sky-300 */
 
-  /* Logo mark — lifted purples for dark surfaces; orange barely changes. */
-  --nucleus-p1: #7b58f5;
-  --nucleus-p2: #a98cff;
-  --nucleus-o1: #ffa826;
-  --nucleus-o2: #ff8f2e;
-  --nucleus-c1: #c9b0ff;
-  --nucleus-c2: #7b58f5;
-  --nucleus-c3: #3a2190;
-  --nucleus-wordmark: #f4f4f5;
+  /* Logo mark — lifted purples for dark surfaces; orange barely changes.
+     Values live in :root as --nucleus-dark-* so the hub can borrow them too. */
+  --nucleus-p1: var(--nucleus-dark-p1);
+  --nucleus-p2: var(--nucleus-dark-p2);
+  --nucleus-o1: var(--nucleus-dark-o1);
+  --nucleus-o2: var(--nucleus-dark-o2);
+  --nucleus-c1: var(--nucleus-dark-c1);
+  --nucleus-c2: var(--nucleus-dark-c2);
+  --nucleus-c3: var(--nucleus-dark-c3);
+  --nucleus-wordmark: var(--nucleus-dark-wordmark);
 
   /* Surfaces — central's warm gray-navy. Cards/popover lift off the page; both
      stay near-neutral so the brand-blue accents read against them. Derived
@@ -240,6 +284,18 @@
   --color-brand-panel-accent: var(--brand-panel-accent);
   --color-brand-panel-glow: var(--brand-panel-glow);
 
+  --color-hub-bg: var(--hub-bg);
+  --color-hub-bg-soft: var(--hub-bg-soft);
+  --color-hub-ink: var(--hub-ink);
+  --color-hub-ink-dim: var(--hub-ink-dim);
+  --color-hub-ink-faint: var(--hub-ink-faint);
+  --color-hub-line: var(--hub-line);
+  --color-hub-glass: var(--hub-glass);
+  --color-hub-accent: var(--hub-accent);
+  --color-hub-role-member: var(--hub-role-member);
+  --color-hub-role-employee: var(--hub-role-employee);
+  --color-hub-role-parent: var(--hub-role-parent);
+
   --color-google-blue: var(--google-blue);
   --color-google-green: var(--google-green);
   --color-google-yellow: var(--google-yellow);
@@ -264,6 +320,14 @@
      pseudo-element animates from -100% to 100% so the gradient moves across
      the placeholder once every cycle. Pair with the `.shimmer` utility below. */
   --animate-shimmer: shimmer 1.6s linear infinite;
+
+  /* Portal hub backdrop: a very slow drift for the blurred colour orbs, so the
+     canvas is never quite static without ever asking for attention. */
+  --animate-hub-drift: hub-drift 22s ease-in-out infinite;
+
+  /* Film-grain jitter. steps() rather than a smooth ease — grain that glides
+     reads as a moving texture; grain that stutters reads as grain. */
+  --animate-hub-grain: hub-grain 9s steps(10) infinite;
 }
 
 @keyframes bob {
@@ -372,6 +436,165 @@
   }
 }
 
+/* =============================================================================
+   PORTAL HUB (app.*) — the signed-out launcher. Tokens are up in :root.
+
+   Everything here is dark-only by design and must not be reused inside the
+   portals: the hub renders inside the app-wide ThemeProvider but ignores it, so
+   these utilities deliberately don't respond to .dark.
+   ============================================================================= */
+
+/* Root-level scope, set by useHubChrome() while <PortalHub> is mounted. Two
+   jobs the page element cannot do for itself: pin the native color-scheme dark
+   (:root pins `light`, which would give the hub a white page scrollbar and a
+   white iOS overscroll gutter), and paint the root background so nothing
+   flashes --background between the boot splash tearing down and first paint. */
+:root[data-portal='hub'] {
+  color-scheme: dark;
+  background-color: var(--hub-bg);
+}
+
+/* Per-card identity colour. An attribute rather than an inline style, so every
+   colour value in the app still lives in this file. */
+[data-hub-role='member'] {
+  --hub-accent: var(--hub-role-member);
+}
+[data-hub-role='employee'] {
+  --hub-accent: var(--hub-role-employee);
+}
+[data-hub-role='parent'] {
+  --hub-accent: var(--hub-role-parent);
+}
+
+/* The hub's dark ground. Also re-points the logo mark at its dark-surface
+   palette: the hub stays dark even when the app theme is light, and the :root
+   --nucleus-* values are the ones tuned for white paper (deep purple mark,
+   navy wordmark — both close to invisible here). */
+@utility hub-canvas {
+  background-color: var(--hub-bg);
+  color: var(--hub-ink);
+
+  --nucleus-p1: var(--nucleus-dark-p1);
+  --nucleus-p2: var(--nucleus-dark-p2);
+  --nucleus-o1: var(--nucleus-dark-o1);
+  --nucleus-o2: var(--nucleus-dark-o2);
+  --nucleus-c1: var(--nucleus-dark-c1);
+  --nucleus-c2: var(--nucleus-dark-c2);
+  --nucleus-c3: var(--nucleus-dark-c3);
+  --nucleus-wordmark: var(--nucleus-dark-wordmark);
+}
+
+/* Film grain over the whole canvas — the one thing that stops large flat areas
+   of near-black from banding on cheap panels. An SVG fractal-noise data: URI,
+   so it costs no network request and is covered by the existing CSP img-src
+   (`data:` is already allowed; CSS url() images are governed by img-src). */
+@utility hub-grain {
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: var(--animate-hub-grain);
+}
+
+/* Frosted card surface. */
+@utility hub-glass {
+  /* Opaque fallback first: where backdrop-filter is unsupported or disabled
+     (Firefox with the pref off, some Android WebViews) a translucent card over
+     a blurred orb reads as a hole rather than a surface. */
+  background-color: var(--hub-bg-soft);
+  border: 1px solid var(--hub-line);
+
+  /* @supports nests INSIDE the utility — `@utility` itself cannot be nested. */
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    background-color: var(--hub-glass);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}
+
+/* Cursor-following wash in the card's own accent. --mx/--my are written by
+   use-spotlight.ts; the defaults keep the untouched state looking deliberate
+   rather than empty. Also shown on :focus-within so a keyboard user gets the
+   same feedback a mouse user does. */
+@utility hub-spotlight {
+  position: relative;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    background: radial-gradient(
+      420px 240px at var(--mx, 50%) var(--my, 0%),
+      color-mix(in srgb, var(--hub-accent) 16%, transparent) 0%,
+      transparent 70%
+    );
+  }
+  &:hover::before,
+  &:focus-within::before {
+    opacity: 1;
+  }
+}
+
+/* Radial darkening toward the edges, so headline text never has to compete with
+   the bright centre of a backdrop orb. */
+@utility hub-vignette {
+  pointer-events: none;
+  background: radial-gradient(
+    120% 90% at 50% 35%,
+    transparent 0%,
+    color-mix(in srgb, var(--hub-bg) 72%, transparent) 100%
+  );
+}
+
+/* Gradient-filled headline text. */
+@utility hub-gradient-text {
+  background-image: linear-gradient(
+    100deg,
+    var(--brand-panel-accent) 0%,
+    var(--hub-role-member) 45%,
+    var(--brand-panel-glow) 80%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+
+  /* Forced-colours (Windows high contrast) drops the background image but keeps
+     the transparent text, which would erase the headline. Restore a real colour. */
+  @media (forced-colors: active) {
+    background-image: none;
+    color: CanvasText;
+  }
+}
+
+@keyframes hub-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33% { transform: translate3d(4%, -3%, 0) scale(1.06); }
+  66% { transform: translate3d(-3%, 4%, 0) scale(0.96); }
+}
+
+@keyframes hub-grain {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-3%, 2%); }
+  40% { transform: translate(2%, -3%); }
+  60% { transform: translate(-2%, -2%); }
+  80% { transform: translate(3%, 3%); }
+}
+
+/* The hub's ambient motion is decoration with no informational value — the
+   first thing to go. Card hover/focus transitions are handled per-element with
+   `motion-reduce:` variants; the animated mark self-gates above. */
+@media (prefers-reduced-motion: reduce) {
+  .hub-grain,
+  [data-hub-orb] {
+    animation: none;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -399,8 +622,8 @@
 
      Density curve mirrors akrivia-central/central-ui so the two apps read at
      the same scale: a compact 14px base that steps up on larger monitors.
-     Phones (<768px) keep the full 16px so the student/parent app.* / parent.*
-     portals stay readable in a mobile browser, where layouts already stack
+     Phones (<768px) keep the full 16px so the student/parent student.* /
+     parent.* portals stay readable in a mobile browser, where layouts already stack
      vertically and shrinking text would only hurt.
      ------------------------------------------------------------------------- */
   html {

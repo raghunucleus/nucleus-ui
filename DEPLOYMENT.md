@@ -3,18 +3,32 @@
 The app is a **static bundle**. `npm run build` produces `dist/`; whatever serves
 those files is the "host".
 
-**One build serves three audiences.** `src/lib/subdomain.ts` reads the leftmost
-DNS label at runtime and mounts the matching portal:
+**One build serves three audiences, plus a front door.** `src/lib/subdomain.ts`
+reads the leftmost DNS label at runtime and mounts the matching portal:
 
 | Hostname | `AppVariant` | Portal |
 | --- | --- | --- |
 | `employee.raghuenggcollege.in` | `employee` | Employee |
 | `parent.raghuenggcollege.in` | `parent` | Parent / guardian |
 | `student.raghuenggcollege.in` | `member` | Student |
+| `app.raghuenggcollege.in` | `hub` | Portal hub — signed-out launcher |
 
-There is no build-time variant flag — the same `dist/` is served on all three.
+There is no build-time variant flag — the same `dist/` is served on all four.
 Anything unrecognised falls through to the student portal, so a typo'd hostname
 renders students rather than an error.
+
+> **`app.*` is no longer the student portal.** It used to be an alias for it; it
+> now serves the hub, which shows all three logins and links out to them. It was
+> never in this table, never in `CORS_ORIGINS`, and `STUDENT_APP_URL` has always
+> pointed at `student.`, so nothing was issued against it — but a bookmark or an
+> old emailed link may still hit it. The hub forwards the path on its student
+> card, and redirects immediately when the URL carries a `reset-token` or
+> `invite-token`, so those links still resolve in a click.
+
+The hub makes **no API calls** and holds no session, which is why
+`app.raghuenggcollege.in` is deliberately absent from the server's
+`CORS_ORIGINS` (see the table below). Adding it would widen the allowlist for
+nothing. If the hub ever does need to call the API, add it *then*.
 
 **The three hostnames are a security requirement, not a convenience.** Each
 audience keeps its tokens in `localStorage` under its own key prefix
@@ -22,10 +36,11 @@ audience keeps its tokens in `localStorage` under its own key prefix
 `localStorage` is scoped to the **origin**. Serve all three from one hostname and
 the three sessions share one store, collapsing the isolation the code assumes.
 
-> The `?app=employee` / `?app=parent` query override exists for localhost dev and
-> is not gated by environment — it works in production too. It only changes which
-> portal renders, not which tokens are valid, but it does mean the employee login
-> screen is reachable from any of the three hosts.
+> The `?app=employee` / `?app=parent` / `?app=hub` query override exists for
+> localhost dev and is not gated by environment — it works in production too. It
+> only changes which portal renders, not which tokens are valid, but it does mean
+> the employee login screen is reachable from any of the hosts. The hostname is
+> checked first, so on a real portal host the override is inert.
 
 ## Build
 
@@ -96,11 +111,16 @@ aws s3 sync dist/ s3://<ui-bucket>/ --delete
 aws cloudfront create-invalidation --distribution-id <ID> --paths "/*"
 ```
 
-**One distribution, three alternate domain names.** The bundle is identical for
-all three audiences and picks its portal from `window.location.hostname`, so a
-single CloudFront distribution carrying `employee.`, `parent.` and `student.` as
-alternate domain names (over one SAN or wildcard certificate) is correct — and
-simpler than three distributions of the same bytes.
+**One distribution, four alternate domain names.** The bundle is identical for
+all four hostnames and picks its portal from `window.location.hostname`, so a
+single CloudFront distribution carrying `employee.`, `parent.`, `student.` and
+`app.` as alternate domain names (over one SAN or wildcard certificate) is
+correct — and simpler than four distributions of the same bytes.
+
+`app.` may already be on the distribution and the certificate, since the old
+build accepted it as a student hostname. Check before raising a cert request; if
+it is there, shipping the hub is a pure code deploy. If not, add the SAN (ACM, in
+`us-east-1`), then the alias, then the Route 53 A/AAAA alias record.
 
 **Cache policy.** `/assets/*` is content-hashed and immutable (1 year), but
 **`index.html` must be `no-cache`**. Otherwise a user holds a stale shell that
@@ -112,7 +132,7 @@ unrelated screen.
 
 | Server var | Value |
 | --- | --- |
-| `CORS_ORIGINS` | Must list all three portal origins (plus the admin one). The default allowlist is localhost-only and applies whenever `NODE_ENV` is not `dev`. |
+| `CORS_ORIGINS` | Must list all three **portal** origins (plus the admin one). The default allowlist is localhost-only and applies whenever `NODE_ENV` is not `dev`. Do **not** add `https://app.raghuenggcollege.in` — the hub is a signed-out launcher that calls no API, and listing it would widen the allowlist for nothing. |
 | `STUDENT_APP_URL` | `https://student.raghuenggcollege.in` |
 | `EMPLOYEE_APP_URL` | `https://employee.raghuenggcollege.in` — **no** `?app=employee` query; that dev marker exists only because dev shares one origin. |
 
