@@ -22,6 +22,7 @@ import {
 const StudentHome = lazyRouteComponent(() => import('@/pages/student-home'))
 const IdCard = lazyRouteComponent(() => import('@/pages/id-card'))
 const Profile = lazyRouteComponent(() => import('@/pages/profile'))
+const ProfileGroup = lazyRouteComponent(() => import('@/pages/profile-group'))
 const ProfileUpdateRequest = lazyRouteComponent(
   () => import('@/pages/profile-update-request'),
 )
@@ -75,6 +76,14 @@ const profileUpdateRequestRoute = createRoute({
         ? Number(search.edit)
         : undefined,
   }),
+})
+
+// One group of the profile ("Home address", "Parent & guardian"…). The static
+// `/profile/request-changes` above still wins over this dynamic sibling.
+const profileGroupRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/profile/$group',
+  component: ProfileGroup,
 })
 
 const privacyRoute = createRoute({
@@ -231,6 +240,7 @@ const routeTree = rootRoute.addChildren([
   idCardRoute,
   profileRoute,
   profileUpdateRequestRoute,
+  profileGroupRoute,
   privacyRoute,
   timetableRoute,
   attendanceRoute,
