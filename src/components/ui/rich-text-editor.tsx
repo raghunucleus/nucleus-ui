@@ -65,13 +65,11 @@ const MARKDOWN_TRANSFORMERS = [CHECK_LIST, ...TRANSFORMERS.filter((t) => t !== C
 export function RichTextEditor({
   value,
   onChange,
-  placeholder = 'Write a description…',
   readOnly = false,
   className,
 }: {
   value: RichTextValue | null
   onChange?: (value: RichTextValue | null) => void
-  placeholder?: string
   readOnly?: boolean
   className?: string
 }) {
@@ -109,11 +107,6 @@ export function RichTextEditor({
                 )}
                 aria-label="Rich text editor"
               />
-            }
-            placeholder={
-              <div className="pointer-events-none absolute left-3 top-2 text-muted-foreground">
-                {placeholder}
-              </div>
             }
             ErrorBoundary={LexicalErrorBoundary}
           />

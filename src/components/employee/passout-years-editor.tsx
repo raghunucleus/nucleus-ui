@@ -130,7 +130,6 @@ function DraftFields({
             autoFocus={autoFocus}
             onChange={(e) => onChange(withYear(draft, e.target.value))}
             onKeyDown={(e) => e.key === 'Enter' && onSubmit()}
-            placeholder="Passout year"
             aria-label="Passout year"
             className="h-8 w-32"
           />

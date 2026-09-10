@@ -517,7 +517,6 @@ export default function EmployeeDriveFormPage() {
             id="drive-name"
             value={driveName}
             onChange={(e) => setDriveName(e.target.value)}
-            placeholder="e.g. Summer Internship 2026"
           />
         </Field>
 
@@ -599,7 +598,6 @@ export default function EmployeeDriveFormPage() {
                 <LazyRichTextEditor
                   value={(driveScoped.bond_desc as RichTextValue | null) ?? null}
                   onChange={(v) => setDriveScoped((d) => ({ ...d, bond_desc: v }))}
-                  placeholder="Bond terms…"
                 />
               )}
             />
@@ -649,7 +647,6 @@ export default function EmployeeDriveFormPage() {
               type="email"
               value={spocEmail}
               onChange={(e) => setSpocEmail(e.target.value)}
-              placeholder="hr@company.com"
             />
           </Field>
           <Field label="Drive SPOC contact" htmlFor="drive-spoc-contact">
@@ -657,7 +654,6 @@ export default function EmployeeDriveFormPage() {
               id="drive-spoc-contact"
               value={spocContact}
               onChange={(e) => setSpocContact(e.target.value)}
-              placeholder="Phone"
             />
           </Field>
           {/* The app's calendar, not native date/datetime-local inputs —
@@ -896,7 +892,6 @@ function ProfileBlock({
               key={`${profile.uid}-bond`}
               value={(profile.bond_desc as RichTextValue | null) ?? null}
               onChange={(v) => patch({ bond_desc: v })}
-              placeholder="Bond terms…"
             />
           )}
         />
@@ -908,7 +903,6 @@ function ProfileBlock({
           key={`${profile.uid}-jd`}
           value={profile.jd}
           onChange={(v) => patch({ jd: v })}
-          placeholder="Describe the role, responsibilities, skills…"
         />
       </Field>
 

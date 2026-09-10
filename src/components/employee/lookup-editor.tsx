@@ -47,7 +47,6 @@ export interface LookupFlag {
 export interface LookupNumberField {
   key: string
   label: string
-  placeholder?: string
 }
 
 /**
@@ -153,7 +152,6 @@ function NumberBox({
       value={value}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
-      placeholder={field.placeholder ?? field.label}
       aria-label={field.label}
       className="h-8 w-24"
     />
@@ -376,7 +374,6 @@ export default function LookupEditor<T extends LookupRow>({
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void add()}
-            placeholder="Add a value…"
             className="min-w-40 flex-1"
           />
           {hasFlags && (

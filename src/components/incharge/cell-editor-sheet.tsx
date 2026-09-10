@@ -493,7 +493,6 @@ export function CellEditorSheet({
                   id="cell-room"
                   value={room}
                   onChange={(e) => setRoom(e.target.value)}
-                  placeholder="e.g. A-204"
                   maxLength={48}
                   className="h-9"
                 />
@@ -504,7 +503,6 @@ export function CellEditorSheet({
                   id="cell-note"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  placeholder="e.g. Lab session"
                   maxLength={160}
                   className="h-9"
                 />

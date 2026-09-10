@@ -60,7 +60,6 @@ export const en = {
 
   login: {
     mobileLabel: 'Registered mobile number',
-    mobilePlaceholder: '10-digit mobile number',
     password: 'Password',
     forgot: 'Forgot password?',
     errMobile: 'Enter your 10-digit mobile number.',

@@ -56,7 +56,6 @@ export const te: typeof en = {
 
   login: {
     mobileLabel: 'నమోదిత మొబైల్ నంబర్',
-    mobilePlaceholder: '10 అంకెల మొబైల్ నంబర్',
     password: 'పాస్‌వర్డ్',
     forgot: 'పాస్‌వర్డ్ మర్చిపోయారా?',
     errMobile: 'మీ 10 అంకెల మొబైల్ నంబర్‌ను నమోదు చేయండి.',

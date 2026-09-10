@@ -82,7 +82,6 @@ export function ContactRows({
                   value={d.hr_mobile}
                   inputMode="numeric"
                   maxLength={10}
-                  placeholder="10-digit mobile"
                   onChange={(e) =>
                     onPatch(d.uid, { hr_mobile: e.target.value })
                   }
@@ -99,7 +98,6 @@ export function ContactRows({
                 <Input
                   value={d.hr_landline}
                   maxLength={32}
-                  placeholder="e.g. 0891-2755555"
                   onChange={(e) =>
                     onPatch(d.uid, { hr_landline: e.target.value })
                   }

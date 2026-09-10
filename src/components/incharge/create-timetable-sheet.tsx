@@ -308,9 +308,6 @@ export function CreateTimetableSheet({
               id="tt-create-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={
-                mode === 'clone' ? 'e.g. Exam week, Diwali week' : 'e.g. Regular week'
-              }
             />
             <p className="text-xs text-muted-foreground">
               {mode === 'clone'

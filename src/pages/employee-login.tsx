@@ -197,7 +197,6 @@ function EmployeeLoginForm({
             id="emp-code"
             name="emp-code"
             inputSize="lg"
-            placeholder="e.g. EMP1042"
             autoComplete="username"
             autoFocus
             required
@@ -371,7 +370,6 @@ function ForgotPasswordForm({
           id="identifier"
           name="identifier"
           inputSize="lg"
-          placeholder="EMP1042 or you@example.com"
           autoComplete="username"
           autoFocus
           required

@@ -316,7 +316,6 @@ function AddCourseSheet({
               id="course-label"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. Coding club, Yoga session, Lab Setup"
             />
           </div>
 

@@ -503,7 +503,6 @@ function MetadataEditor({
             value={editName}
             onChange={(e) => onNameChange(e.target.value)}
             disabled={!canEdit}
-            placeholder="e.g. Regular week, Exam week"
           />
         </div>
       </div>

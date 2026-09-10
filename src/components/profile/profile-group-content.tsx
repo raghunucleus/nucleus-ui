@@ -346,7 +346,6 @@ function ResumeBlock({
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Input
               type="url"
-              placeholder="https://drive.google.com/…"
               maxLength={512}
               value={externalDraft}
               disabled={busy}
@@ -501,7 +500,6 @@ function PersonalEmailBlock({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Input
             type="email"
-            placeholder="you@example.com"
             value={email}
             disabled={busy}
             onChange={(e) => setEmail(e.target.value)}
@@ -532,7 +530,6 @@ function PersonalEmailBlock({
             <Input
               inputMode="numeric"
               autoComplete="one-time-code"
-              placeholder="6-digit code"
               maxLength={6}
               value={code}
               disabled={busy}

@@ -32,8 +32,8 @@ const NO_FLAGS = 'An offer type must be an internship, a full-time role, or both
 // Placement categories are the only kind carrying a salary band. Bounds are in
 // lakhs per annum, min-inclusive / max-exclusive; a blank bound is open-ended.
 const SALARY_FIELDS: LookupNumberField[] = [
-  { key: 'min_lpa', label: 'Min LPA', placeholder: 'Min' },
-  { key: 'max_lpa', label: 'Max LPA', placeholder: 'Max' },
+  { key: 'min_lpa', label: 'Min LPA' },
+  { key: 'max_lpa', label: 'Max LPA' },
 ]
 
 /** Mirrors the two server rules, so a bad band never leaves the browser. */

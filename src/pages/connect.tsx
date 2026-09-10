@@ -1677,7 +1677,6 @@ function ChatThread({
               }
             }}
             rows={1}
-            placeholder="Message"
             className="max-h-32 min-h-10 flex-1 resize-none rounded-xl border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <Button

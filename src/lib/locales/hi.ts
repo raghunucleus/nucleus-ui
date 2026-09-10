@@ -56,7 +56,6 @@ export const hi: typeof en = {
 
   login: {
     mobileLabel: 'पंजीकृत मोबाइल नंबर',
-    mobilePlaceholder: '10 अंकों का मोबाइल नंबर',
     password: 'पासवर्ड',
     forgot: 'पासवर्ड भूल गए?',
     errMobile: 'अपना 10 अंकों का मोबाइल नंबर दर्ज करें।',

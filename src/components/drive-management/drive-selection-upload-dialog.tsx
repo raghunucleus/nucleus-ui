@@ -759,7 +759,9 @@ function AmountCell({
         step="any"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={defaulted && resolved != null ? String(resolved) : 'Optional'}
+        // Not a hint: when the column is defaulted this shows the value that
+        // will actually be applied if the cell is left blank.
+        placeholder={defaulted && resolved != null ? String(resolved) : undefined}
         aria-invalid={error ? true : undefined}
         title={error}
         className={cn(

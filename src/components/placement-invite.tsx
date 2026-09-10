@@ -219,7 +219,6 @@ export function DenyInviteDialog({
           onChange={(e) => setReason(e.target.value)}
           maxLength={512}
           rows={4}
-          placeholder="Your reason…"
           className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <DialogFooter>
