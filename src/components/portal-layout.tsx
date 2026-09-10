@@ -57,7 +57,7 @@ export function PortalLayout() {
       <ChatNotifier />
       <NotificationNotifier />
       <header className="sticky top-0 z-10 border-b bg-card/80 shadow-sm backdrop-blur">
-        <div className="mx-auto grid h-16 max-w-5xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
+        <div className="mx-auto grid h-14 max-w-5xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
           <Link to="/" className="flex w-fit items-center" aria-label="Nucleus home">
             <NucleusLogo />
           </Link>

@@ -152,7 +152,7 @@ export function ParentPortalLayout() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b bg-card/80 px-4 backdrop-blur sm:px-6">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b bg-card/80 px-4 backdrop-blur sm:px-6">
           <Button
             variant="ghost"
             size="icon"
@@ -253,7 +253,7 @@ export function ParentPortalLayout() {
           </div>
         </header>
 
-        <main className="scrollbar-themed min-w-0 flex-1 overflow-auto px-4 py-8 sm:px-6">
+        <main className="scrollbar-themed min-w-0 flex-1 overflow-auto px-4 py-6 sm:px-6">
           <div className="mx-auto max-w-5xl space-y-6">
             {/* Keyed on the reconnect nonce so the active page remounts and
                 refetches after a recovery. */}
@@ -295,10 +295,10 @@ function ParentSidebar({
         className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/[0.06] via-secondary/[0.03] to-transparent"
       />
 
-      {/* Brand row — vertically aligned with the main header's h-16. */}
+      {/* Brand row — vertically aligned with the main header's h-14. */}
       <div
         className={cn(
-          'relative flex h-16 shrink-0 items-center border-b transition-[padding] duration-300 ease-out',
+          'relative flex h-14 shrink-0 items-center border-b transition-[padding] duration-300 ease-out',
           collapsed ? 'justify-center px-0' : 'gap-2 px-4',
         )}
       >

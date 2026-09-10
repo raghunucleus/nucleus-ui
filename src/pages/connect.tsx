@@ -309,7 +309,7 @@ export default function ConnectPage() {
         accent="cyan"
       />
 
-      <div className="grid h-[68svh] min-h-[26rem] grid-cols-1 overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm md:grid-cols-[20rem_1fr]">
+      <div className="grid h-[68svh] min-h-[26rem] grid-cols-1 overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm md:grid-cols-[20rem_1fr]">
         {/* Left pane: conversation list / new-chat picker */}
         <aside
           className={cn(

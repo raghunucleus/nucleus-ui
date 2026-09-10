@@ -1,7 +1,29 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Inter, self-hosted. Never load a font from a CDN — the CSP is `font-src
+   'self' data:` (see SECURITY-HEADERS.md), so a Google Fonts link would be
+   blocked in production and silently fall back to the system font. */
+@import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
+
+/* =============================================================================
+   TYPE — one family for the whole product.
+
+   Without this the app inherits Tailwind's default `system-ui` stack, which on
+   Windows resolves to Segoe UI: a noticeably larger x-height than Inter at the
+   same px, which is half of why the UI read as "zoomed in". Inter is also what
+   the two mobile apps use, so web and mobile now share one voice.
+
+   The Devanagari / Telugu fallbacks are load-bearing: Inter has no glyphs for
+   either script, and the parent portal ships हिंदी and తెలుగు. Without them the
+   browser picks an arbitrary fallback per glyph and the nav jumps around.
+   ============================================================================= */
+@theme {
+  --font-sans:
+    'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    Roboto, 'Nirmala UI', 'Noto Sans Devanagari', 'Noto Sans Telugu', sans-serif;
+}
 
 /* =============================================================================
    DESIGN TOKENS — single source of truth for the app's visual language.
@@ -602,6 +624,9 @@
   body {
     @apply bg-background text-foreground;
     margin: 0;
+    /* Explicit rather than relying on Preflight's --default-font-family chain,
+       so the family is greppable and cannot be knocked out by a token rename. */
+    font-family: var(--font-sans);
     font-synthesis-weight: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -609,35 +634,26 @@
   }
 
   /* ---------------------------------------------------------------------------
-     Responsive density via root font-size.
+     Density via root font-size — ONE value for every desktop and tablet width.
 
-     The whole app is rem-based, so the root font-size is a single density
-     knob: shrink it and every rem-sized text/padding/gap/width shrinks
-     proportionally, letting the same data fit on a laptop screen without the
-     user having to zoom the browser out.
+     The whole app is rem-based, so the root font-size is a single density knob:
+     every rem-sized text/padding/gap/width scales with it.
 
-     Tailwind v4 breakpoints (sm/md/lg/xl/2xl) are defined in PX, not rem, so
-     changing this does NOT shift layout breakpoints — grids keep the same
-     column counts; only the content inside each track gets denser.
+     This used to step UP on larger monitors (15px ≥1600, 16px ≥1920). That is
+     what made the product look "zoomed in": a 1920×1080 screen — the primary
+     target — rendered every control, heading and gap 14% larger than the same
+     page on a 1366 laptop, and the `2xl:` variants fired on top of it. A bigger
+     screen should show MORE content, not BIGGER content, so the steps are gone.
 
-     Density curve mirrors akrivia-central/central-ui so the two apps read at
-     the same scale: a compact 14px base that steps up on larger monitors.
-     Phones (<768px) keep the full 16px so the student/parent student.* /
-     parent.* portals stay readable in a mobile browser, where layouts already stack
-     vertically and shrinking text would only hurt.
+     Do not re-introduce per-breakpoint root sizes. Tailwind v4 breakpoints are
+     defined in PX, so they don't move with this value — a step here only
+     rescales the content inside each track.
+
+     Phones (<768px) keep the full 16px: layouts already stack vertically there
+     and 14px in a mobile browser is genuinely hard to read.
      ------------------------------------------------------------------------- */
   html {
     font-size: 14px;
-  }
-  @media (min-width: 1600px) {
-    html {
-      font-size: 15px;
-    }
-  }
-  @media (min-width: 1920px) {
-    html {
-      font-size: 16px;
-    }
   }
   /* Mobile floor — keep phone browsers at the full 16px (see note above). */
   @media (max-width: 767px) {
@@ -656,14 +672,19 @@
 
      A `max-w-*` block already stretches to fill its parent up to the cap, so
      raising the wide-tier caps below = "fill on laptops, gutter only on large
-     monitors" (the rem density knob above scales the cap up on big screens
-     automatically). This lifts every max-w-6xl / max-w-7xl page at once with no
-     page edits. Form tiers (3xl/4xl/5xl) and dialog sizes (sm/md/lg/xl) are
+     monitors". This lifts every max-w-6xl / max-w-7xl page at once with no page
+     edits. Form tiers (3xl/4xl/5xl) and dialog sizes (sm/md/lg/xl) are
      untouched, so forms stay readable and modals don't change.
+
+     These are in REM, so they moved when the root font-size stopped stepping up
+     (above): at the old 16px root a 1080p screen got a 1440px table, which
+     90rem × 14px would have cut to 1260px. The caps are scaled by the same 16/14
+     to keep the wide tiers exactly as wide in pixels as they used to be on a
+     1080p monitor — the content got denser, the page did not get narrower.
      ------------------------------------------------------------------------- */
   :root {
-    --container-6xl: 80rem; /* was 72rem */
-    --container-7xl: 90rem; /* was 80rem */
+    --container-6xl: 90rem; /* 1260px — was 80rem at a 16px root */
+    --container-7xl: 102rem; /* 1428px — was 90rem at a 16px root */
   }
 }
 

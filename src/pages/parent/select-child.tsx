@@ -84,7 +84,7 @@ export default function SelectChild() {
           <p className="text-xs font-medium uppercase tracking-wider text-primary">
             {t('brand.parentPortal')}
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {t('selectChild.title')}
           </h1>
           {guardian && (
@@ -123,11 +123,11 @@ function ChildCard({
     <button
       type="button"
       onClick={onSelect}
-      className="group flex items-center gap-4 rounded-2xl border bg-card p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="group flex items-center gap-4 rounded-xl border bg-card p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       <div
         className={cn(
-          'grid size-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-lg font-semibold text-white shadow-md',
+          'grid size-14 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-lg font-semibold text-white shadow-md',
           gradientFor(student.id),
         )}
       >
@@ -153,7 +153,7 @@ function ChildCard({
 function EmptyState() {
   const { t } = useTranslation()
   return (
-    <div className="mt-8 flex flex-col items-center gap-3 rounded-2xl border bg-card p-10 text-center text-card-foreground">
+    <div className="mt-8 flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
       <div className="grid size-12 place-items-center rounded-full bg-icon-blue/10 text-icon-blue">
         <Users className="size-6" />
       </div>

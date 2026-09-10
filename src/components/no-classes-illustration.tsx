@@ -42,7 +42,7 @@ export function NoClassesIllustration({
         {/* Floating calendar — the focal point. */}
         <span
           aria-hidden
-          className="relative grid size-16 place-items-center rounded-2xl bg-card shadow-sm ring-1 ring-border/60 [animation:var(--animate-float)]"
+          className="relative grid size-16 place-items-center rounded-xl bg-card shadow-sm ring-1 ring-border/60 [animation:var(--animate-float)]"
         >
           <CalendarOff className="size-8 text-primary" />
         </span>

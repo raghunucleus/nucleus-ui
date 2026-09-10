@@ -282,7 +282,7 @@ function readOpenParam(): number | null {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border bg-card p-10 text-center text-card-foreground">
+    <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
       <div className="grid size-12 place-items-center rounded-full bg-icon-cyan/10 text-icon-cyan">
         <FileDown className="size-6" />
       </div>
@@ -305,7 +305,7 @@ function ErrorState({
   onRetry: () => void
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border bg-card p-10 text-center text-card-foreground">
+    <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
       <div className="grid size-12 place-items-center rounded-full bg-destructive/10 text-destructive">
         <FileDown className="size-6" />
       </div>

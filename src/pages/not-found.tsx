@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 
 export default function NotFound() {
   return (
-    <div className="relative isolate overflow-hidden rounded-2xl border bg-card shadow-sm">
+    <div className="relative isolate overflow-hidden rounded-xl border bg-card shadow-sm">
       {/* Floating gradient orbs — purely decorative, slow pulse. They sit
           behind the content via z-index and don't intercept pointer events. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
@@ -84,7 +84,7 @@ export default function NotFound() {
           </h1>
         </div>
 
-        <h2 className="mt-6 animate-in fade-in slide-in-from-bottom-3 text-2xl font-semibold tracking-tight delay-150 duration-700 sm:text-3xl">
+        <h2 className="mt-6 animate-in fade-in slide-in-from-bottom-3 text-2xl font-semibold tracking-tight delay-150 duration-700">
           Hmm, I couldn&rsquo;t find that page
         </h2>
         <p className="mt-3 max-w-md animate-in fade-in slide-in-from-bottom-3 text-balance text-sm text-muted-foreground delay-200 duration-700 sm:text-base">

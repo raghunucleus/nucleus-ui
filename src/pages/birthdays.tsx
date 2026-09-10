@@ -248,13 +248,13 @@ export default function BirthdaysPage() {
         {loading ? (
           <ListSkeleton />
         ) : items.length === 0 ? (
-          <p className="rounded-2xl border bg-card p-8 text-center text-sm text-muted-foreground">
+          <p className="rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
             No classmate matches &ldquo;{debounced}&rdquo;.
           </p>
         ) : (
           <>
             {today.length > 0 ? (
-              <section className="rounded-2xl border border-icon-rose/20 bg-gradient-to-br from-icon-rose/10 to-icon-amber/10 p-5">
+              <section className="rounded-xl border border-icon-rose/20 bg-gradient-to-br from-icon-rose/10 to-icon-amber/10 p-5">
                 <div className="flex items-center justify-between gap-2">
                   <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-icon-rose">
                     <PartyPopper className="size-3.5" />
@@ -335,7 +335,7 @@ export default function BirthdaysPage() {
             {groupByMonth(upcoming).map((month) => (
               <section
                 key={month.label}
-                className="rounded-2xl border bg-card text-card-foreground shadow-sm"
+                className="rounded-xl border bg-card text-card-foreground shadow-sm"
               >
                 <header className="flex items-center justify-between border-b px-5 py-3.5">
                   <h3 className="text-sm font-semibold">{month.label}</h3>
@@ -432,15 +432,15 @@ function PersonAvatar({
 function ListSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="h-28 animate-pulse rounded-2xl bg-muted" />
-      <div className="h-64 animate-pulse rounded-2xl bg-muted" />
+      <div className="h-28 animate-pulse rounded-xl bg-muted" />
+      <div className="h-64 animate-pulse rounded-xl bg-muted" />
     </div>
   )
 }
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border bg-card p-10 text-center text-card-foreground">
+    <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
       <div className="grid size-12 place-items-center rounded-full bg-icon-rose/10 text-icon-rose">
         <Cake className="size-6" />
       </div>
@@ -463,7 +463,7 @@ function ErrorState({
   onRetry: () => void
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border bg-card p-10 text-center text-card-foreground">
+    <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
       <div className="grid size-12 place-items-center rounded-full bg-destructive/10 text-destructive">
         <CircleAlert className="size-6" />
       </div>

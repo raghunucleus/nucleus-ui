@@ -202,7 +202,7 @@ function OverallCard({
             Overall attendance
           </p>
           <div className="flex items-end gap-1">
-            <span className="text-5xl font-bold tracking-tight tabular-nums">
+            <span className="text-3xl font-semibold tracking-tight tabular-nums">
               {percent.toFixed(1)}
             </span>
             <span className="pb-1.5 text-xl font-semibold text-muted-foreground">

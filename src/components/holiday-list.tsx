@@ -69,7 +69,7 @@ export function HolidayList({
       {groups.map((group) => (
         <section
           key={group.key}
-          className="rounded-2xl border bg-card text-card-foreground shadow-sm"
+          className="rounded-xl border bg-card text-card-foreground shadow-sm"
         >
           <header className="flex items-center justify-between border-b px-5 py-3.5">
             <h3 className="text-sm font-semibold">{group.label}</h3>
@@ -130,7 +130,7 @@ export function HolidayList({
 /** Shared empty state — no declared holidays in the fetched window. */
 export function HolidayEmptyState({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border bg-card p-10 text-center text-card-foreground">
+    <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
       <div className="grid size-12 place-items-center rounded-full bg-icon-blue/10 text-icon-blue">
         <CalendarOff className="size-6" />
       </div>

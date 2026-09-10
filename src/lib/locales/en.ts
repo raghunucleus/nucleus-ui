@@ -42,6 +42,8 @@ export const en = {
     prevWeek: 'Previous week',
     nextWeek: 'Next week',
     loading: 'Loading',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
   },
 
   account: { switchStudent: 'Switch student', switch: 'Switch', collapse: 'Collapse' },

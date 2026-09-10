@@ -49,7 +49,7 @@ import { useAppDrawerStore } from '@/stores/app-drawer-store'
 
 // --- shared chrome ----------------------------------------------------------
 
-const TILE_BASE = 'rounded-2xl border bg-card text-card-foreground shadow-sm'
+const TILE_BASE = 'rounded-xl border bg-card text-card-foreground shadow-sm'
 
 /** A friendly countdown label, e.g. "Today", "Tomorrow", "in 5 days". */
 function relativeLabel(offsetDays: number): string {
@@ -262,21 +262,21 @@ export function AttendanceTile({ className }: { className?: string }) {
       className={className}
       pulseIcon={!loading && !failed && !hasData}
     >
-      <p className="mt-4 text-3xl font-bold tabular-nums">
+      <p className="mt-4 text-2xl font-semibold tabular-nums">
         {loading ? (
-          <span className="inline-block h-9 w-16 animate-pulse rounded bg-muted/70 align-middle" />
+          <span className="inline-block h-8 w-16 animate-pulse rounded bg-muted/70 align-middle" />
         ) : failed ? (
-          <span className="text-2xl font-semibold text-muted-foreground">
+          <span className="text-xl font-semibold text-muted-foreground">
             —
           </span>
         ) : !hasData ? (
-          <span className="text-2xl font-semibold text-muted-foreground">
+          <span className="text-xl font-semibold text-muted-foreground">
             Not yet
           </span>
         ) : (
           <>
             {percent.toFixed(1)}
-            <span className="text-lg font-semibold text-muted-foreground">
+            <span className="text-base font-semibold text-muted-foreground">
               %
             </span>
           </>
@@ -339,21 +339,21 @@ export function CgpaTile({ className }: { className?: string }) {
       className={className}
       pulseIcon={!loading && !failed && !hasResults}
     >
-      <p className="mt-4 text-3xl font-bold tabular-nums">
+      <p className="mt-4 text-2xl font-semibold tabular-nums">
         {loading ? (
-          <span className="inline-block h-9 w-16 animate-pulse rounded bg-muted/70 align-middle" />
+          <span className="inline-block h-8 w-16 animate-pulse rounded bg-muted/70 align-middle" />
         ) : failed ? (
-          <span className="text-2xl font-semibold text-muted-foreground">
+          <span className="text-xl font-semibold text-muted-foreground">
             —
           </span>
         ) : !hasResults ? (
-          <span className="text-2xl font-semibold text-muted-foreground">
+          <span className="text-xl font-semibold text-muted-foreground">
             Not yet
           </span>
         ) : (
           <>
             {value.toFixed(2)}
-            <span className="text-lg font-semibold text-muted-foreground">
+            <span className="text-base font-semibold text-muted-foreground">
               {' '}
               / 10
             </span>
