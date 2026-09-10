@@ -115,6 +115,7 @@ const EmployeeRequestsMinePage = lazyRouteComponent(
 const EmployeeTimetablePage = lazyRouteComponent(
   () => import('@/pages/employee/timetable'),
 )
+const Deployment = lazyRouteComponent(() => import('@/pages/deployment'))
 
 /**
  * Router for the employee portal (employee.* subdomain). All routes live
@@ -385,6 +386,14 @@ const exportsRoute = createRoute({
   component: EmployeeExportsPage,
 })
 
+// Reached by URL only — no RBAC catalog entry, so it never renders in the
+// sidebar. Shows the hand-maintained deploy stamp, nothing employee-specific.
+const deploymentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/deployment',
+  component: Deployment,
+})
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   academicHolidaysRoute,
@@ -422,6 +431,7 @@ const routeTree = rootRoute.addChildren([
   profileRoute,
   notificationsRoute,
   exportsRoute,
+  deploymentRoute,
 ])
 
 export const employeeRouter = createRouter({

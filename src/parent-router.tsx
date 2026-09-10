@@ -32,6 +32,7 @@ const ParentHolidays = lazyRouteComponent(
 const ParentProfile = lazyRouteComponent(
   () => import('@/pages/parent/parent-profile'),
 )
+const Deployment = lazyRouteComponent(() => import('@/pages/deployment'))
 
 /**
  * Router for the parent/guardian portal. All routes live under
@@ -83,6 +84,14 @@ const profileRoute = createRoute({
   component: ParentProfile,
 })
 
+// Reached by URL only — the parent nav is hardcoded in ParentPortalLayout and
+// this route is deliberately absent from it.
+const deploymentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/deployment',
+  component: Deployment,
+})
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   timetableRoute,
@@ -91,6 +100,7 @@ const routeTree = rootRoute.addChildren([
   examResultsRoute,
   academicHolidaysRoute,
   profileRoute,
+  deploymentRoute,
 ])
 
 export const parentRouter = createRouter({

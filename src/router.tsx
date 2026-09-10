@@ -43,6 +43,7 @@ const MyRequests = lazyRouteComponent(() => import('@/pages/my-requests'))
 const Approvals = lazyRouteComponent(() => import('@/pages/approvals'))
 const Leaves = lazyRouteComponent(() => import('@/pages/leaves'))
 const Placements = lazyRouteComponent(() => import('@/pages/placements'))
+const Deployment = lazyRouteComponent(() => import('@/pages/deployment'))
 
 /** The signed-in student/parent portal. `PortalLayout` renders the chrome. */
 const rootRoute = createRootRoute({ component: PortalLayout })
@@ -235,6 +236,14 @@ const connectRoute = createRoute({
   }),
 })
 
+// Reached by URL only — it has no entry in `MODULES`, so it never shows up in
+// the app drawer.
+const deploymentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/deployment',
+  component: Deployment,
+})
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   idCardRoute,
@@ -254,6 +263,7 @@ const routeTree = rootRoute.addChildren([
   approvalsRoute,
   leavesRoute,
   placementsRoute,
+  deploymentRoute,
 ])
 
 export const router = createRouter({
