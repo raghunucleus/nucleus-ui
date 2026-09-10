@@ -310,7 +310,7 @@ function StatCard({
             <div className="mt-1 h-7 w-16 shimmer rounded bg-muted/60" />
           ) : (
             <>
-              <p className="text-2xl font-bold tracking-tight tabular-nums">
+              <p className="text-2xl font-semibold tracking-tight tabular-nums">
                 {value}
               </p>
               {hint ? (

@@ -2,46 +2,119 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  lazyRouteComponent,
 } from '@tanstack/react-router'
 
 import { EmployeePortalLayout } from '@/components/employee-portal-layout'
+import { RoutePending } from '@/components/route-pending'
 import NotFound from '@/pages/not-found'
-import EmployeeAttendanceAnalyticsPage from '@/pages/employee/attendance-analytics'
-import EmployeeAttendanceHistoryPage from '@/pages/employee/attendance-history'
-import EmployeeAttendanceMarkPage from '@/pages/employee/attendance-mark'
-import EmployeeAttendanceMarkSessionPage from '@/pages/employee/attendance-mark-session'
-import EmployeeAcademicHolidaysPage from '@/pages/employee/academic-holidays'
-import EmployeeBirthdaysPage from '@/pages/employee/birthdays'
-import EmployeeCompanyAttributesPage from '@/pages/employee/corporate-relations-company-attributes'
-import EmployeeCompanyFormPage from '@/pages/employee/corporate-relations-company-form'
-import EmployeeCompanyManagementPage from '@/pages/employee/corporate-relations-company-management'
-import EmployeeCrViewPage from '@/pages/employee/corporate-relations-cr-view'
-import EmployeeManagementViewPage from '@/pages/employee/corporate-relations-management-view'
-import EmployeeJobRolesPage from '@/pages/employee/corporate-relations-job-roles'
-import EmployeeDriveAttributesPage from '@/pages/employee/drive-management-drive-attributes'
-import EmployeeDriveDetailPage from '@/pages/employee/drive-management-drive-detail'
-import EmployeeDriveFormPage from '@/pages/employee/drive-management-drive-form'
-import EmployeeDrivesPage from '@/pages/employee/drive-management-drives'
-import EmployeeEligibilityCheckPage from '@/pages/employee/drive-management-eligibility-check'
-import EmployeePlacementCoordinatorDriveDetailPage from '@/pages/employee/placement-coordinator-drive-detail'
-import EmployeePlacementCoordinatorStudentsPage from '@/pages/employee/placement-coordinator-students'
-import EmployeePlacementCoordinatorDrivesPage from '@/pages/employee/placement-coordinator-drives'
-import EmployeeHome from '@/pages/employee/home'
-import EmployeeIdCardPage from '@/pages/employee/id-card'
-import EmployeeMarksUploadPage from '@/pages/employee/marks-upload'
-import EmployeeMarksUploadBatchPage from '@/pages/employee/marks-upload-batch'
-import EmployeeMarksViewPage from '@/pages/employee/marks-view'
-import EmployeeInchargeSchedulePage from '@/pages/employee/incharge-schedule'
-import EmployeeInchargeTemplateDetailPage from '@/pages/employee/incharge-template-detail'
-import EmployeeInchargeTemplatesPage from '@/pages/employee/incharge-templates'
-import EmployeeProfilePage, {
-  type EmployeeProfileSection,
-} from '@/pages/employee/profile'
-import EmployeeRequestsApprovalsPage from '@/pages/employee/requests-approvals'
-import EmployeeNotificationsPage from '@/pages/employee/notifications'
-import EmployeeExportsPage from '@/pages/employee/exports'
-import EmployeeRequestsMinePage from '@/pages/employee/requests-mine'
-import EmployeeTimetablePage from '@/pages/employee/timetable'
+import type { EmployeeProfileSection } from '@/pages/employee/profile'
+
+// Every page is its own chunk, fetched on first navigation (or on link hover —
+// see `defaultPreload`). Only the layout and NotFound are static: they render
+// on every route. Never `import X from '@/pages/...'` here — one static import
+// drags that page (and whatever it pulls in, e.g. recharts or xlsx) into the
+// app chunk for every employee. Type-only imports are fine; they're erased.
+const EmployeeAttendanceAnalyticsPage = lazyRouteComponent(
+  () => import('@/pages/employee/attendance-analytics'),
+)
+const EmployeeAttendanceHistoryPage = lazyRouteComponent(
+  () => import('@/pages/employee/attendance-history'),
+)
+const EmployeeAttendanceMarkPage = lazyRouteComponent(
+  () => import('@/pages/employee/attendance-mark'),
+)
+const EmployeeAttendanceMarkSessionPage = lazyRouteComponent(
+  () => import('@/pages/employee/attendance-mark-session'),
+)
+const EmployeeAcademicHolidaysPage = lazyRouteComponent(
+  () => import('@/pages/employee/academic-holidays'),
+)
+const EmployeeBirthdaysPage = lazyRouteComponent(
+  () => import('@/pages/employee/birthdays'),
+)
+const EmployeeCompanyAttributesPage = lazyRouteComponent(
+  () => import('@/pages/employee/corporate-relations-company-attributes'),
+)
+const EmployeeCompanyFormPage = lazyRouteComponent(
+  () => import('@/pages/employee/corporate-relations-company-form'),
+)
+const EmployeeCompanyManagementPage = lazyRouteComponent(
+  () => import('@/pages/employee/corporate-relations-company-management'),
+)
+const EmployeeCrViewPage = lazyRouteComponent(
+  () => import('@/pages/employee/corporate-relations-cr-view'),
+)
+const EmployeeManagementViewPage = lazyRouteComponent(
+  () => import('@/pages/employee/corporate-relations-management-view'),
+)
+const EmployeeJobRolesPage = lazyRouteComponent(
+  () => import('@/pages/employee/corporate-relations-job-roles'),
+)
+const EmployeeDriveAttributesPage = lazyRouteComponent(
+  () => import('@/pages/employee/drive-management-drive-attributes'),
+)
+const EmployeeDriveDetailPage = lazyRouteComponent(
+  () => import('@/pages/employee/drive-management-drive-detail'),
+)
+const EmployeeDriveFormPage = lazyRouteComponent(
+  () => import('@/pages/employee/drive-management-drive-form'),
+)
+const EmployeeDrivesPage = lazyRouteComponent(
+  () => import('@/pages/employee/drive-management-drives'),
+)
+const EmployeeEligibilityCheckPage = lazyRouteComponent(
+  () => import('@/pages/employee/drive-management-eligibility-check'),
+)
+const EmployeePlacementCoordinatorDriveDetailPage = lazyRouteComponent(
+  () => import('@/pages/employee/placement-coordinator-drive-detail'),
+)
+const EmployeePlacementCoordinatorStudentsPage = lazyRouteComponent(
+  () => import('@/pages/employee/placement-coordinator-students'),
+)
+const EmployeePlacementCoordinatorDrivesPage = lazyRouteComponent(
+  () => import('@/pages/employee/placement-coordinator-drives'),
+)
+const EmployeeHome = lazyRouteComponent(() => import('@/pages/employee/home'))
+const EmployeeIdCardPage = lazyRouteComponent(
+  () => import('@/pages/employee/id-card'),
+)
+const EmployeeMarksUploadPage = lazyRouteComponent(
+  () => import('@/pages/employee/marks-upload'),
+)
+const EmployeeMarksUploadBatchPage = lazyRouteComponent(
+  () => import('@/pages/employee/marks-upload-batch'),
+)
+const EmployeeMarksViewPage = lazyRouteComponent(
+  () => import('@/pages/employee/marks-view'),
+)
+const EmployeeInchargeSchedulePage = lazyRouteComponent(
+  () => import('@/pages/employee/incharge-schedule'),
+)
+const EmployeeInchargeTemplateDetailPage = lazyRouteComponent(
+  () => import('@/pages/employee/incharge-template-detail'),
+)
+const EmployeeInchargeTemplatesPage = lazyRouteComponent(
+  () => import('@/pages/employee/incharge-templates'),
+)
+const EmployeeProfilePage = lazyRouteComponent(
+  () => import('@/pages/employee/profile'),
+)
+const EmployeeRequestsApprovalsPage = lazyRouteComponent(
+  () => import('@/pages/employee/requests-approvals'),
+)
+const EmployeeNotificationsPage = lazyRouteComponent(
+  () => import('@/pages/employee/notifications'),
+)
+const EmployeeExportsPage = lazyRouteComponent(
+  () => import('@/pages/employee/exports'),
+)
+const EmployeeRequestsMinePage = lazyRouteComponent(
+  () => import('@/pages/employee/requests-mine'),
+)
+const EmployeeTimetablePage = lazyRouteComponent(
+  () => import('@/pages/employee/timetable'),
+)
 
 /**
  * Router for the employee portal (employee.* subdomain). All routes live
@@ -354,4 +427,8 @@ const routeTree = rootRoute.addChildren([
 export const employeeRouter = createRouter({
   routeTree,
   defaultNotFoundComponent: NotFound,
+  // Suspense fallback while a page chunk downloads — inside the layout, so the
+  // sidebar never unmounts. Hovering/focusing a <Link> prefetches its chunk.
+  defaultPendingComponent: RoutePending,
+  defaultPreload: 'intent',
 })

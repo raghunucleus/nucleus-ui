@@ -184,23 +184,22 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src'),
       },
     },
+    // Code splitting is driven by `import()` boundaries in src (portal → app
+    // shell → page, plus on-demand xlsx / Lexical) rather than by manual chunk
+    // groups: the bundler already hoists modules shared by several lazy pages
+    // (recharts, the UI kit) into common chunks, and a manual vendor group
+    // would only rename them. The old `manualChunks` split was a no-op for
+    // first load — the entry still preloaded those chunks statically.
     build: {
       chunkSizeWarningLimit: 1000,
-      rollupOptions: {
-        output: {
-          // Split the heavyweight libraries out of the entry bundle. All four
-          // are used on a handful of screens but would otherwise be downloaded
-          // by every student on first load.
-          manualChunks: (id: string) => {
-            if (id.includes('node_modules/exceljs')) return 'exceljs'
-            if (id.includes('node_modules/xlsx')) return 'xlsx'
-            if (id.includes('node_modules/recharts')) return 'recharts'
-            if (id.includes('node_modules/lexical')) return 'lexical'
-            if (id.includes('node_modules/@lexical')) return 'lexical'
-            return undefined
-          },
-        },
-      },
+    },
+    optimizeDeps: {
+      // Only reached through `import()` boundaries (the parent portal chunk,
+      // the upload dialogs), so the dev pre-bundler can miss them at startup,
+      // discover them mid-session and answer the first request with a 504
+      // "Outdated Optimize Dep" — which surfaces as "Failed to fetch
+      // dynamically imported module" on the parent login. Pre-bundle up front.
+      include: ['i18next', 'react-i18next', 'xlsx'],
     },
     server: {
       port: 5000,

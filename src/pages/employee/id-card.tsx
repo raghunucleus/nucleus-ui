@@ -75,7 +75,7 @@ function IdentityCard({ card }: { card: EmployeeIdCard }) {
   const { employee, institution, designation, department } = card
 
   return (
-    <section className="mx-auto max-w-3xl overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-sm">
+    <section className="mx-auto max-w-3xl overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
       {/* College header band */}
       <div className="flex items-center gap-3 bg-gradient-to-br from-primary to-secondary p-4 text-primary-foreground">
         {institution.logo_url ? (
@@ -237,7 +237,7 @@ function formatDate(value: string | null): string {
 
 function CardSkeleton() {
   return (
-    <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border bg-card">
+    <div className="mx-auto max-w-3xl overflow-hidden rounded-xl border bg-card">
       <div className="h-20 animate-pulse bg-muted" />
       <div className="grid sm:grid-cols-[1fr_auto]">
         <div className="min-w-0">

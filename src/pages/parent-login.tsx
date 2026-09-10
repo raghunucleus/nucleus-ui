@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
-import { ArrowRight, Eye, EyeOff, GraduationCap } from 'lucide-react'
+import { useEffect, useLayoutEffect, useState } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 
@@ -8,8 +8,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { ParentLanguageSwitcher } from '@/components/parent-language-switcher'
-import { BrandPanel } from '@/components/auth/brand-panel'
-import { ApiError } from '@/lib/api'
+import {
+  authErrorMessage,
+  AuthHeading,
+  AuthShell,
+  AuthTextButton,
+  FormError,
+  PasswordInput,
+  validateNewPassword,
+} from '@/components/auth'
 import {
   parentChangePassword,
   parentLogin,
@@ -23,10 +30,13 @@ import i18n, { getStoredParentLang } from '@/lib/i18n'
 
 // ---------------------------------------------------------------------------
 // Parent (guardian) login — the only entry point on the parent.* subdomain.
-// Mirrors employee-login.tsx (its own page, separate from the student login)
-// but adds the parent-only i18n: English / हिंदी / తెలుగు, with a language
-// switcher in the header. Forgot-password is OTP-based (no email reset link),
-// so there is no `?reset-token` panel here.
+// Same shared kit as the student and employee pages, plus the parent-only
+// i18n: English / हिंदी / తెలుగు, with a language switcher in the header.
+// Forgot-password is OTP-based (no email reset link), so there is no
+// `?reset-token` panel here.
+//
+// Nothing in @/components/auth calls `t()` — this page translates and passes
+// the strings down, which keeps i18next out of the other two login chunks.
 // ---------------------------------------------------------------------------
 
 export default function ParentLogin() {
@@ -42,72 +52,17 @@ export default function ParentLogin() {
   }, [])
 
   return (
-    <PageShell>
+    <AuthShell
+      variant="parent"
+      actions={
+        <>
+          <ParentLanguageSwitcher />
+          <ThemeToggle />
+        </>
+      }
+    >
       <ParentSection />
-    </PageShell>
-  )
-}
-
-/** Outer chrome shared by every view on this page. */
-function PageShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex min-h-svh bg-background text-foreground">
-      <BrandPanel variant="parent" />
-
-      <main className="relative flex flex-1 flex-col px-6 py-8 sm:px-10 lg:w-[28rem] lg:flex-none lg:px-12">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 lg:hidden">
-            <div className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap className="size-5" />
-            </div>
-            <span className="text-base font-semibold tracking-tight">
-              Nucleus
-            </span>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <ParentLanguageSwitcher />
-            <ThemeToggle />
-          </div>
-        </div>
-
-        <div className="flex flex-1 items-center justify-center py-10">
-          <div className="w-full max-w-sm space-y-8">
-            <ParentLoginHeader />
-            {children}
-            <ParentLoginFooter />
-          </div>
-        </div>
-      </main>
-    </div>
-  )
-}
-
-function ParentLoginHeader() {
-  const { t } = useTranslation()
-  return (
-    <header className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wider text-primary">
-        {t('loginChrome.eyebrow')}
-      </p>
-      <h2 className="text-3xl font-semibold tracking-tight">
-        {t('loginChrome.title')}
-      </h2>
-      <p className="text-sm text-muted-foreground">
-        {t('loginChrome.subtitle')}
-      </p>
-    </header>
-  )
-}
-
-function ParentLoginFooter() {
-  const { t } = useTranslation()
-  return (
-    <p className="text-center text-xs text-muted-foreground">
-      {t('loginChrome.needHelp')}{' '}
-      <a href="#" className="font-medium text-foreground hover:underline">
-        {t('loginChrome.contact')}
-      </a>
-    </p>
+    </AuthShell>
   )
 }
 
@@ -121,17 +76,21 @@ const MOBILE_RE = /^[6-9]\d{9}$/
 
 /** Parent password policy with translated messages (mirrors the server). */
 function validateNewPasswordT(t: TFunction, password: string): string | null {
-  if (password.length < 8) return t('pw.errLen')
-  if (!/[A-Za-z]/.test(password)) return t('pw.errLetter')
-  if (!/\d/.test(password)) return t('pw.errNumber')
-  return null
+  return validateNewPassword(password, {
+    tooShort: t('pw.errLen'),
+    needLetter: t('pw.errLetter'),
+    needNumber: t('pw.errNumber'),
+  })
 }
 
 /** Server error message passthrough, with a translated generic fallback. */
 function toMessageT(t: TFunction, err: unknown): string {
-  if (err instanceof ApiError) return err.message
-  if (err instanceof Error && err.message) return err.message
-  return t('generic.error')
+  return authErrorMessage(err, t('generic.error'))
+}
+
+/** Accessible names for the show/hide toggle inside a password field. */
+function passwordToggleLabels(t: TFunction) {
+  return { showLabel: t('a11y.showPassword'), hideLabel: t('a11y.hidePassword') }
 }
 
 function ParentSection() {
@@ -190,11 +149,12 @@ function ParentSection() {
 
   if (mode === 'reset-done') {
     return (
-      <div className="space-y-5 text-center">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          {t('done.title')}
-        </h2>
-        <p className="text-sm text-muted-foreground">{t('done.desc')}</p>
+      <div className="space-y-4">
+        <AuthHeading
+          align="center"
+          title={t('done.title')}
+          description={t('done.desc')}
+        />
         <Button
           type="button"
           size="lg"
@@ -207,18 +167,36 @@ function ParentSection() {
     )
   }
 
+  // The welcome heading and the help footer belong to the sign-in step only.
+  // They used to sit in the page shell and so were rendered above every panel,
+  // stacking a second heading on top of "Reset your password" and the rest.
   return (
-    <ParentLoginForm
-      onForgot={() => setMode('forgot')}
-      onLoggedIn={(result) => {
-        if (result.mustChangePassword) {
-          setPendingLogin(result)
-          setMode('change')
-        } else {
-          signIn(result)
-        }
-      }}
-    />
+    <div className="space-y-6">
+      <AuthHeading
+        eyebrow={t('loginChrome.eyebrow')}
+        title={t('loginChrome.title')}
+        description={t('loginChrome.subtitle')}
+      />
+
+      <ParentLoginForm
+        onForgot={() => setMode('forgot')}
+        onLoggedIn={(result) => {
+          if (result.mustChangePassword) {
+            setPendingLogin(result)
+            setMode('change')
+          } else {
+            signIn(result)
+          }
+        }}
+      />
+
+      <p className="text-center text-xs text-muted-foreground">
+        {t('loginChrome.needHelp')}{' '}
+        <a href="#" className="font-medium text-foreground hover:underline">
+          {t('loginChrome.contact')}
+        </a>
+      </p>
+    </div>
   )
 }
 
@@ -259,14 +237,15 @@ function ParentLoginForm({
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
+    <form className="space-y-4" onSubmit={handleSubmit}>
       {error && <FormError message={error} />}
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <Label htmlFor="parent-mobile">{t('login.mobileLabel')}</Label>
         <Input
           id="parent-mobile"
           name="parent-mobile"
+          inputSize="lg"
           type="tel"
           inputMode="numeric"
           autoComplete="username"
@@ -286,6 +265,7 @@ function ParentLoginForm({
         autoComplete="current-password"
         onForgot={onForgot}
         forgotLabel={t('login.forgot')}
+        {...passwordToggleLabels(t)}
       />
 
       <Button type="submit" size="lg" className="w-full" disabled={submitting}>
@@ -337,13 +317,8 @@ function ParentChangePasswordForm({
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
-      <header className="space-y-2">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          {t('change.title')}
-        </h2>
-        <p className="text-sm text-muted-foreground">{t('change.desc')}</p>
-      </header>
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <AuthHeading title={t('change.title')} description={t('change.desc')} />
 
       {error && <FormError message={error} />}
 
@@ -354,6 +329,7 @@ function ParentChangePasswordForm({
         onChange={setCurrentPassword}
         autoComplete="current-password"
         autoFocus
+        {...passwordToggleLabels(t)}
       />
       <PasswordInput
         id="parent-new-password"
@@ -361,6 +337,7 @@ function ParentChangePasswordForm({
         value={newPassword}
         onChange={setNewPassword}
         autoComplete="new-password"
+        {...passwordToggleLabels(t)}
       />
       <PasswordInput
         id="parent-confirm-password"
@@ -368,6 +345,7 @@ function ParentChangePasswordForm({
         value={confirmPassword}
         onChange={setConfirmPassword}
         autoComplete="new-password"
+        {...passwordToggleLabels(t)}
       />
 
       <p className="text-xs text-muted-foreground">{t('pw.hint')}</p>
@@ -376,13 +354,7 @@ function ParentChangePasswordForm({
         <Button type="submit" size="lg" className="w-full" disabled={submitting}>
           {submitting ? t('common.saving') : t('change.save')}
         </Button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground"
-        >
-          {t('change.cancel')}
-        </button>
+        <AuthTextButton onClick={onCancel}>{t('change.cancel')}</AuthTextButton>
       </div>
     </form>
   )
@@ -411,7 +383,10 @@ function ParentForgotForm({
     }
     setSubmitting(true)
     try {
-      await withGlobalLoader(() => parentRequestOtp(trimmed), t('common.sending'))
+      await withGlobalLoader(
+        () => parentRequestOtp(trimmed),
+        t('common.sending'),
+      )
       onSent(trimmed)
     } catch (err) {
       setError(toMessageT(t, err))
@@ -420,21 +395,17 @@ function ParentForgotForm({
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
-      <header className="space-y-2">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          {t('forgot.title')}
-        </h2>
-        <p className="text-sm text-muted-foreground">{t('forgot.desc')}</p>
-      </header>
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <AuthHeading title={t('forgot.title')} description={t('forgot.desc')} />
 
       {error && <FormError message={error} />}
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <Label htmlFor="parent-forgot-mobile">{t('login.mobileLabel')}</Label>
         <Input
           id="parent-forgot-mobile"
           name="parent-forgot-mobile"
+          inputSize="lg"
           type="tel"
           inputMode="numeric"
           autoComplete="username"
@@ -450,13 +421,9 @@ function ParentForgotForm({
         <Button type="submit" size="lg" className="w-full" disabled={submitting}>
           {submitting ? t('common.sending') : t('forgot.send')}
         </Button>
-        <button
-          type="button"
-          onClick={onBack}
-          className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground"
-        >
+        <AuthTextButton onClick={onBack}>
           {t('common.backToSignIn')}
-        </button>
+        </AuthTextButton>
       </div>
     </form>
   )
@@ -506,23 +473,20 @@ function ParentOtpForm({
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
-      <header className="space-y-2">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          {t('otp.title')}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {t('otp.desc', { mobile })}
-        </p>
-      </header>
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <AuthHeading
+        title={t('otp.title')}
+        description={t('otp.desc', { mobile })}
+      />
 
       {error && <FormError message={error} />}
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <Label htmlFor="parent-otp">{t('otp.codeLabel')}</Label>
         <Input
           id="parent-otp"
           name="parent-otp"
+          inputSize="lg"
           inputMode="numeric"
           autoComplete="one-time-code"
           maxLength={6}
@@ -539,6 +503,7 @@ function ParentOtpForm({
         value={newPassword}
         onChange={setNewPassword}
         autoComplete="new-password"
+        {...passwordToggleLabels(t)}
       />
       <PasswordInput
         id="parent-otp-confirm-password"
@@ -546,6 +511,7 @@ function ParentOtpForm({
         value={confirmPassword}
         onChange={setConfirmPassword}
         autoComplete="new-password"
+        {...passwordToggleLabels(t)}
       />
 
       <p className="text-xs text-muted-foreground">{t('pw.hint')}</p>
@@ -554,13 +520,9 @@ function ParentOtpForm({
         <Button type="submit" size="lg" className="w-full" disabled={submitting}>
           {submitting ? t('common.saving') : t('otp.set')}
         </Button>
-        <button
-          type="button"
-          onClick={onBack}
-          className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground"
-        >
+        <AuthTextButton onClick={onBack}>
           {t('common.backToSignIn')}
-        </button>
+        </AuthTextButton>
       </div>
     </form>
   )
@@ -581,75 +543,4 @@ function ParentOtpForm({
 function useAutofillGuard(): { readOnly: boolean; onFocus: () => void } {
   const [editable, setEditable] = useState(false)
   return { readOnly: !editable, onFocus: () => setEditable(true) }
-}
-
-function PasswordInput({
-  id,
-  label,
-  value,
-  onChange,
-  autoComplete,
-  autoFocus,
-  onForgot,
-  forgotLabel,
-}: {
-  id: string
-  label: string
-  value: string
-  onChange: (next: string) => void
-  autoComplete: string
-  autoFocus?: boolean
-  onForgot?: () => void
-  /** Label for the "forgot password" link — translated by callers. */
-  forgotLabel?: string
-}) {
-  const [shown, setShown] = useState(false)
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label htmlFor={id}>{label}</Label>
-        {onForgot && (
-          <button
-            type="button"
-            onClick={onForgot}
-            className="text-xs font-medium text-primary hover:underline"
-          >
-            {forgotLabel}
-          </button>
-        )}
-      </div>
-      <div className="relative">
-        <Input
-          id={id}
-          type={shown ? 'text' : 'password'}
-          autoComplete={autoComplete}
-          autoFocus={autoFocus}
-          required
-          className="pr-11"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <button
-          type="button"
-          onClick={() => setShown((v) => !v)}
-          className="absolute inset-y-0 right-0 grid w-11 place-items-center text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
-          aria-label={shown ? 'Hide password' : 'Show password'}
-        >
-          {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function FormError({ message }: { message: string }) {
-  return (
-    <p
-      role="alert"
-      className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400"
-    >
-      {message}
-    </p>
-  )
 }

@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from 'react'
 import { AlertTriangle, Download, FileSpreadsheet, Loader2, Upload, X } from 'lucide-react'
-import * as XLSX from 'xlsx'
 import { toast } from 'sonner'
 
 import { Field, NativeSelect } from '@/components/corporate-relations/bits'
+import { loadXlsx } from '@/lib/xlsx'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -231,6 +231,7 @@ export function DriveSelectionUploadDialog({
 
     const headers = ['Roll Number', ...templateAmounts.map((k) => AMOUNT_LABELS[k])]
     const body = rolls.map((roll) => [roll, ...templateAmounts.map(() => '')])
+    const XLSX = await loadXlsx()
     const ws = XLSX.utils.aoa_to_sheet([headers, ...body])
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Selections')
@@ -247,7 +248,7 @@ export function DriveSelectionUploadDialog({
     setFileName(file.name)
     setBusy(true)
     try {
-      const buf = await file.arrayBuffer()
+      const [XLSX, buf] = await Promise.all([loadXlsx(), file.arrayBuffer()])
       // Let the "Reading…" state paint before the synchronous parse blocks.
       await new Promise((r) => setTimeout(r, 0))
       const wb = XLSX.read(buf, { type: 'array' })

@@ -58,7 +58,7 @@ export function StateView({
         'flex flex-col items-center justify-center gap-5 text-center',
         compact
           ? 'px-5 py-10'
-          : 'rounded-2xl border bg-card px-6 py-16 text-card-foreground',
+          : 'rounded-xl border bg-card px-6 py-16 text-card-foreground',
         className,
       )}
     >
@@ -83,7 +83,7 @@ export function StateView({
         />
         <div
           className={cn(
-            'relative grid place-items-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg motion-safe:[animation:ncl-float_3s_ease-in-out_infinite]',
+            'relative grid place-items-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg motion-safe:[animation:ncl-float_3s_ease-in-out_infinite]',
             compact ? 'size-12' : 'size-16',
           )}
         >

@@ -38,6 +38,8 @@ export const hi: typeof en = {
     prevWeek: 'पिछला सप्ताह',
     nextWeek: 'अगला सप्ताह',
     loading: 'लोड हो रहा है',
+    showPassword: 'पासवर्ड दिखाएँ',
+    hidePassword: 'पासवर्ड छिपाएँ',
   },
 
   account: { switchStudent: 'छात्र बदलें', switch: 'बदलें', collapse: 'छोटा करें' },

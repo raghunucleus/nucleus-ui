@@ -1,4 +1,4 @@
-import { GraduationCap } from 'lucide-react'
+import { NucleusMark, NucleusWordmark } from '@/components/brand'
 
 type Props = { variant: 'employee' | 'parent' | 'member' }
 
@@ -24,29 +24,31 @@ export function BrandPanel({ variant }: Props) {
   const { headline, sub, footer } = COPY[variant]
 
   return (
-    <aside className="relative hidden overflow-hidden bg-brand-panel text-brand-panel-foreground lg:flex lg:flex-1 lg:flex-col lg:justify-between lg:p-12 xl:p-16 2xl:p-20">
+    <aside className="relative hidden overflow-hidden bg-brand-panel text-brand-panel-foreground lg:flex lg:flex-1 lg:basis-0 lg:flex-col lg:justify-between lg:p-12 xl:p-16">
       {/* Decorative orbs — purely visual, hidden from AT */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -left-32 -top-32 size-[28rem] rounded-full bg-brand-panel-accent/30 blur-3xl"
+        className="pointer-events-none absolute -left-32 -top-32 size-80 rounded-full bg-brand-panel-accent/30 blur-3xl"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute -bottom-40 -right-24 size-[34rem] rounded-full bg-brand-panel-glow/20 blur-3xl"
+        className="pointer-events-none absolute -bottom-40 -right-24 size-96 rounded-full bg-brand-panel-glow/20 blur-3xl"
       />
 
       <div className="relative flex items-center gap-2.5">
-        <div className="grid size-10 place-items-center rounded-lg bg-brand-panel-foreground/10 ring-1 ring-brand-panel-foreground/15 backdrop-blur">
-          <GraduationCap className="size-5" />
-        </div>
-        <span className="text-lg font-semibold tracking-tight">Nucleus</span>
+        {/* White tile keeps the mark's colours true on the dark hero panel. */}
+        <NucleusMark tile size={40} />
+        <NucleusWordmark height={18} className="text-brand-panel-foreground" />
       </div>
 
-      <div className="relative space-y-5">
-        <h1 className="whitespace-pre-line text-4xl font-semibold leading-[1.1] tracking-tight xl:text-5xl 2xl:text-6xl">
+      {/* Capped at text-5xl. This used to climb to text-6xl with p-20 at 2xl,
+          which on a 1080p screen put a 60px headline beside a ~350px form —
+          marketing-hero scale on a utility screen. */}
+      <div className="relative space-y-4">
+        <h1 className="whitespace-pre-line text-4xl font-semibold leading-[1.1] tracking-tight xl:text-5xl">
           {headline}
         </h1>
-        <p className="max-w-lg text-base text-brand-panel-foreground/75 xl:text-lg">{sub}</p>
+        <p className="max-w-lg text-base text-brand-panel-foreground/75">{sub}</p>
       </div>
 
       <div className="relative flex items-center justify-between text-xs text-brand-panel-foreground/60">

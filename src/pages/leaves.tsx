@@ -1329,7 +1329,7 @@ function DayClassPicker({
 function LeavesSkeleton() {
   return (
     <div className="space-y-2.5">
-      <div className="h-16 animate-pulse rounded-2xl bg-muted" />
+      <div className="h-16 animate-pulse rounded-xl bg-muted" />
       {[0, 1, 2].map((i) => (
         <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />
       ))}

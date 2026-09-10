@@ -18,6 +18,17 @@ These are the approved libraries for each concern. Use them; do **not** introduc
 - All app routing goes through TanStack Router. Use file-based or code-based route definitions; never import from `react-router-dom`.
 - Use the typed `Link`, `useNavigate`, `useParams`, `useSearch` exports — never `window.location` for navigation.
 
+### Code splitting — every page is a lazy chunk
+The login page of one subdomain must never download the other portals or any page. The split is enforced by `import()` boundaries in three layers, and one stray static import silently undoes a layer.
+
+1. **Portal** — [src/portals/portal.tsx](src/portals/portal.tsx) maps the hostname to a `lazyRouteComponent(() => import('./<x>-portal'))`; [src/main.tsx](src/main.tsx) preloads it before mounting so the HTML splash hands straight to the login. `main.tsx` / `App.tsx` must not import anything portal-specific (that includes `@/lib/i18n`, which is parent-only and lives in `parent-portal.tsx`).
+2. **App shell** — each `src/portals/<x>-portal.tsx` statically imports its login screen and lazy-loads `./<x>-app.tsx` (the `RouterProvider`), preloading it while the login form is up so sign-in swaps with no loader.
+3. **Page** — in `src/router.tsx`, `src/employee-router.tsx`, `src/parent-router.tsx` every route is `component: lazyRouteComponent(() => import('@/pages/...'))`. Only the layout and `NotFound` are static. **Never `import X from '@/pages/...'`** in a router or any shared module; type-only imports (`import type`) are fine. Routers set `defaultPendingComponent: RoutePending` and `defaultPreload: 'intent'`.
+
+- Heavy libraries reachable from a page should still be loaded on demand inside the handler: `const XLSX = await loadXlsx()` from [src/lib/xlsx.ts](src/lib/xlsx.ts) — never `import * as XLSX from 'xlsx'` at module scope. Lexical follows the same rule via `LazyRichTextEditor` (below).
+- A dependency that is only reachable through `import()` must be listed in `optimizeDeps.include` in [vite.config.ts](vite.config.ts) (`i18next`, `react-i18next`, `xlsx` today), or the dev server answers its first request with a 504 and the lazy chunk fails to load.
+- Check with `npm run build`: the entry `index-*.js` should stay well under 300 kB, and `dist/index.html` must not `modulepreload` any page, portal or vendor-library chunk.
+
 ### Client state — `zustand`
 - For cross-component client state (auth user, UI state, persisted preferences). Define one store per concern in `src/stores/`.
 - Server state (anything fetched from the API) does **not** go in zustand — use TanStack Router loaders or a dedicated fetcher; never mirror server data into a store.
@@ -54,7 +65,7 @@ These are the approved libraries for each concern. Use them; do **not** introduc
 - The JSON is also read by `nucleus-mobile`'s React Native `RichTextView`. Adding a node type to `rich-text/nodes.ts` means teaching both renderers about it, or it degrades to plain text on read.
 
 ### Spreadsheets — `exceljs` and `xlsx`
-- **`xlsx` (SheetJS) for reading** user-uploaded spreadsheets — parsing rows from `.xlsx` / `.csv` uploads in bulk-import flows.
+- **`xlsx` (SheetJS) for reading** user-uploaded spreadsheets — parsing rows from `.xlsx` / `.csv` uploads in bulk-import flows. Load it on demand with `loadXlsx()` from [src/lib/xlsx.ts](src/lib/xlsx.ts) inside the handler (see "Code splitting" above).
 - **`exceljs` for writing** generated exports — when the output needs styling, column widths, multiple sheets, or formulas.
 - If you only need to emit a plain CSV with no styling, `xlsx` is also fine for the write side. Don't add a third spreadsheet library.
 
@@ -65,6 +76,61 @@ All colors, radii, and surface treatments live as CSS variables in [src/index.cs
 - **Brand colors** are the three `--brand-*` vars at the top of `:root` and `.dark`. To rebrand, edit ONLY these six values.
 - **Semantic tokens** (`--primary`, `--secondary`, `--accent`, `--background`, `--foreground`, `--muted`, `--border`, `--ring`, `--card`, `--popover`, `--destructive`, `--sidebar-*`, `--chart-*`) reference the brand vars or define neutral surfaces. These are what components consume.
 - The `@theme inline` block maps every CSS var to a Tailwind color so utilities like `bg-primary`, `text-muted-foreground`, `border-border` work everywhere.
+
+## Typography, density & spacing standards
+
+The web portals share one scale with the mobile apps' "Nucleus Compact" system: **Inter, compact, 14px root**. Every size below is a Tailwind utility on the rem scale — don't hardcode px.
+
+### Font & density
+
+- The family is **Inter Variable**, self-hosted via `@fontsource-variable/inter` and declared once as `--font-sans` in [src/index.css](src/index.css). Never set `font-family` in a component, and never load a font from a CDN — the CSP is `font-src 'self' data:` (see [SECURITY-HEADERS.md](SECURITY-HEADERS.md)), so a Google Fonts link is blocked in production and silently falls back to the system font.
+- The `--font-sans` stack keeps `Nirmala UI` / `Noto Sans Devanagari` / `Noto Sans Telugu` after Inter. Inter has no glyphs for either script and the parent portal ships हिंदी and తెలుగు — dropping them makes the parent nav pick a different fallback per glyph.
+- Root font-size is **a flat 14px at every viewport ≥ 768px**, and **16px on phones** (< 768px, where layouts already stack and 14px is hard to read).
+- **Do not re-introduce per-breakpoint root font-sizes.** They used to step up (15px ≥1600, 16px ≥1920), which rendered the whole product 14% larger on a 1080p monitor than on a 1366 laptop and read as permanently zoomed in. A bigger screen should show *more* content, not *bigger* content. If a wide page needs more room, raise its `max-w-*` tier — the wide-tier `--container-6xl/7xl` caps in `index.css` exist for exactly that.
+
+### Type scale
+
+Use these pairings exactly; they are the whole scale.
+
+| Role | Classes |
+| --- | --- |
+| Body, form controls, table cells | `text-sm` |
+| Meta, captions, badges | `text-xs` |
+| Field labels | `text-xs font-medium` (or the `Label` primitive) |
+| Section / card title | `text-base font-semibold` (`CardTitle`) |
+| Page title — every in-app page | `text-xl font-semibold tracking-tight` |
+| Auth, flow, empty-state and hero headings | `text-2xl font-semibold tracking-tight` (`AuthHeading`) |
+| Big stat number | `text-2xl font-semibold tabular-nums`; a single hero stat may use `text-3xl` |
+| Brand hero (login panel, portal hub) | `text-4xl xl:text-5xl` maximum |
+
+- **Never `text-3xl` or larger inside a portal page.** The only exceptions are a single hero stat and deliberate illustration type (the 404 numerals).
+- **Numbers are `font-semibold tabular-nums`, never `font-bold`.** Bold numerals at a large size are what made stat tiles shout over the labels next to them.
+- **No responsive type bumps on headings** (`sm:text-3xl` and friends). The scale is fixed; a heading that changes size across breakpoints reads as two different levels.
+
+### Controls
+
+- Default control height is `h-9`: `Input` (default `inputSize`), `Button size="default"`, `Button size="icon"`.
+- **Auth forms use `h-10` for both** — `Input inputSize="lg"` with `Button size="lg"`. Never mix heights within one form; an `h-10` button over an `h-9` input is visible and reads as a mis-scaled control.
+- An icon overlaid inside a control is sized to that control: `w-10` + `pr-10` in an `h-10` field, `w-9` + `pr-9` in an `h-9` field. An overlay wider than the field is tall looks broken.
+
+### Radius
+
+- `rounded-md` — controls (inputs, buttons, menu items).
+- `rounded-lg` — chips, badges, small icon tiles, nav items.
+- `rounded-xl` — cards, panels, tiles, dialogs, sheets, loading skeletons. `Card` already does this; anything sitting beside a `Card` must match it.
+- `rounded-2xl` is reserved for the **portal hub**, the **app-icon tiles** in the module grid, and **chat bubbles**. Do not use it for a card or panel.
+
+### Layout rhythm
+
+- Portal header is `h-14` in every shell, and a sidebar brand row must match it so the two align across the seam.
+- Page padding is `px-4 py-6 sm:px-6` (`px-6 py-6` in the admin console).
+- Vertical rhythm: `space-y-6` between page sections · `space-y-4` / `gap-4` within a section · `space-y-1.5` from label to control · `space-y-4` between form fields · `space-y-3` for a submit button plus its tertiary action.
+- Width caps follow the page-width convention in `index.css`: forms / detail / single-column reading pages `max-w-3xl`–`5xl`; tables, dashboards and two-column tools `max-w-7xl`.
+
+### Auth pages
+
+- The student, employee and parent sign-in screens all compose the shared kit in [src/components/auth/](src/components/auth/): `AuthShell` (brand panel + form column + header `actions` slot), `AuthHeading`, `PasswordInput`, `FormError`, `PasswordHint`, `GoogleSignInButton`, `AuthTextButton`, and `auth-helpers.ts`. Don't re-implement any of them in a page — the three pages each carried their own copy once and drifted into three different heading sizes, two error colours and a hardcoded Google button width.
+- **Nothing under `src/components/auth/` may call `t()` or import `@/lib/i18n`.** i18n is parent-only; importing it there would pull i18next into the student and employee login chunks. Pass translated strings in as props (every label has an English default).
 
 ## Color rules
 
@@ -87,10 +153,10 @@ All colors, radii, and surface treatments live as CSS variables in [src/index.cs
 
 ### Where dark mode applies
 
-- **Dark mode is available ONLY on the student/parent portal** (`app.*` subdomain — `member` variant from [src/lib/subdomain.ts](src/lib/subdomain.ts)).
-- **The employee portal** (`employee.*` subdomain) is **light-only**. Do not render `<ThemeToggle />` on employee screens, and do not rely on `dark:` variants to look correct there — the employee app must be designed for light theme only.
-- For shared components used by both portals, `dark:` variants are still allowed — they simply won't trigger when the component renders inside the employee variant (which forces light).
-- New tokens must still be defined in both `:root` AND `.dark` so the member portal stays correct — never only one.
+- **Dark mode is available on every portal** — student (`student.*`), parent (`parent.*`) and employee (`employee.*`). All three shells render `<ThemeToggle />`, and all three sign-in screens offer it too.
+- So **every screen must be checked in both themes**, and every `dark:` variant has to be correct everywhere. There is no light-only portal. (This rule used to exempt the employee portal; dark mode was added there, and the exemption is gone.)
+- The **portal hub** (`app.*`) is the one exception in the other direction: it is always dark whatever the saved theme, painted from its own `--hub-*` tokens. It ignores `ThemeProvider` by design, so its utilities must not respond to `.dark`.
+- New tokens must be defined in both `:root` AND `.dark` — never only one.
 
 ## Responsive rules
 

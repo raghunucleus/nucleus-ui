@@ -153,7 +153,7 @@ function CgpaSummary({ data }: { data: ExamResultsView }) {
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
         {t('exam.cgpaLabel')}
       </p>
-      <p className="text-3xl font-bold tracking-tight tabular-nums">
+      <p className="text-2xl font-semibold tracking-tight tabular-nums">
         {data.cgpa.toFixed(2)}
         <span className="ml-1 text-base font-medium text-muted-foreground">
           /10
@@ -393,14 +393,14 @@ function ResultsSkeleton() {
   return (
     <div className="grid gap-4 md:grid-cols-[15rem_1fr]">
       <div className="space-y-3">
-        <div className="h-28 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-28 animate-pulse rounded-xl bg-muted" />
         <div className="space-y-1.5">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="h-10 animate-pulse rounded-lg bg-muted" />
           ))}
         </div>
       </div>
-      <div className="h-80 animate-pulse rounded-2xl bg-muted" />
+      <div className="h-80 animate-pulse rounded-xl bg-muted" />
     </div>
   )
 }

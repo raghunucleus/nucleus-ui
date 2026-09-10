@@ -138,7 +138,7 @@ export function PeerProfileOverlay({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-sm overflow-hidden rounded-2xl border bg-card shadow-xl"
+        className="relative w-full max-w-sm overflow-hidden rounded-xl border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button

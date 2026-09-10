@@ -127,7 +127,7 @@ export function TodayHero({ name }: { name: string }) {
   })
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border bg-card p-5 text-card-foreground shadow-sm sm:p-6">
+    <section className="relative overflow-hidden rounded-xl border bg-card p-5 text-card-foreground shadow-sm sm:p-6">
       <div
         aria-hidden
         className="pointer-events-none absolute -top-24 -right-16 size-56 rounded-full bg-primary/10 blur-3xl"
@@ -143,7 +143,7 @@ export function TodayHero({ name }: { name: string }) {
             <Sparkles className="size-3.5" />
             {greeting} · {dateLabel}
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight">
             Welcome back,{' '}
             <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
               {firstName}

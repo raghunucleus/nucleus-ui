@@ -1,13 +1,20 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowRight, Eye, EyeOff, GraduationCap } from 'lucide-react'
-import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
+import { useEffect, useState } from 'react'
+import { ArrowRight } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ThemeToggle } from '@/components/theme-toggle'
-import { BrandPanel } from '@/components/auth/brand-panel'
-import { ApiError } from '@/lib/api'
+import {
+  authErrorMessage,
+  AuthHeading,
+  AuthShell,
+  AuthTextButton,
+  FormError,
+  GoogleSignInButton,
+  PasswordHint,
+  PasswordInput,
+  validateNewPassword,
+} from '@/components/auth'
 import {
   acceptInvite,
   validateInvite,
@@ -29,9 +36,12 @@ import { withGlobalLoader } from '@/stores/loader-store'
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_OIDC_CLIENT_ID
 
 // ---------------------------------------------------------------------------
-// Student login — the only entry point on the app.* (member) subdomain. Parents
-// now have their own parent.* portal (see parent-login.tsx), so this page is
+// Student login — the only entry point on the student.* subdomain. Parents have
+// their own parent.* portal (see parent-login.tsx), so this page is
 // student-only and English-only (no i18n / role tabs / language switcher).
+//
+// Chrome and form primitives come from @/components/auth — this file owns the
+// flows and the API calls, nothing visual.
 // ---------------------------------------------------------------------------
 
 export default function StudentLogin({
@@ -56,9 +66,9 @@ export default function StudentLogin({
 
   if (resetToken) {
     return (
-      <PageShell>
+      <AuthShell variant="member">
         <ResetPasswordPanel token={resetToken} />
-      </PageShell>
+      </AuthShell>
     )
   }
 
@@ -66,25 +76,19 @@ export default function StudentLogin({
   // situation, and a reset is the more recent, more deliberate action.
   if (inviteToken) {
     return (
-      <PageShell>
+      <AuthShell variant="member">
         <AcceptInvitePanel token={inviteToken} />
-      </PageShell>
+      </AuthShell>
     )
   }
 
   return (
-    <PageShell>
-      <header className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wider text-primary">
-          Welcome back
-        </p>
-        <h2 className="text-3xl font-semibold tracking-tight">
-          Sign in to Nucleus
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Access your classes, attendance, and announcements.
-        </p>
-      </header>
+    <AuthShell variant="member">
+      <AuthHeading
+        eyebrow="Welcome back"
+        title="Sign in to Nucleus"
+        description="Access your classes, attendance, and announcements."
+      />
 
       <StudentSection onAuthenticated={onAuthenticated} />
 
@@ -94,36 +98,7 @@ export default function StudentLogin({
           Contact your institution
         </a>
       </p>
-    </PageShell>
-  )
-}
-
-/** Outer chrome shared by every view on this page. */
-function PageShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex min-h-svh bg-background text-foreground">
-      <BrandPanel variant="member" />
-
-      <main className="relative flex flex-1 flex-col px-6 py-8 sm:px-10 lg:w-[28rem] lg:flex-none lg:px-12">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 lg:hidden">
-            <div className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <GraduationCap className="size-5" />
-            </div>
-            <span className="text-base font-semibold tracking-tight">
-              Nucleus
-            </span>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <ThemeToggle />
-          </div>
-        </div>
-
-        <div className="flex flex-1 items-center justify-center py-10">
-          <div className="w-full max-w-sm space-y-8">{children}</div>
-        </div>
-      </main>
-    </div>
+    </AuthShell>
   )
 }
 
@@ -204,20 +179,15 @@ function StudentLoginForm({
       )
       onLoggedIn(result)
     } catch (err) {
-      setError(toMessage(err))
+      setError(authErrorMessage(err))
       setSubmitting(false)
     }
   }
 
-  async function handleGoogleSuccess(credential: CredentialResponse) {
+  async function handleGoogleSuccess(idToken: string) {
     if (submitting) return
-    if (!credential.credential) {
-      setError('Google sign-in did not return a credential. Please try again.')
-      return
-    }
     setError(null)
     setSubmitting(true)
-    const idToken = credential.credential
     try {
       const result = await withGlobalLoader(
         () => studentLoginWithGoogle(idToken),
@@ -225,21 +195,22 @@ function StudentLoginForm({
       )
       onLoggedIn(result)
     } catch (err) {
-      setError(toMessage(err))
+      setError(authErrorMessage(err))
       setSubmitting(false)
     }
   }
 
   return (
     <div className="space-y-6">
-      <form className="space-y-5" onSubmit={handleSubmit}>
+      <form className="space-y-4" onSubmit={handleSubmit}>
         {error && <FormError message={error} />}
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <Label htmlFor="student-id">Student ID</Label>
           <Input
             id="student-id"
             name="student-id"
+            inputSize="lg"
             autoComplete="username"
             required
             value={studentId}
@@ -256,65 +227,18 @@ function StudentLoginForm({
           onForgot={onForgot}
         />
 
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={submitting}
-        >
+        <Button type="submit" size="lg" className="w-full" disabled={submitting}>
           {submitting ? 'Signing in…' : 'Sign in'}
           {!submitting && <ArrowRight />}
         </Button>
       </form>
 
       {GOOGLE_CLIENT_ID && (
-        <>
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase tracking-wider">
-              <span className="bg-background px-3 text-muted-foreground">
-                or
-              </span>
-            </div>
-          </div>
-
-          {/*
-            Google renders its sign-in button inside a cross-origin iframe that
-            can't be themed with CSS, so it never matches our inputs. Instead we
-            draw our own button and lay the real Google button on top of it,
-            invisible (opacity-0 still receives clicks), so it owns the click and
-            the ID-token credential flow while the user only sees our styling.
-          */}
-          <div className="relative" aria-busy={submitting}>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="w-full gap-3"
-              disabled={submitting}
-              tabIndex={-1}
-              aria-hidden
-            >
-              <GoogleIcon className="size-4" />
-              Sign in with Google
-            </Button>
-
-            <div className="absolute inset-0 opacity-0 [&_iframe]:!h-full [&_iframe]:!w-full [&>div]:!h-full [&>div]:!w-full">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() =>
-                  setError('Google sign-in failed. Please try again.')
-                }
-                useOneTap={false}
-                size="large"
-                text="signin_with"
-                width="384"
-              />
-            </div>
-          </div>
-        </>
+        <GoogleSignInButton
+          disabled={submitting}
+          onSuccess={handleGoogleSuccess}
+          onError={setError}
+        />
       )}
     </div>
   )
@@ -355,22 +279,17 @@ function ChangePasswordForm({
       storeTokens(tokens)
       onChanged()
     } catch (err) {
-      setError(toMessage(err))
+      setError(authErrorMessage(err))
       setSubmitting(false)
     }
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
-      <header className="space-y-2">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Set a new password
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          You are signed in with a temporary password. Choose a new one to
-          continue.
-        </p>
-      </header>
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <AuthHeading
+        title="Set a new password"
+        description="You are signed in with a temporary password. Choose a new one to continue."
+      />
 
       {error && <FormError message={error} />}
 
@@ -400,21 +319,10 @@ function ChangePasswordForm({
       <PasswordHint />
 
       <div className="space-y-3">
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={submitting}
-        >
+        <Button type="submit" size="lg" className="w-full" disabled={submitting}>
           {submitting ? 'Saving…' : 'Save and continue'}
         </Button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground"
-        >
-          Cancel and sign out
-        </button>
+        <AuthTextButton onClick={onCancel}>Cancel and sign out</AuthTextButton>
       </div>
     </form>
   )
@@ -443,30 +351,31 @@ function ForgotPasswordForm({
       )
       onSent()
     } catch (err) {
-      setError(toMessage(err))
+      setError(authErrorMessage(err))
       setSubmitting(false)
     }
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
-      <header className="space-y-2">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Reset your password
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Enter your student ID or registered email. We&rsquo;ll send a reset
-          link to the email on file.
-        </p>
-      </header>
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <AuthHeading
+        title="Reset your password"
+        description={
+          <>
+            Enter your student ID or registered email. We&rsquo;ll send a reset
+            link to the email on file.
+          </>
+        }
+      />
 
       {error && <FormError message={error} />}
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <Label htmlFor="identifier">Student ID or email</Label>
         <Input
           id="identifier"
           name="identifier"
+          inputSize="lg"
           autoComplete="username"
           autoFocus
           required
@@ -476,21 +385,10 @@ function ForgotPasswordForm({
       </div>
 
       <div className="space-y-3">
-        <Button
-          type="submit"
-          size="lg"
-          className="w-full"
-          disabled={submitting}
-        >
+        <Button type="submit" size="lg" className="w-full" disabled={submitting}>
           {submitting ? 'Sending…' : 'Send reset link'}
         </Button>
-        <button
-          type="button"
-          onClick={onBack}
-          className="w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground"
-        >
-          Back to sign in
-        </button>
+        <AuthTextButton onClick={onBack}>Back to sign in</AuthTextButton>
       </div>
     </form>
   )
@@ -498,12 +396,12 @@ function ForgotPasswordForm({
 
 function ForgotSentPanel({ onBack }: { onBack: () => void }) {
   return (
-    <div className="space-y-5 text-center">
-      <h2 className="text-2xl font-semibold tracking-tight">Check your email</h2>
-      <p className="text-sm text-muted-foreground">
-        If an account matches what you entered, a password-reset link is on its
-        way. The link expires shortly, so use it soon.
-      </p>
+    <div className="space-y-4">
+      <AuthHeading
+        align="center"
+        title="Check your email"
+        description="If an account matches what you entered, a password-reset link is on its way. The link expires shortly, so use it soon."
+      />
       <Button type="button" size="lg" className="w-full" onClick={onBack}>
         Back to sign in
       </Button>
@@ -537,20 +435,19 @@ function ResetPasswordPanel({ token }: { token: string }) {
       )
       setDone(true)
     } catch (err) {
-      setError(toMessage(err))
+      setError(authErrorMessage(err))
       setSubmitting(false)
     }
   }
 
   if (done) {
     return (
-      <div className="space-y-5 text-center">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Password updated
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Your password has been changed. You can now sign in with it.
-        </p>
+      <div className="space-y-4">
+        <AuthHeading
+          align="center"
+          title="Password updated"
+          description="Your password has been changed. You can now sign in with it."
+        />
         <Button
           type="button"
           size="lg"
@@ -566,15 +463,11 @@ function ResetPasswordPanel({ token }: { token: string }) {
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
-      <header className="space-y-2">
-        <h2 className="text-3xl font-semibold tracking-tight">
-          Choose a new password
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Set a new password for your Nucleus student account.
-        </p>
-      </header>
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <AuthHeading
+        title="Choose a new password"
+        description="Set a new password for your Nucleus student account."
+      />
 
       {error && <FormError message={error} />}
 
@@ -667,7 +560,7 @@ function AcceptInvitePanel({ token }: { token: string }) {
       )
       setPhase({ k: 'done' })
     } catch (err) {
-      setError(toMessage(err))
+      setError(authErrorMessage(err))
       setSubmitting(false)
     }
   }
@@ -688,17 +581,20 @@ function AcceptInvitePanel({ token }: { token: string }) {
 
   if (phase.k === 'invalid') {
     return (
-      <div className="space-y-5 text-center">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          {phase.reason === 'expired'
-            ? 'This invitation link has expired'
-            : "This invitation link isn't valid"}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {phase.reason === 'expired'
-            ? 'Invitation links are single-use and time-limited. Use “Forgot password?” on the sign-in screen, or ask your college office to send a new invitation.'
-            : 'It may already have been used, or replaced by a newer invitation. Use “Forgot password?” on the sign-in screen, or ask your college office to send a new one.'}
-        </p>
+      <div className="space-y-4">
+        <AuthHeading
+          align="center"
+          title={
+            phase.reason === 'expired'
+              ? 'This invitation link has expired'
+              : "This invitation link isn't valid"
+          }
+          description={
+            phase.reason === 'expired'
+              ? 'Invitation links are single-use and time-limited. Use “Forgot password?” on the sign-in screen, or ask your college office to send a new invitation.'
+              : 'It may already have been used, or replaced by a newer invitation. Use “Forgot password?” on the sign-in screen, or ask your college office to send a new one.'
+          }
+        />
         <Button
           type="button"
           size="lg"
@@ -715,13 +611,12 @@ function AcceptInvitePanel({ token }: { token: string }) {
 
   if (phase.k === 'done') {
     return (
-      <div className="space-y-5 text-center">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Your account is ready
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Your password has been set. You can now sign in with it.
-        </p>
+      <div className="space-y-4">
+        <AuthHeading
+          align="center"
+          title="Your account is ready"
+          description="Your password has been set. You can now sign in with it."
+        />
         <Button
           type="button"
           size="lg"
@@ -737,20 +632,20 @@ function AcceptInvitePanel({ token }: { token: string }) {
   }
 
   return (
-    <form className="space-y-5" onSubmit={handleSubmit}>
-      <header className="space-y-2">
-        <h2 className="text-3xl font-semibold tracking-tight">
-          Welcome, {phase.info.display_name}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Choose a password to finish setting up your Nucleus student account.
-          You will sign in with student ID{' '}
-          <span className="font-medium text-foreground">
-            {phase.info.login_identifier}
-          </span>
-          .
-        </p>
-      </header>
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <AuthHeading
+        title={`Welcome, ${phase.info.display_name}`}
+        description={
+          <>
+            Choose a password to finish setting up your Nucleus student account.
+            You will sign in with student ID{' '}
+            <span className="font-medium text-foreground">
+              {phase.info.login_identifier}
+            </span>
+            .
+          </>
+        }
+      />
 
       {error && <FormError message={error} />}
 
@@ -777,124 +672,4 @@ function AcceptInvitePanel({ token }: { token: string }) {
       </Button>
     </form>
   )
-}
-
-// ---------------------------------------------------------------------------
-// Small shared pieces
-// ---------------------------------------------------------------------------
-
-function PasswordInput({
-  id,
-  label,
-  value,
-  onChange,
-  autoComplete,
-  autoFocus,
-  onForgot,
-}: {
-  id: string
-  label: string
-  value: string
-  onChange: (next: string) => void
-  autoComplete: string
-  autoFocus?: boolean
-  onForgot?: () => void
-}) {
-  const [shown, setShown] = useState(false)
-
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <Label htmlFor={id}>{label}</Label>
-        {onForgot && (
-          <button
-            type="button"
-            onClick={onForgot}
-            className="text-xs font-medium text-primary hover:underline"
-          >
-            Forgot password?
-          </button>
-        )}
-      </div>
-      <div className="relative">
-        <Input
-          id={id}
-          type={shown ? 'text' : 'password'}
-          autoComplete={autoComplete}
-          autoFocus={autoFocus}
-          required
-          className="pr-11"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <button
-          type="button"
-          onClick={() => setShown((v) => !v)}
-          className="absolute inset-y-0 right-0 grid w-11 place-items-center text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
-          aria-label={shown ? 'Hide password' : 'Show password'}
-        >
-          {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-/** Multi-colour Google "G" — kept dark-mode-safe by using its own brand fills. */
-function GoogleIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="#4285F4"
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.84 14.1a6.6 6.6 0 0 1 0-4.2V7.07H2.18a11 11 0 0 0 0 9.87l3.66-2.84z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"
-      />
-    </svg>
-  )
-}
-
-function PasswordHint() {
-  return (
-    <p className="text-xs text-muted-foreground">
-      Use at least 8 characters, including a letter and a number.
-    </p>
-  )
-}
-
-function FormError({ message }: { message: string }) {
-  return (
-    <p
-      role="alert"
-      className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400"
-    >
-      {message}
-    </p>
-  )
-}
-
-/** Mirrors the server-side strongPasswordSchema so users get instant feedback. */
-function validateNewPassword(password: string): string | null {
-  if (password.length < 8) return 'Password must be at least 8 characters.'
-  if (!/[A-Za-z]/.test(password)) {
-    return 'Password must contain at least one letter.'
-  }
-  if (!/\d/.test(password)) return 'Password must contain at least one number.'
-  return null
-}
-
-function toMessage(err: unknown): string {
-  if (err instanceof ApiError) return err.message
-  if (err instanceof Error && err.message) return err.message
-  return 'Something went wrong. Please try again.'
 }

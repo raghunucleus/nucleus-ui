@@ -38,6 +38,8 @@ export const te: typeof en = {
     prevWeek: 'మునుపటి వారం',
     nextWeek: 'తదుపరి వారం',
     loading: 'లోడ్ అవుతోంది',
+    showPassword: 'పాస్‌వర్డ్ చూపించు',
+    hidePassword: 'పాస్‌వర్డ్ దాచు',
   },
 
   account: { switchStudent: 'విద్యార్థిని మార్చు', switch: 'మార్చు', collapse: 'కుదించు' },

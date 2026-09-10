@@ -164,7 +164,7 @@ export function CelebrationOverlay({
         className="pointer-events-none absolute inset-0 h-full w-full"
       />
       <div
-        className="relative mx-4 flex max-w-md flex-col items-center gap-3 rounded-2xl border border-success/40 bg-card p-8 text-center shadow-xl"
+        className="relative mx-4 flex max-w-md flex-col items-center gap-3 rounded-xl border border-success/40 bg-card p-8 text-center shadow-xl"
         style={
           reduced
             ? undefined
