@@ -112,6 +112,9 @@ const EmployeeExportsPage = lazyRouteComponent(
 const EmployeeRequestsMinePage = lazyRouteComponent(
   () => import('@/pages/employee/requests-mine'),
 )
+const EmployeeStudentsDirectoryPage = lazyRouteComponent(
+  () => import('@/pages/employee/students-directory'),
+)
 const EmployeeTimetablePage = lazyRouteComponent(
   () => import('@/pages/employee/timetable'),
 )
@@ -334,6 +337,14 @@ const placementCoordinatorStudentsRoute = createRoute({
   component: EmployeePlacementCoordinatorStudentsPage,
 })
 
+// RBAC-scoped student search. The path must equal the catalog's `web_route`
+// for `students.directory.view` â€” the sidebar links straight at it.
+const studentsDirectoryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/students/directory',
+  component: EmployeeStudentsDirectoryPage,
+})
+
 // Paths must equal the RBAC catalog's `web_route` values for the two
 // derived Requests screens.
 const requestsApprovalsRoute = createRoute({
@@ -426,6 +437,7 @@ const routeTree = rootRoute.addChildren([
   placementCoordinatorDriveDetailRoute,
   placementCoordinatorStudentsRoute,
   eligibilityCheckRoute,
+  studentsDirectoryRoute,
   requestsApprovalsRoute,
   requestsMineRoute,
   profileRoute,
