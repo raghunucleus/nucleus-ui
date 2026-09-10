@@ -1,4 +1,5 @@
 import { useNetworkStore } from '@/stores/network-store'
+import type { DeviceLimitPayload } from './sessions'
 
 export const API_BASE_URL = (
   import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
@@ -13,12 +14,55 @@ const GATEWAY_DOWN = new Set([502, 503, 504])
 /** Thrown for any non-2xx response, or when the server is unreachable (status 0). */
 export class ApiError extends Error {
   status: number
+  /**
+   * The parsed response body (JSON, or the raw text when it isn't JSON), for
+   * error responses that carry more than a message — e.g. the device-limit
+   * 409. Undefined when the server was unreachable.
+   */
+  data?: unknown
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, data?: unknown) {
     super(message)
     this.name = 'ApiError'
     this.status = status
+    this.data = data
   }
+}
+
+/**
+ * True for the 409 a login gets when every device slot is taken. The body
+ * carries a short-lived `challengeToken` — a bearer credential, so keep it in
+ * component state only (never storage or the URL) — plus the occupying
+ * devices to pick from.
+ */
+export function isDeviceLimit(
+  err: unknown,
+): err is ApiError & { data: DeviceLimitPayload } {
+  if (!(err instanceof ApiError) || err.status !== 409) return false
+  const data = err.data as Partial<DeviceLimitPayload> | null | undefined
+  return (
+    !!data &&
+    typeof data === 'object' &&
+    data.code === 'DEVICE_LIMIT' &&
+    typeof data.challengeToken === 'string' &&
+    typeof data.limit === 'number' &&
+    Array.isArray(data.sessions)
+  )
+}
+
+/**
+ * Failures that say nothing about the caller's credentials — offline, timeout,
+ * throttling, server or gateway errors. A token refresh that fails this way
+ * must not end the session; only a definitive rejection (401/403/400) does.
+ */
+export function isTransientApiError(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return true
+  return (
+    err.status === 0 ||
+    err.status === 408 ||
+    err.status === 429 ||
+    err.status >= 500
+  )
 }
 
 /**
@@ -108,7 +152,7 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) {
-    throw new ApiError(res.status, extractMessage(data, res.status))
+    throw new ApiError(res.status, extractMessage(data, res.status), data)
   }
   return data as T
 }
@@ -150,7 +194,7 @@ export async function apiUpload<T>(
   }
 
   if (!res.ok) {
-    throw new ApiError(res.status, extractMessage(data, res.status))
+    throw new ApiError(res.status, extractMessage(data, res.status), data)
   }
   return data as T
 }

@@ -1,10 +1,19 @@
 import { useEffect, useState } from 'react'
 import { LogOut, Phone, Users, UserRound } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 
+import { DevicesList, type DevicesListStrings } from '@/components/devices-list'
 import { PageHeader } from '@/components/portal-layout'
 import { Button } from '@/components/ui/button'
-import { parentLogout, type LinkedStudent } from '@/lib/parent-auth'
+import {
+  clearParentTokens,
+  parentListSessions,
+  parentLogout,
+  parentRevokeSession,
+  type LinkedStudent,
+} from '@/lib/parent-auth'
+import { formatRelativeTime } from '@/lib/sessions'
 import { cn } from '@/lib/utils'
 import { useParentAuthStore } from '@/stores/parent-auth-store'
 import { withGlobalLoader } from '@/stores/loader-store'
@@ -127,7 +136,65 @@ export default function ParentProfile() {
           </div>
         </div>
       </section>
+
+      <SignedInDevices />
     </>
+  )
+}
+
+/** DevicesList copy, translated — the shared component never calls t. */
+function devicesStringsT(t: TFunction, lang: string): DevicesListStrings {
+  const when = (iso: string) => formatRelativeTime(iso, lang)
+  return {
+    thisDevice: t('devices.thisDevice'),
+    lastActive: (iso) => t('devices.lastActive', { when: when(iso) }),
+    signedIn: (iso) => t('devices.signedIn', { when: when(iso) }),
+    signOut: t('common.signOut'),
+    signingOut: t('common.signingOut'),
+    cancel: t('common.cancel'),
+    empty: t('devices.empty'),
+    loadError: t('devices.loadError'),
+    retry: t('common.tryAgain'),
+    confirmTitle: (s) =>
+      s.current
+        ? t('devices.confirmTitleCurrent')
+        : t('devices.confirmTitleOther', { name: s.device_name }),
+    confirmDescription: (s) =>
+      s.current ? t('devices.confirmDescCurrent') : t('devices.confirmDescOther'),
+    signedOutToast: (s) => t('devices.signedOutToast', { name: s.device_name }),
+    alreadySignedOut: t('devices.alreadySignedOut'),
+    revokeError: t('devices.revokeError'),
+  }
+}
+
+/**
+ * Every device this guardian is signed in on, with a per-device sign-out.
+ * Signing out this device ends the session here too — back to the login.
+ */
+function SignedInDevices() {
+  const { t, i18n } = useTranslation()
+  const signOut = useParentAuthStore((s) => s.signOut)
+
+  function onCurrentRevoked() {
+    // The store's signOut only drops the gate; the tokens are dead
+    // server-side already, so clear them here (parentLogout would too).
+    clearParentTokens()
+    signOut()
+  }
+
+  return (
+    <section className="space-y-4 rounded-xl border bg-card p-5 text-card-foreground shadow-sm">
+      <header className="space-y-1">
+        <h2 className="text-base font-semibold">{t('devices.title')}</h2>
+        <p className="text-sm text-muted-foreground">{t('devices.subtitle')}</p>
+      </header>
+      <DevicesList
+        load={parentListSessions}
+        revoke={parentRevokeSession}
+        onCurrentRevoked={onCurrentRevoked}
+        strings={devicesStringsT(t, i18n.language)}
+      />
+    </section>
   )
 }
 

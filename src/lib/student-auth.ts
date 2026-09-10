@@ -1,4 +1,6 @@
-import { ApiError, apiFetch } from './api'
+import { ApiError, apiFetch, isTransientApiError } from './api'
+import { getDeviceId } from './device-id'
+import type { SessionRow } from './sessions'
 
 const ACCESS_TOKEN_KEY = 'nucleus.student.accessToken'
 const REFRESH_TOKEN_KEY = 'nucleus.student.refreshToken'
@@ -78,7 +80,36 @@ export function getStudentId(): number | null {
   }
 }
 
+// --- session-expired handler ----------------------------------------------
+
+/**
+ * Fired when an authenticated request finds the session unrecoverable — no
+ * token, or the access token was rejected AND the refresh was too (expired,
+ * or this device was signed out from another one). The auth store registers
+ * a handler here that signs out, so a failed refresh anywhere — any page, the
+ * chat or notification socket — drops the student back to the login screen
+ * the same way. A callback rather than a store import avoids a lib→store cycle.
+ */
+let onSessionExpired: (() => void) | null = null
+
+export function setStudentSessionExpiredHandler(
+  handler: (() => void) | null,
+): void {
+  onSessionExpired = handler
+}
+
+/** Clear the local session and notify the auth store (auto-logout). */
+export function expireStudentSession(): void {
+  clearTokens()
+  onSessionExpired?.()
+}
+
 // --- API calls ------------------------------------------------------------
+
+// Every login carries this browser's persistent `device_id`, so signing in
+// again here replaces this device's session instead of taking a second slot
+// toward the device limit. `device_name` is omitted on purpose: the server
+// derives it from the User-Agent.
 
 export function studentLogin(
   studentId: string,
@@ -86,15 +117,54 @@ export function studentLogin(
 ): Promise<LoginResult> {
   return apiFetch<LoginResult>('/student/auth/login', {
     method: 'POST',
-    body: { student_id: studentId, password },
+    body: { student_id: studentId, password, device_id: getDeviceId() },
   })
 }
 
 export function studentLoginWithGoogle(idToken: string): Promise<LoginResult> {
   return apiFetch<LoginResult>('/student/auth/login/google', {
     method: 'POST',
-    body: { idToken },
+    body: { idToken, device_id: getDeviceId() },
   })
+}
+
+/**
+ * Finish a login the device limit paused (409 `DEVICE_LIMIT`): sign the chosen
+ * devices out, then complete the sign-in. Resolves with the same body as
+ * {@link studentLogin}, so the caller feeds it into the same success path
+ * (token storage, forced password change). Rejects with another DEVICE_LIMIT
+ * (same challenge, fresh list) if a racing sign-in took the freed slot, and a
+ * 401 once the 5-minute challenge has expired.
+ */
+export function studentCompleteDeviceLimit(
+  challengeToken: string,
+  sessionIds: string[],
+): Promise<LoginResult> {
+  return apiFetch<LoginResult>('/student/auth/login/device-limit', {
+    method: 'POST',
+    body: { challengeToken, sessionIds, device_id: getDeviceId() },
+  })
+}
+
+/** Every device this student is signed in on, most recently active first. */
+export function studentListSessions(): Promise<SessionRow[]> {
+  return withAuth((token) =>
+    apiFetch<SessionRow[]>('/student/sessions', { token }),
+  )
+}
+
+/**
+ * Sign one of the student's devices out — immediate server-side (its tokens
+ * die and its sockets are cut). Revoking the `current` row ends this session;
+ * the caller should then sign out locally.
+ */
+export function studentRevokeSession(sessionId: string): Promise<void> {
+  return withAuth((token) =>
+    apiFetch<void>(`/student/sessions/${encodeURIComponent(sessionId)}`, {
+      method: 'DELETE',
+      token,
+    }),
+  )
 }
 
 export function studentChangePassword(
@@ -134,11 +204,18 @@ export function studentMe(): Promise<StudentProfile> {
   )
 }
 
+/**
+ * Sign THIS device out (other devices stay signed in). Logout needs a valid
+ * access token, so it goes through the refresh-aware wrapper — an expired
+ * access token must still free this device's slot server-side. Local tokens
+ * are cleared whatever happens.
+ */
 export async function studentLogout(): Promise<void> {
-  const token = getAccessToken()
-  if (token) {
+  if (getAccessToken()) {
     try {
-      await apiFetch('/student/auth/logout', { method: 'POST', token })
+      await withAuth((token) =>
+        apiFetch('/student/auth/logout', { method: 'POST', token }),
+      )
     } catch {
       // Ignore — local tokens are cleared regardless.
     }
@@ -150,40 +227,71 @@ export async function studentLogout(): Promise<void> {
 
 /**
  * Runs an authenticated call with the stored access token. On a 401 it tries a
- * single refresh-and-retry; if that fails the session is cleared and a 401
- * ApiError is thrown so callers can route back to the login screen.
+ * single refresh-and-retry; if the refresh is rejected the session is expired
+ * (tokens cleared, auth store signs out) and a 401 ApiError is thrown. A
+ * refresh that fails transiently (offline, 5xx) rethrows that error instead
+ * and leaves the session alone — it may well still be valid.
+ *
+ * The one student wrapper: every `student-*.ts` module calls this rather than
+ * keeping its own copy, so they all share the single-flight refresh below.
  */
 export async function withAuth<T>(
   call: (token: string) => Promise<T>,
 ): Promise<T> {
   const token = getAccessToken()
   if (!token) {
+    expireStudentSession()
     throw new ApiError(401, 'Your session has ended. Please sign in again.')
   }
   try {
     return await call(token)
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) {
-      const refreshed = await tryRefresh()
+      const refreshed = await refreshStudentAccessToken()
       if (refreshed) return call(refreshed)
-      clearTokens()
+      expireStudentSession()
       throw new ApiError(401, 'Your session has expired. Please sign in again.')
     }
     throw err
   }
 }
 
-async function tryRefresh(): Promise<string | null> {
+/** Dedupe concurrent refreshes so a burst of 401s triggers a single /refresh. */
+let refreshInFlight: Promise<string | null> | null = null
+
+/**
+ * Swap the refresh token for a fresh access token. Resolves the new token, or
+ * null when the session is unrecoverable (no refresh token, or the server
+ * rejected it — expired, or signed out from another device). Rejects when the
+ * refresh couldn't be completed for a transient reason (see
+ * `isTransientApiError`), which says nothing about the session.
+ *
+ * Exported for the chat and notification sockets, which authenticate once at
+ * the handshake rather than per request. Parallel callers — a socket
+ * reconnect racing a burst of HTTP 401s — coalesce onto one in-flight call:
+ * refresh tokens rotate, so N concurrent refreshes would churn the family.
+ */
+export function refreshStudentAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight
   const refreshToken = getRefreshToken()
-  if (!refreshToken) return null
-  try {
-    const tokens = await apiFetch<AuthTokens>('/student/auth/refresh', {
-      method: 'POST',
-      body: { refreshToken },
+  if (!refreshToken) return Promise.resolve(null)
+  refreshInFlight = apiFetch<AuthTokens>('/student/auth/refresh', {
+    method: 'POST',
+    body: { refreshToken },
+  })
+    .then((tokens) => {
+      // Signed out while the refresh was in flight: don't resurrect the
+      // session in storage.
+      if (!getRefreshToken()) return null
+      storeTokens(tokens)
+      return tokens.accessToken
     })
-    storeTokens(tokens)
-    return tokens.accessToken
-  } catch {
-    return null
-  }
+    .catch((err: unknown) => {
+      if (isTransientApiError(err)) throw err
+      return null
+    })
+    .finally(() => {
+      refreshInFlight = null
+    })
+  return refreshInFlight
 }

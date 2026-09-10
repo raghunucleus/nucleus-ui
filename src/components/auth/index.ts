@@ -11,6 +11,10 @@ export { AuthShell } from './auth-shell'
 export { AuthHeading } from './auth-heading'
 export { AuthTextButton } from './auth-text-button'
 export { BrandPanel } from './brand-panel'
+export {
+  DeviceLimitPicker,
+  type DeviceLimitPickerStrings,
+} from './device-limit-picker'
 export { FormError } from './form-error'
 export { GoogleSignInButton } from './google-sign-in-button'
 export { PasswordHint } from './password-hint'

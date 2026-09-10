@@ -3,12 +3,12 @@ import { io, type Socket } from 'socket.io-client'
 
 import { useAuthStore } from '@/stores/auth-store'
 import { API_BASE_URL } from './api'
-import { getAccessToken } from './student-auth'
 import {
-  birthdayWish,
-  refreshAccessToken,
-  type ChatMessage,
-} from './student-chat'
+  expireStudentSession,
+  getAccessToken,
+  refreshStudentAccessToken,
+} from './student-auth'
+import { birthdayWish, type ChatMessage } from './student-chat'
 
 /**
  * Single shared Socket.IO connection to the student chat namespace. Authenticates
@@ -57,16 +57,26 @@ export function getChatSocket(): Socket | null {
     })
 
     // The gateway accepts the handshake then disconnects if the token is bad or
-    // expired (a server-initiated disconnect, which Socket.IO will NOT auto-
-    // retry). Refresh once and reconnect with the new token.
+    // expired, and cuts a live socket whose session was signed out from
+    // another device (a server-initiated disconnect, which Socket.IO will NOT
+    // auto-retry). Refresh once and reconnect with the new token; a rejected
+    // refresh means the session is over, so sign out. A transient refresh
+    // failure (offline, 5xx) says nothing about the session — leave it be.
     socket.on('disconnect', (reason) => {
       if (reason === 'io server disconnect') {
-        void refreshAccessToken().then((fresh) => {
-          if (fresh && socket) {
-            socket.auth = { token: fresh }
-            socket.connect()
-          }
-        })
+        refreshStudentAccessToken().then(
+          (fresh) => {
+            if (!fresh) {
+              expireStudentSession()
+              return
+            }
+            if (socket) {
+              socket.auth = { token: fresh }
+              socket.connect()
+            }
+          },
+          () => {},
+        )
       }
     })
   }

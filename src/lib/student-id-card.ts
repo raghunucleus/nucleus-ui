@@ -1,11 +1,5 @@
-import { ApiError, apiFetch } from './api'
-import {
-  clearTokens,
-  getAccessToken,
-  getRefreshToken,
-  storeTokens,
-  type AuthTokens,
-} from './student-auth'
+import { apiFetch } from './api'
+import { withAuth } from './student-auth'
 
 /** Mirrors the nucleus-server GET /student/id-card response. */
 export interface IdCard {
@@ -64,39 +58,4 @@ export function studentIdCardPass(): Promise<SecurityPass> {
   return withAuth((token) =>
     apiFetch<SecurityPass>('/student/id-card/pass', { token }),
   )
-}
-
-// Local mirror of student-auth's (non-exported) withAuth: run an authenticated
-// call, refresh once on 401, otherwise clear the session and surface a 401.
-async function withAuth<T>(call: (token: string) => Promise<T>): Promise<T> {
-  const token = getAccessToken()
-  if (!token) {
-    throw new ApiError(401, 'Your session has ended. Please sign in again.')
-  }
-  try {
-    return await call(token)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 401) {
-      const refreshed = await tryRefresh()
-      if (refreshed) return call(refreshed)
-      clearTokens()
-      throw new ApiError(401, 'Your session has expired. Please sign in again.')
-    }
-    throw err
-  }
-}
-
-async function tryRefresh(): Promise<string | null> {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return null
-  try {
-    const tokens = await apiFetch<AuthTokens>('/student/auth/refresh', {
-      method: 'POST',
-      body: { refreshToken },
-    })
-    storeTokens(tokens)
-    return tokens.accessToken
-  } catch {
-    return null
-  }
 }

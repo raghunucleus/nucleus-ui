@@ -271,4 +271,36 @@ export const en = {
     statusUpcoming: 'Upcoming',
     sub: 'Sub',
   },
+
+  // Device limit (sign-in picker) + signed-in devices (profile).
+  // `{{when}}` is an already-localised relative time ("5 minutes ago").
+  devices: {
+    limitTitle: 'Device limit reached',
+    limitDesc_one:
+      "You're signed in on {{n}} of {{count}} allowed device. Sign out of at least one to continue here.",
+    limitDesc_other:
+      "You're signed in on {{n}} of {{count}} allowed devices. Sign out of at least one to continue here.",
+    lastActive: 'Last active {{when}}',
+    signedIn: 'Signed in {{when}}',
+    submit_one: 'Sign out {{count}} device & continue',
+    submit_other: 'Sign out {{count}} devices & continue',
+    selectPrompt: 'Select a device to sign out',
+    raceNotice:
+      'Those devices were signed out, but every slot is taken again — pick another device.',
+    challengeExpired: 'Your sign-in session has expired. Please sign in again.',
+    title: 'Signed-in devices',
+    subtitle:
+      "Everywhere your account is signed in. Sign out any device you don't recognise — it takes effect immediately.",
+    thisDevice: 'This device',
+    empty: 'No signed-in devices found.',
+    loadError: "Couldn't load your devices.",
+    confirmTitleCurrent: 'Sign out of this device?',
+    confirmTitleOther: 'Sign out of “{{name}}”?',
+    confirmDescCurrent: "You'll be returned to the sign-in screen.",
+    confirmDescOther:
+      'That device is disconnected immediately and will need to sign in again.',
+    signedOutToast: 'Signed out of “{{name}}”.',
+    alreadySignedOut: 'That device was already signed out.',
+    revokeError: 'Could not sign that device out. Please try again.',
+  },
 }

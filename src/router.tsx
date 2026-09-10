@@ -27,6 +27,7 @@ const ProfileUpdateRequest = lazyRouteComponent(
   () => import('@/pages/profile-update-request'),
 )
 const PrivacySettings = lazyRouteComponent(() => import('@/pages/privacy-settings'))
+const Devices = lazyRouteComponent(() => import('@/pages/devices'))
 const Timetable = lazyRouteComponent(() => import('@/pages/timetable'))
 const Attendance = lazyRouteComponent(() => import('@/pages/attendance'))
 const AttendanceSubject = lazyRouteComponent(
@@ -91,6 +92,13 @@ const privacyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/privacy',
   component: PrivacySettings,
+})
+
+// Reached from the account dropdown (next to Privacy) — signed-in devices.
+const devicesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/devices',
+  component: Devices,
 })
 
 const timetableRoute = createRoute({
@@ -251,6 +259,7 @@ const routeTree = rootRoute.addChildren([
   profileUpdateRequestRoute,
   profileGroupRoute,
   privacyRoute,
+  devicesRoute,
   timetableRoute,
   attendanceRoute,
   attendanceSubjectRoute,

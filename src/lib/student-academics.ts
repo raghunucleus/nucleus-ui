@@ -1,12 +1,6 @@
-import { ApiError, apiFetch } from './api'
+import { apiFetch } from './api'
 import type { AcademicHoliday } from './holidays'
-import {
-  clearTokens,
-  getAccessToken,
-  getRefreshToken,
-  storeTokens,
-  type AuthTokens,
-} from './student-auth'
+import { withAuth } from './student-auth'
 
 // ---------------------------------------------------------------------------
 // Types — mirror the nucleus-server student-academics responses.
@@ -269,43 +263,6 @@ export function fetchStudentHolidaysPaged(params: {
       token,
     }),
   )
-}
-
-// ---------------------------------------------------------------------------
-// Internals — same single-retry refresh dance as student-auth.studentMe.
-// ---------------------------------------------------------------------------
-
-async function withAuth<T>(call: (token: string) => Promise<T>): Promise<T> {
-  const token = getAccessToken()
-  if (!token) {
-    throw new ApiError(401, 'Your session has ended. Please sign in again.')
-  }
-  try {
-    return await call(token)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 401) {
-      const refreshed = await tryRefresh()
-      if (refreshed) return call(refreshed)
-      clearTokens()
-      throw new ApiError(401, 'Your session has expired. Please sign in again.')
-    }
-    throw err
-  }
-}
-
-async function tryRefresh(): Promise<string | null> {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return null
-  try {
-    const tokens = await apiFetch<AuthTokens>('/student/auth/refresh', {
-      method: 'POST',
-      body: { refreshToken },
-    })
-    storeTokens(tokens)
-    return tokens.accessToken
-  } catch {
-    return null
-  }
 }
 
 // ---------------------------------------------------------------------------

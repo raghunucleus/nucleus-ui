@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Lock,
   LogOut,
+  MonitorSmartphone,
   UserRound,
   type LucideIcon,
 } from 'lucide-react'
@@ -91,6 +92,12 @@ export function PortalLayout() {
                   <Link to="/privacy">
                     <Lock />
                     Privacy
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/devices">
+                    <MonitorSmartphone />
+                    Devices
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

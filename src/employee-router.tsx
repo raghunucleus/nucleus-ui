@@ -338,7 +338,7 @@ const placementCoordinatorStudentsRoute = createRoute({
 })
 
 // RBAC-scoped student search. The path must equal the catalog's `web_route`
-// for `students.directory.view` â€” the sidebar links straight at it.
+// for `students.directory.view` — the sidebar links straight at it.
 const studentsDirectoryRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/students/directory',
@@ -375,7 +375,9 @@ const profileRoute = createRoute({
     // Anything unrecognised falls back to 'profile' — so every valid section
     // must be listed here or it silently redirects to the wrong tab.
     const section: EmployeeProfileSection =
-      raw === 'password' || raw === 'notifications' ? raw : 'profile'
+      raw === 'password' || raw === 'notifications' || raw === 'devices'
+        ? raw
+        : 'profile'
     return { section }
   },
 })
