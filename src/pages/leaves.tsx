@@ -661,7 +661,7 @@ function LeaveDetail({
               onChange={(e) => setCancelReason(e.target.value)}
               maxLength={1000}
               rows={3}
-              className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30"
             />
           </div>
           <DialogFooter>
@@ -1141,7 +1141,7 @@ function LeaveFormSheet({
               onChange={(e) => setReason(e.target.value)}
               maxLength={1000}
               rows={4}
-              className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30"
             />
           </div>
 

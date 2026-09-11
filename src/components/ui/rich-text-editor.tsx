@@ -90,7 +90,7 @@ export function RichTextEditor({
         className={cn(
           'flex flex-col text-sm',
           !readOnly &&
-            'rounded-md border bg-background shadow-xs focus-within:ring-2 focus-within:ring-ring/60',
+            'rounded-md border bg-background shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30',
           className,
         )}
       >

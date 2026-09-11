@@ -175,7 +175,7 @@ export function SearchableMultiSelect({
           onClick={() => setOpen((o) => !o)}
           className={cn(
             'flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none transition',
-            'focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+            'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
             'hover:bg-accent/40 hover:text-accent-foreground',
           )}
         >
@@ -388,7 +388,7 @@ export function SearchableSelect({
         onClick={() => setOpen((o) => !o)}
         className={cn(
           'flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background pl-3 text-sm shadow-xs outline-none transition',
-          'focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
           'hover:bg-accent/40 hover:text-accent-foreground',
           showClear ? 'pr-14' : 'pr-3',
         )}

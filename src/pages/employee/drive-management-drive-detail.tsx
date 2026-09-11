@@ -1799,7 +1799,7 @@ function DriveStudentsTab({
             onChange={(e) => setRevokeReason(e.target.value)}
             maxLength={512}
             rows={4}
-            className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30"
           />
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input
