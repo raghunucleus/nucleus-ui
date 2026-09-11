@@ -23,6 +23,9 @@ const ParentAttendance = lazyRouteComponent(
 const ParentAttendanceSubject = lazyRouteComponent(
   () => import('@/pages/parent/parent-attendance-subject'),
 )
+const ParentAttendanceAll = lazyRouteComponent(
+  () => import('@/pages/parent/parent-attendance-all'),
+)
 const ParentExamResults = lazyRouteComponent(
   () => import('@/pages/parent/parent-exam-results'),
 )
@@ -58,6 +61,13 @@ const attendanceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/attendance',
   component: ParentAttendance,
+})
+
+// Static segment — ranked above `$subjectId`.
+const attendanceAllRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/attendance/all',
+  component: ParentAttendanceAll,
 })
 
 const attendanceSubjectRoute = createRoute({
@@ -96,6 +106,7 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   timetableRoute,
   attendanceRoute,
+  attendanceAllRoute,
   attendanceSubjectRoute,
   examResultsRoute,
   academicHolidaysRoute,

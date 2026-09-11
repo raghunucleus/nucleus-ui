@@ -251,7 +251,6 @@ function SelectionAmount({
           step="any"
           value={main}
           onChange={(e) => onMain(e.target.value)}
-          placeholder="Amount"
           className="w-32"
         />
         {showLower && (
@@ -264,7 +263,6 @@ function SelectionAmount({
               step="any"
               value={min}
               onChange={(e) => onMin(e.target.value)}
-              placeholder="Optional"
               className="w-32"
             />
           </>

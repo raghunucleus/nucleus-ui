@@ -9,6 +9,7 @@ import {
   AuthHeading,
   AuthShell,
   AuthTextButton,
+  DeviceLimitPicker,
   FormError,
   GoogleSignInButton,
   PasswordHint,
@@ -20,8 +21,15 @@ import {
   validateInvite,
   type InviteInfo,
 } from '@/lib/account-invite'
+import { ApiError, isDeviceLimit } from '@/lib/api'
+import {
+  toDeviceLimitChallenge,
+  type DeviceLimitChallenge,
+  type DeviceLimitPayload,
+} from '@/lib/sessions'
 import {
   employeeChangePassword,
+  employeeCompleteDeviceLimit,
   employeeForgotPassword,
   employeeLogin,
   employeeLoginWithGoogle,
@@ -86,11 +94,83 @@ export default function EmployeeLogin({
 // Sign-in flow
 // ---------------------------------------------------------------------------
 
-type Mode = 'login' | 'forgot' | 'forgot-sent' | 'change'
+type Mode = 'login' | 'forgot' | 'forgot-sent' | 'change' | 'device-limit'
 
 function EmployeeSection({ onAuthenticated }: { onAuthenticated: () => void }) {
   const [mode, setMode] = useState<Mode>('login')
   const [session, setSession] = useState<EmployeeLoginResult | null>(null)
+  // A login paused at the device limit. The challenge token is a bearer
+  // credential, so it lives here in component state only — never storage or
+  // the URL; a reload simply means signing in again.
+  const [challenge, setChallenge] = useState<DeviceLimitChallenge | null>(null)
+  const [deviceError, setDeviceError] = useState<string | null>(null)
+  const [raced, setRaced] = useState(false)
+  // Shown on the sign-in form when the picker hands back (challenge expired).
+  const [loginError, setLoginError] = useState<string | null>(null)
+
+  function handleLoggedIn(result: EmployeeLoginResult) {
+    storeEmployeeTokens(result)
+    if (result.mustChangePassword) {
+      setSession(result)
+      setMode('change')
+    } else {
+      onAuthenticated()
+    }
+  }
+
+  function handleDeviceLimit(payload: DeviceLimitPayload) {
+    setChallenge(toDeviceLimitChallenge(payload))
+    setDeviceError(null)
+    setRaced(false)
+    setLoginError(null)
+    setMode('device-limit')
+  }
+
+  function backToLogin(message: string | null = null) {
+    setChallenge(null)
+    setDeviceError(null)
+    setRaced(false)
+    setLoginError(message)
+    setMode('login')
+  }
+
+  async function completeDeviceLimit(sessionIds: string[]) {
+    if (!challenge) return
+    setDeviceError(null)
+    try {
+      const result = await withGlobalLoader(
+        () => employeeCompleteDeviceLimit(challenge.challengeToken, sessionIds),
+        'Signing in…',
+      )
+      setChallenge(null)
+      handleLoggedIn(result)
+    } catch (err) {
+      if (isDeviceLimit(err)) {
+        // A racing sign-in took the freed slot: same challenge, fresh list.
+        setChallenge(toDeviceLimitChallenge(err.data))
+        setRaced(true)
+      } else if (err instanceof ApiError && err.status === 401) {
+        // The 5-minute challenge expired — start the sign-in over.
+        backToLogin(err.message)
+      } else {
+        setRaced(false)
+        setDeviceError(authErrorMessage(err))
+      }
+    }
+  }
+
+  if (mode === 'device-limit' && challenge) {
+    return (
+      <DeviceLimitPicker
+        sessions={challenge.sessions}
+        limit={challenge.limit}
+        error={deviceError}
+        raced={raced}
+        onSubmit={completeDeviceLimit}
+        onBack={() => backToLogin()}
+      />
+    )
+  }
 
   if (mode === 'change' && session) {
     return (
@@ -121,31 +201,36 @@ function EmployeeSection({ onAuthenticated }: { onAuthenticated: () => void }) {
 
   return (
     <EmployeeLoginForm
+      initialError={loginError}
       onForgot={() => setMode('forgot')}
-      onLoggedIn={(result) => {
-        storeEmployeeTokens(result)
-        if (result.mustChangePassword) {
-          setSession(result)
-          setMode('change')
-        } else {
-          onAuthenticated()
-        }
-      }}
+      onLoggedIn={handleLoggedIn}
+      onDeviceLimit={handleDeviceLimit}
     />
   )
 }
 
 function EmployeeLoginForm({
+  initialError,
   onForgot,
   onLoggedIn,
+  onDeviceLimit,
 }: {
+  initialError: string | null
   onForgot: () => void
   onLoggedIn: (result: EmployeeLoginResult) => void
+  /** Every device slot is taken — hand over to the picker. */
+  onDeviceLimit: (payload: DeviceLimitPayload) => void
 }) {
   const [empCode, setEmpCode] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(initialError)
   const [submitting, setSubmitting] = useState(false)
+
+  function handleFailure(err: unknown) {
+    setSubmitting(false)
+    if (isDeviceLimit(err)) onDeviceLimit(err.data)
+    else setError(authErrorMessage(err))
+  }
 
   async function handleSubmit(event: { preventDefault: () => void }) {
     event.preventDefault()
@@ -159,8 +244,7 @@ function EmployeeLoginForm({
       )
       onLoggedIn(result)
     } catch (err) {
-      setError(authErrorMessage(err))
-      setSubmitting(false)
+      handleFailure(err)
     }
   }
 
@@ -175,8 +259,7 @@ function EmployeeLoginForm({
       )
       onLoggedIn(result)
     } catch (err) {
-      setError(authErrorMessage(err))
-      setSubmitting(false)
+      handleFailure(err)
     }
   }
 
@@ -197,7 +280,6 @@ function EmployeeLoginForm({
             id="emp-code"
             name="emp-code"
             inputSize="lg"
-            placeholder="e.g. EMP1042"
             autoComplete="username"
             autoFocus
             required
@@ -371,7 +453,6 @@ function ForgotPasswordForm({
           id="identifier"
           name="identifier"
           inputSize="lg"
-          placeholder="EMP1042 or you@example.com"
           autoComplete="username"
           autoFocus
           required

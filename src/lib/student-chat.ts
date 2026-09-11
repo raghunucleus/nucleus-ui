@@ -1,11 +1,5 @@
-import { ApiError, apiFetch } from './api'
-import {
-  clearTokens,
-  getAccessToken,
-  getRefreshToken,
-  storeTokens,
-  type AuthTokens,
-} from './student-auth'
+import { apiFetch } from './api'
+import { withAuth } from './student-auth'
 
 /**
  * Student chat ("Connect") API surface — mirrors nucleus-server's
@@ -292,43 +286,4 @@ export function formatConversationTime(iso: string | null): string {
     d.getDate() === now.getDate()
   if (sameDay) return formatMessageTime(iso)
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
-}
-
-// --- auth helper (local mirror of student-auth's private withAuth) ---------
-
-async function withAuth<T>(call: (token: string) => Promise<T>): Promise<T> {
-  const token = getAccessToken()
-  if (!token) {
-    throw new ApiError(401, 'Your session has ended. Please sign in again.')
-  }
-  try {
-    return await call(token)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 401) {
-      const refreshed = await refreshAccessToken()
-      if (refreshed) return call(refreshed)
-      clearTokens()
-      throw new ApiError(401, 'Your session has expired. Please sign in again.')
-    }
-    throw err
-  }
-}
-
-/**
- * Refresh the access token and persist it. Exported so the socket layer can run
- * the same recovery when its handshake is rejected for an expired token.
- */
-export async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return null
-  try {
-    const tokens = await apiFetch<AuthTokens>('/student/auth/refresh', {
-      method: 'POST',
-      body: { refreshToken },
-    })
-    storeTokens(tokens)
-    return tokens.accessToken
-  } catch {
-    return null
-  }
 }

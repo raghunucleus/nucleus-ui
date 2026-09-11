@@ -9,6 +9,7 @@ import {
   AuthHeading,
   AuthShell,
   AuthTextButton,
+  DeviceLimitPicker,
   FormError,
   GoogleSignInButton,
   PasswordHint,
@@ -20,10 +21,17 @@ import {
   validateInvite,
   type InviteInfo,
 } from '@/lib/account-invite'
+import { ApiError, isDeviceLimit } from '@/lib/api'
+import {
+  toDeviceLimitChallenge,
+  type DeviceLimitChallenge,
+  type DeviceLimitPayload,
+} from '@/lib/sessions'
 import {
   clearTokens,
   storeTokens,
   studentChangePassword,
+  studentCompleteDeviceLimit,
   studentForgotPassword,
   studentLogin,
   studentLoginWithGoogle,
@@ -84,20 +92,7 @@ export default function StudentLogin({
 
   return (
     <AuthShell variant="member">
-      <AuthHeading
-        eyebrow="Welcome back"
-        title="Sign in to Nucleus"
-        description="Access your classes, attendance, and announcements."
-      />
-
       <StudentSection onAuthenticated={onAuthenticated} />
-
-      <p className="text-center text-xs text-muted-foreground">
-        Need help?{' '}
-        <a href="#" className="font-medium text-foreground hover:underline">
-          Contact your institution
-        </a>
-      </p>
     </AuthShell>
   )
 }
@@ -106,11 +101,83 @@ export default function StudentLogin({
 // Student authentication flow
 // ---------------------------------------------------------------------------
 
-type StudentMode = 'login' | 'forgot' | 'forgot-sent' | 'change'
+type StudentMode = 'login' | 'forgot' | 'forgot-sent' | 'change' | 'device-limit'
 
 function StudentSection({ onAuthenticated }: { onAuthenticated: () => void }) {
   const [mode, setMode] = useState<StudentMode>('login')
   const [session, setSession] = useState<LoginResult | null>(null)
+  // A login paused at the device limit. The challenge token is a bearer
+  // credential, so it lives here in component state only — never storage or
+  // the URL; a reload simply means signing in again.
+  const [challenge, setChallenge] = useState<DeviceLimitChallenge | null>(null)
+  const [deviceError, setDeviceError] = useState<string | null>(null)
+  const [raced, setRaced] = useState(false)
+  // Shown on the sign-in form when the picker hands back (challenge expired).
+  const [loginError, setLoginError] = useState<string | null>(null)
+
+  function handleLoggedIn(result: LoginResult) {
+    storeTokens(result)
+    if (result.mustChangePassword) {
+      setSession(result)
+      setMode('change')
+    } else {
+      onAuthenticated()
+    }
+  }
+
+  function handleDeviceLimit(payload: DeviceLimitPayload) {
+    setChallenge(toDeviceLimitChallenge(payload))
+    setDeviceError(null)
+    setRaced(false)
+    setLoginError(null)
+    setMode('device-limit')
+  }
+
+  function backToLogin(message: string | null = null) {
+    setChallenge(null)
+    setDeviceError(null)
+    setRaced(false)
+    setLoginError(message)
+    setMode('login')
+  }
+
+  async function completeDeviceLimit(sessionIds: string[]) {
+    if (!challenge) return
+    setDeviceError(null)
+    try {
+      const result = await withGlobalLoader(
+        () => studentCompleteDeviceLimit(challenge.challengeToken, sessionIds),
+        'Signing in…',
+      )
+      setChallenge(null)
+      handleLoggedIn(result)
+    } catch (err) {
+      if (isDeviceLimit(err)) {
+        // A racing sign-in took the freed slot: same challenge, fresh list.
+        setChallenge(toDeviceLimitChallenge(err.data))
+        setRaced(true)
+      } else if (err instanceof ApiError && err.status === 401) {
+        // The 5-minute challenge expired — start the sign-in over.
+        backToLogin(err.message)
+      } else {
+        setRaced(false)
+        setDeviceError(authErrorMessage(err))
+      }
+    }
+  }
+
+  if (mode === 'device-limit' && challenge) {
+    return (
+      <DeviceLimitPicker
+        sessions={challenge.sessions}
+        limit={challenge.limit}
+        error={deviceError}
+        raced={raced}
+        onSubmit={completeDeviceLimit}
+        onBack={() => backToLogin()}
+      />
+    )
+  }
 
   if (mode === 'change' && session) {
     return (
@@ -139,33 +206,56 @@ function StudentSection({ onAuthenticated }: { onAuthenticated: () => void }) {
     return <ForgotSentPanel onBack={() => setMode('login')} />
   }
 
+  // The welcome heading and the help footer belong to the sign-in step only —
+  // in the shell they stacked a second heading on top of every other panel
+  // (the device-limit picker, reset, change password). Same as parent/employee.
   return (
-    <StudentLoginForm
-      onForgot={() => setMode('forgot')}
-      onLoggedIn={(result) => {
-        storeTokens(result)
-        if (result.mustChangePassword) {
-          setSession(result)
-          setMode('change')
-        } else {
-          onAuthenticated()
-        }
-      }}
-    />
+    <div className="space-y-6">
+      <AuthHeading
+        eyebrow="Welcome back"
+        title="Sign in to Nucleus"
+        description="Access your classes, attendance, and announcements."
+      />
+
+      <StudentLoginForm
+        initialError={loginError}
+        onForgot={() => setMode('forgot')}
+        onLoggedIn={handleLoggedIn}
+        onDeviceLimit={handleDeviceLimit}
+      />
+
+      <p className="text-center text-xs text-muted-foreground">
+        Need help?{' '}
+        <a href="#" className="font-medium text-foreground hover:underline">
+          Contact your institution
+        </a>
+      </p>
+    </div>
   )
 }
 
 function StudentLoginForm({
+  initialError,
   onForgot,
   onLoggedIn,
+  onDeviceLimit,
 }: {
+  initialError: string | null
   onForgot: () => void
   onLoggedIn: (result: LoginResult) => void
+  /** Every device slot is taken — hand over to the picker. */
+  onDeviceLimit: (payload: DeviceLimitPayload) => void
 }) {
   const [studentId, setStudentId] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(initialError)
   const [submitting, setSubmitting] = useState(false)
+
+  function handleFailure(err: unknown) {
+    setSubmitting(false)
+    if (isDeviceLimit(err)) onDeviceLimit(err.data)
+    else setError(authErrorMessage(err))
+  }
 
   async function handleSubmit(event: { preventDefault: () => void }) {
     event.preventDefault()
@@ -179,8 +269,7 @@ function StudentLoginForm({
       )
       onLoggedIn(result)
     } catch (err) {
-      setError(authErrorMessage(err))
-      setSubmitting(false)
+      handleFailure(err)
     }
   }
 
@@ -195,8 +284,7 @@ function StudentLoginForm({
       )
       onLoggedIn(result)
     } catch (err) {
-      setError(authErrorMessage(err))
-      setSubmitting(false)
+      handleFailure(err)
     }
   }
 

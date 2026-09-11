@@ -373,7 +373,6 @@ function RecordSheetBody({
                   value={remarks}
                   maxLength={1000}
                   onChange={(e) => setRemarks(e.target.value)}
-                  placeholder="Anything worth remembering about this year's conversation…"
                 />
               </Field>
 

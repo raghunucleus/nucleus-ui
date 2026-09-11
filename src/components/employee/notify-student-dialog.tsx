@@ -216,7 +216,6 @@ export function NotifyStudentDialog({
               onChange={(e) => setMessage(e.target.value)}
               maxLength={1000}
               rows={4}
-              placeholder="What do you want to tell them?"
             />
             <p className="text-xs text-muted-foreground">
               The selected field names are appended to this message

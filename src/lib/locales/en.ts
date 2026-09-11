@@ -60,7 +60,6 @@ export const en = {
 
   login: {
     mobileLabel: 'Registered mobile number',
-    mobilePlaceholder: '10-digit mobile number',
     password: 'Password',
     forgot: 'Forgot password?',
     errMobile: 'Enter your 10-digit mobile number.',
@@ -166,6 +165,7 @@ export const en = {
     classes: '{{a}} / {{h}} classes',
     missed: '{{n}} missed',
     viewHistory: 'View class history',
+    viewAllClasses: 'View all classes',
     noDataTitle: 'No attendance yet',
     noDataDesc:
       'No subjects with attendance data yet. Check back once classes start.',
@@ -271,5 +271,60 @@ export const en = {
     statusUnmarked: 'Not marked',
     statusUpcoming: 'Upcoming',
     sub: 'Sub',
+    viewLabel: 'View',
+    viewCalendar: 'Calendar',
+    viewList: 'List',
+    filterLabel: 'Filter sessions',
+    legend: 'Legend',
+    noClassesThisMonth: 'No classes this month.',
+    prevMonth: 'Previous month',
+    nextMonth: 'Next month',
+    today: 'Today',
+    dayCount_one: '{{count}} class',
+    dayCount_other: '{{count}} classes',
+    dayAbsent_one: '{{count}} absent',
+    dayAbsent_other: '{{count}} absent',
+    prevDay: 'Previous day',
+    nextDay: 'Next day',
+    close: 'Close',
+    tapDayHint: 'Tap a day to see its classes.',
+    summaryOther: 'Other',
+    filterAllSubjects: 'All subjects',
+    allTitle: 'All classes',
+    allSubtitle: '{{count}} sessions · {{absent}} absent',
+    allNoClassesYet: 'No classes recorded this semester yet.',
+    allErrLoad: "Couldn't load the classes.",
+  },
+
+  // Device limit (sign-in picker) + signed-in devices (profile).
+  // `{{when}}` is an already-localised relative time ("5 minutes ago").
+  devices: {
+    limitTitle: 'Device limit reached',
+    limitDesc_one:
+      "You're signed in on {{n}} of {{count}} allowed device. Sign out of at least one to continue here.",
+    limitDesc_other:
+      "You're signed in on {{n}} of {{count}} allowed devices. Sign out of at least one to continue here.",
+    lastActive: 'Last active {{when}}',
+    signedIn: 'Signed in {{when}}',
+    submit_one: 'Sign out {{count}} device & continue',
+    submit_other: 'Sign out {{count}} devices & continue',
+    selectPrompt: 'Select a device to sign out',
+    raceNotice:
+      'Those devices were signed out, but every slot is taken again — pick another device.',
+    challengeExpired: 'Your sign-in session has expired. Please sign in again.',
+    title: 'Signed-in devices',
+    subtitle:
+      "Everywhere your account is signed in. Sign out any device you don't recognise — it takes effect immediately.",
+    thisDevice: 'This device',
+    empty: 'No signed-in devices found.',
+    loadError: "Couldn't load your devices.",
+    confirmTitleCurrent: 'Sign out of this device?',
+    confirmTitleOther: 'Sign out of “{{name}}”?',
+    confirmDescCurrent: "You'll be returned to the sign-in screen.",
+    confirmDescOther:
+      'That device is disconnected immediately and will need to sign in again.',
+    signedOutToast: 'Signed out of “{{name}}”.',
+    alreadySignedOut: 'That device was already signed out.',
+    revokeError: 'Could not sign that device out. Please try again.',
   },
 }

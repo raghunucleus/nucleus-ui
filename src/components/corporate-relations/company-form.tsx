@@ -308,7 +308,6 @@ export function CompanyForm({
               id="f-web"
               value={f.website}
               disabled={disabled}
-              placeholder="https://…"
               onChange={(e) => set('website', e.target.value)}
             />
           </Field>
@@ -389,7 +388,6 @@ export function CompanyForm({
                     id={`role-${r.uid}`}
                     value={r.role_name}
                     disabled={disabled}
-                    placeholder="e.g. Software Engineer"
                     onChange={(e) =>
                       patchRole(r.uid, { role_name: e.target.value })
                     }

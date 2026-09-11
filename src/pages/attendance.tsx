@@ -195,33 +195,44 @@ function OverallCard({
         : CircleAlert
 
   return (
-    <Card className="p-5 sm:p-6">
-      <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
-        <div className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Overall attendance
-          </p>
-          <div className="flex items-end gap-1">
-            <span className="text-3xl font-semibold tracking-tight tabular-nums">
-              {percent.toFixed(1)}
-            </span>
-            <span className="pb-1.5 text-xl font-semibold text-muted-foreground">
-              %
-            </span>
+    <Card className="overflow-hidden">
+      <Link
+        to="/attendance/all"
+        aria-label="View all classes"
+        className="block p-5 transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:p-6"
+      >
+        <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
+          <div className="space-y-1">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Overall attendance
+            </p>
+            <div className="flex items-end gap-1">
+              <span className="text-3xl font-semibold tracking-tight tabular-nums">
+                {percent.toFixed(1)}
+              </span>
+              <span className="pb-1.5 text-xl font-semibold text-muted-foreground">
+                %
+              </span>
+            </div>
+            <Badge variant={meta.badge}>{meta.label}</Badge>
           </div>
-          <Badge variant={meta.badge}>{meta.label}</Badge>
+
+          <div className="space-y-2.5">
+            <Progress value={percent} indicatorClassName={meta.bar} />
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <Icon className={cn('mt-0.5 size-4 shrink-0', meta.text)} />
+              <p>
+                {attended} of {held} classes attended.
+              </p>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-2.5">
-          <Progress value={percent} indicatorClassName={meta.bar} />
-          <div className="flex items-start gap-2 text-sm text-muted-foreground">
-            <Icon className={cn('mt-0.5 size-4 shrink-0', meta.text)} />
-            <p>
-              {attended} of {held} classes attended.
-            </p>
-          </div>
+        <div className="mt-4 flex items-center justify-between border-t pt-3 text-[11px] font-medium text-muted-foreground">
+          <span>View all classes</span>
+          <ChevronRight className="size-3.5" />
         </div>
-      </div>
+      </Link>
     </Card>
   )
 }

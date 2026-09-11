@@ -1799,7 +1799,6 @@ function DriveStudentsTab({
             onChange={(e) => setRevokeReason(e.target.value)}
             maxLength={512}
             rows={4}
-            placeholder="Reason for revoking…"
             className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -2029,7 +2028,6 @@ function EligibilityTab({
             max={99}
             value={form.max_current_backlogs}
             onChange={(e) => patch({ max_current_backlogs: e.target.value })}
-            placeholder="No limit"
           />
         </Field>
       </div>
@@ -2048,7 +2046,6 @@ function EligibilityTab({
               step="any"
               value={form.min_tenth_percentage}
               onChange={(e) => patch({ min_tenth_percentage: e.target.value })}
-              placeholder="e.g. 60"
             />
           </Field>
           <Field label="12th (min %)" hint="Applies to regular entrants.">
@@ -2059,7 +2056,6 @@ function EligibilityTab({
               step="any"
               value={form.min_twelfth_percentage}
               onChange={(e) => patch({ min_twelfth_percentage: e.target.value })}
-              placeholder="e.g. 70"
             />
           </Field>
           <Field label="Diploma (min %)" hint="Applies to lateral entrants.">
@@ -2070,7 +2066,6 @@ function EligibilityTab({
               step="any"
               value={form.min_diploma_percentage}
               onChange={(e) => patch({ min_diploma_percentage: e.target.value })}
-              placeholder="e.g. 80"
             />
           </Field>
           <Field label="Btech (min CGPA /10)">
@@ -2081,7 +2076,6 @@ function EligibilityTab({
               step="any"
               value={form.min_btech_cgpa}
               onChange={(e) => patch({ min_btech_cgpa: e.target.value })}
-              placeholder="e.g. 6.5"
             />
           </Field>
         </div>

@@ -1,6 +1,10 @@
 import { create } from 'zustand'
 
-import { clearTokens, hasStoredSession } from '@/lib/student-auth'
+import {
+  clearTokens,
+  hasStoredSession,
+  setStudentSessionExpiredHandler,
+} from '@/lib/student-auth'
 
 interface AuthState {
   /** Whether the student/parent is signed into the portal. */
@@ -37,3 +41,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ authed: false })
   },
 }))
+
+// Auto-logout: when an authenticated request (or a socket's refresh) finds the
+// session unrecoverable — refresh rejected, e.g. this device was signed out
+// from another one — sign out so the portal drops back to the login screen.
+// Registered once at module load.
+setStudentSessionExpiredHandler(() => {
+  useAuthStore.getState().signOut()
+})

@@ -2332,7 +2332,6 @@ function DayEditorSheet({
                             <Input
                               value={fRoom}
                               onChange={(e) => setFRoom(e.target.value)}
-                              placeholder="e.g. A-204"
                               maxLength={48}
                               className="h-9"
                             />
@@ -2342,7 +2341,6 @@ function DayEditorSheet({
                             <Input
                               value={fNote}
                               onChange={(e) => setFNote(e.target.value)}
-                              placeholder="optional"
                               maxLength={160}
                               className="h-9"
                             />
@@ -2406,7 +2404,6 @@ function DayEditorSheet({
                         <Input
                           value={cancelReason}
                           onChange={(e) => setCancelReason(e.target.value)}
-                          placeholder="e.g. Faculty on leave"
                           maxLength={256}
                           className="h-9"
                         />
@@ -4198,7 +4195,6 @@ function DiffRow({
           <Input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Reason (optional)"
             maxLength={256}
             className="h-8"
           />
@@ -5388,7 +5384,6 @@ function CancelSessionSheet({
             id="cancel-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Faculty on duty leave"
             maxLength={256}
           />
           <p className="text-xs text-muted-foreground">
@@ -5543,7 +5538,6 @@ function SubstituteSessionSheet({
             id="sub-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Faculty out sick"
             maxLength={256}
           />
           {error ? (

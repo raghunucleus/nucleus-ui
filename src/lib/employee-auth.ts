@@ -1,4 +1,6 @@
-import { ApiError, apiFetch } from './api'
+import { ApiError, apiFetch, isTransientApiError } from './api'
+import { getDeviceId } from './device-id'
+import type { SessionRow } from './sessions'
 
 const ACCESS_TOKEN_KEY = 'nucleus.employee.accessToken'
 const REFRESH_TOKEN_KEY = 'nucleus.employee.refreshToken'
@@ -56,13 +58,18 @@ export function hasStoredEmployeeSession(): boolean {
 
 // --- API calls ------------------------------------------------------------
 
+// Every login carries this browser's persistent `device_id`, so signing in
+// again here replaces this device's session instead of taking another slot
+// toward the device limit. `device_name` is omitted on purpose: the server
+// derives it from the User-Agent.
+
 export function employeeLogin(
   empCode: string,
   password: string,
 ): Promise<EmployeeLoginResult> {
   return apiFetch<EmployeeLoginResult>('/employee/auth/login', {
     method: 'POST',
-    body: { emp_code: empCode, password },
+    body: { emp_code: empCode, password, device_id: getDeviceId() },
   })
 }
 
@@ -71,8 +78,47 @@ export function employeeLoginWithGoogle(
 ): Promise<EmployeeLoginResult> {
   return apiFetch<EmployeeLoginResult>('/employee/auth/login/google', {
     method: 'POST',
-    body: { idToken },
+    body: { idToken, device_id: getDeviceId() },
   })
+}
+
+/**
+ * Finish a login the device limit paused (409 `DEVICE_LIMIT`): sign the chosen
+ * devices out, then complete the sign-in. Resolves with the same body as
+ * {@link employeeLogin}, so the caller feeds it into the same success path
+ * (token storage, forced password change). Rejects with another DEVICE_LIMIT
+ * (same challenge, fresh list) if a racing sign-in took the freed slot, and a
+ * 401 once the 5-minute challenge has expired.
+ */
+export function employeeCompleteDeviceLimit(
+  challengeToken: string,
+  sessionIds: string[],
+): Promise<EmployeeLoginResult> {
+  return apiFetch<EmployeeLoginResult>('/employee/auth/login/device-limit', {
+    method: 'POST',
+    body: { challengeToken, sessionIds, device_id: getDeviceId() },
+  })
+}
+
+/** Every device this employee is signed in on, most recently active first. */
+export function employeeListSessions(): Promise<SessionRow[]> {
+  return withEmployeeAuth((token) =>
+    apiFetch<SessionRow[]>('/employee/sessions', { token }),
+  )
+}
+
+/**
+ * Sign one of the employee's devices out — immediate server-side (its tokens
+ * die and its sockets are cut). Revoking the `current` row ends this session;
+ * the caller should then sign out locally.
+ */
+export function employeeRevokeSession(sessionId: string): Promise<void> {
+  return withEmployeeAuth((token) =>
+    apiFetch<void>(`/employee/sessions/${encodeURIComponent(sessionId)}`, {
+      method: 'DELETE',
+      token,
+    }),
+  )
 }
 
 export function employeeChangePassword(
@@ -112,11 +158,18 @@ export function employeeMe(): Promise<EmployeeProfile> {
   )
 }
 
+/**
+ * Sign THIS device out (other devices stay signed in). Logout needs a valid
+ * access token, so it goes through the refresh-aware wrapper — an expired
+ * access token must still free this device's slot server-side. Local tokens
+ * are cleared whatever happens.
+ */
 export async function employeeLogout(): Promise<void> {
-  const token = getEmployeeAccessToken()
-  if (token) {
+  if (getEmployeeAccessToken()) {
     try {
-      await apiFetch('/employee/auth/logout', { method: 'POST', token })
+      await withEmployeeAuth((token) =>
+        apiFetch('/employee/auth/logout', { method: 'POST', token }),
+      )
     } catch {
       // Ignore — local tokens are cleared regardless.
     }
@@ -142,18 +195,28 @@ export function setEmployeeSessionExpiredHandler(
 }
 
 /**
+ * Clear the local session and notify the auth store (auto-logout). Exported
+ * for the notification socket, whose refresh can find the session dead too.
+ */
+export function expireEmployeeSession(): void {
+  clearEmployeeTokens()
+  onSessionExpired?.()
+}
+
+/**
  * Runs an authenticated employee call with the stored access token. On a 401
- * it tries a single refresh-and-retry; if that fails the session is cleared,
- * the session-expired handler fires (auto-logout), and a 401 ApiError is
- * thrown so callers can route back to the login screen.
+ * it tries a single refresh-and-retry; if the refresh is rejected the session
+ * is expired (tokens cleared, auto-logout) and a 401 ApiError is thrown so
+ * callers can route back to the login screen. A refresh that fails
+ * transiently (offline, 5xx) rethrows that error instead and leaves the
+ * session alone — it may well still be valid.
  */
 export async function withEmployeeAuth<T>(
   call: (token: string) => Promise<T>,
 ): Promise<T> {
   const token = getEmployeeAccessToken()
   if (!token) {
-    clearEmployeeTokens()
-    onSessionExpired?.()
+    expireEmployeeSession()
     throw new ApiError(401, 'Your session has ended. Please sign in again.')
   }
   try {
@@ -162,8 +225,7 @@ export async function withEmployeeAuth<T>(
     if (err instanceof ApiError && err.status === 401) {
       const refreshed = await tryRefresh()
       if (refreshed) return call(refreshed)
-      clearEmployeeTokens()
-      onSessionExpired?.()
+      expireEmployeeSession()
       throw new ApiError(401, 'Your session has expired. Please sign in again.')
     }
     throw err
@@ -171,7 +233,12 @@ export async function withEmployeeAuth<T>(
 }
 
 /**
- * Swap the refresh token for a fresh access token, or null if that fails.
+ * Swap the refresh token for a fresh access token. Resolves the new token, or
+ * null when the session is unrecoverable (no refresh token, or the server
+ * rejected it — expired, or signed out from another device). Rejects when the
+ * refresh couldn't be completed for a transient reason (see
+ * `isTransientApiError`), which says nothing about the session.
+ *
  * Exported for the notification socket, which authenticates once at the
  * handshake rather than per-request and so can't go through `withEmployeeAuth`.
  * Shares the same in-flight dedupe (see below) — a socket reconnect racing an
@@ -196,10 +263,16 @@ function tryRefresh(): Promise<string | null> {
     body: { refreshToken },
   })
     .then((tokens) => {
+      // Signed out while the refresh was in flight: don't resurrect the
+      // session in storage.
+      if (!getEmployeeRefreshToken()) return null
       storeEmployeeTokens(tokens)
       return tokens.accessToken
     })
-    .catch(() => null)
+    .catch((err: unknown) => {
+      if (isTransientApiError(err)) throw err
+      return null
+    })
     .finally(() => {
       refreshInFlight = null
     })

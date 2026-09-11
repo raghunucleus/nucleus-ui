@@ -193,7 +193,6 @@ function AmountField({
           step="any"
           value={min}
           onChange={(e) => onMin(e.target.value)}
-          placeholder={mode === 'range' ? 'Min' : 'Amount'}
           className="w-32"
         />
         {mode === 'range' && (
@@ -205,7 +204,6 @@ function AmountField({
               step="any"
               value={max}
               onChange={(e) => onMax(e.target.value)}
-              placeholder="Max"
               className="w-32"
             />
           </>

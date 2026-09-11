@@ -1,4 +1,6 @@
-import { ApiError, apiFetch } from './api'
+import { ApiError, apiFetch, isTransientApiError } from './api'
+import { getDeviceId } from './device-id'
+import type { SessionRow } from './sessions'
 
 // ---------------------------------------------------------------------------
 // Parent (guardian) auth — mirrors student-auth.ts but for the /guardian/* API.
@@ -99,16 +101,66 @@ export function setParentSessionExpiredHandler(handler: () => void): void {
   onSessionExpired = handler
 }
 
+/** Clear the local session + selection and notify the store (auto-logout). */
+function expireParentSession(): void {
+  clearParentTokens()
+  clearSelectedStudentId()
+  onSessionExpired?.()
+}
+
 // --- API calls -------------------------------------------------------------
 
+/**
+ * Carries this browser's persistent `device_id`, so signing in again here
+ * replaces this device's session instead of taking another slot toward the
+ * device limit. `device_name` is omitted: the server reads the User-Agent.
+ */
 export function parentLogin(
   mobileNumber: string,
   password: string,
 ): Promise<GuardianLoginResult> {
   return apiFetch<GuardianLoginResult>('/guardian/auth/login', {
     method: 'POST',
-    body: { mobile_number: mobileNumber, password },
+    body: { mobile_number: mobileNumber, password, device_id: getDeviceId() },
   })
+}
+
+/**
+ * Finish a login the device limit paused (409 `DEVICE_LIMIT`): sign the chosen
+ * devices out, then complete the sign-in. Resolves with the same body as
+ * {@link parentLogin} (guardian + linked students), so the caller feeds it into
+ * the same success path (forced password change, child selection). Rejects
+ * with another DEVICE_LIMIT (same challenge, fresh list) if a racing sign-in
+ * took the freed slot, and a 401 once the 5-minute challenge has expired.
+ */
+export function parentCompleteDeviceLimit(
+  challengeToken: string,
+  sessionIds: string[],
+): Promise<GuardianLoginResult> {
+  return apiFetch<GuardianLoginResult>('/guardian/auth/login/device-limit', {
+    method: 'POST',
+    body: { challengeToken, sessionIds, device_id: getDeviceId() },
+  })
+}
+
+/** Every device this guardian is signed in on, most recently active first. */
+export function parentListSessions(): Promise<SessionRow[]> {
+  return withParentAuth((token) =>
+    apiFetch<SessionRow[]>('/guardian/sessions', { token }),
+  )
+}
+
+/**
+ * Sign one of the guardian's devices out — immediate server-side. Revoking the
+ * `current` row ends this session; the caller should then sign out locally.
+ */
+export function parentRevokeSession(sessionId: string): Promise<void> {
+  return withParentAuth((token) =>
+    apiFetch<void>(`/guardian/sessions/${encodeURIComponent(sessionId)}`, {
+      method: 'DELETE',
+      token,
+    }),
+  )
 }
 
 export function parentRequestOtp(
@@ -155,11 +207,18 @@ export function parentListStudents(): Promise<LinkedStudent[]> {
   )
 }
 
+/**
+ * Sign THIS device out (other devices stay signed in). Logout needs a valid
+ * access token, so it goes through the refresh-aware wrapper — an expired
+ * access token must still free this device's slot server-side. Local tokens
+ * and the child selection are cleared whatever happens.
+ */
 export async function parentLogout(): Promise<void> {
-  const token = getParentAccessToken()
-  if (token) {
+  if (getParentAccessToken()) {
     try {
-      await apiFetch('/guardian/auth/logout', { method: 'POST', token })
+      await withParentAuth((token) =>
+        apiFetch('/guardian/auth/logout', { method: 'POST', token }),
+      )
     } catch {
       // Ignore — local tokens are cleared regardless.
     }
@@ -172,9 +231,11 @@ export async function parentLogout(): Promise<void> {
 
 /**
  * Runs an authenticated guardian call with the stored access token. On a 401 it
- * tries a single refresh-and-retry; if that fails the session is cleared, the
- * expired handler fires (so the portal drops to login), and a 401 ApiError is
- * rethrown. Mirrors student-auth.withAuth.
+ * tries a single refresh-and-retry; if the refresh is rejected the session is
+ * cleared, the expired handler fires (so the portal drops to login), and a 401
+ * ApiError is rethrown. A refresh that fails transiently (offline, 5xx)
+ * rethrows that error instead and leaves the session alone. Mirrors
+ * student-auth.withAuth.
  */
 export async function withParentAuth<T>(
   call: (token: string) => Promise<T>,
@@ -189,26 +250,44 @@ export async function withParentAuth<T>(
     if (err instanceof ApiError && err.status === 401) {
       const refreshed = await tryRefresh()
       if (refreshed) return call(refreshed)
-      clearParentTokens()
-      clearSelectedStudentId()
-      onSessionExpired?.()
+      expireParentSession()
       throw new ApiError(401, 'Your session has expired. Please sign in again.')
     }
     throw err
   }
 }
 
-async function tryRefresh(): Promise<string | null> {
+/** Dedupe concurrent refreshes so a burst of 401s triggers a single /refresh. */
+let refreshInFlight: Promise<string | null> | null = null
+
+/**
+ * Swap the refresh token for a fresh access token: the new token, or null when
+ * the session is unrecoverable (no refresh token, or the server rejected it).
+ * Rejects on a transient failure (see `isTransientApiError`). Parallel callers
+ * coalesce onto one in-flight call — refresh tokens rotate, so N concurrent
+ * refreshes from a burst of 401s would churn the session family.
+ */
+function tryRefresh(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight
   const refreshToken = getParentRefreshToken()
-  if (!refreshToken) return null
-  try {
-    const tokens = await apiFetch<AuthTokens>('/guardian/auth/refresh', {
-      method: 'POST',
-      body: { refreshToken },
+  if (!refreshToken) return Promise.resolve(null)
+  refreshInFlight = apiFetch<AuthTokens>('/guardian/auth/refresh', {
+    method: 'POST',
+    body: { refreshToken },
+  })
+    .then((tokens) => {
+      // Signed out while the refresh was in flight: don't resurrect the
+      // session in storage.
+      if (!getParentRefreshToken()) return null
+      storeParentTokens(tokens)
+      return tokens.accessToken
     })
-    storeParentTokens(tokens)
-    return tokens.accessToken
-  } catch {
-    return null
-  }
+    .catch((err: unknown) => {
+      if (isTransientApiError(err)) throw err
+      return null
+    })
+    .finally(() => {
+      refreshInFlight = null
+    })
+  return refreshInFlight
 }

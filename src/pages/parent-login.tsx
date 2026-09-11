@@ -13,17 +13,27 @@ import {
   AuthHeading,
   AuthShell,
   AuthTextButton,
+  DeviceLimitPicker,
   FormError,
   PasswordInput,
   validateNewPassword,
+  type DeviceLimitPickerStrings,
 } from '@/components/auth'
+import { ApiError, isDeviceLimit } from '@/lib/api'
 import {
   parentChangePassword,
+  parentCompleteDeviceLimit,
   parentLogin,
   parentRequestOtp,
   parentVerifyOtp,
   type GuardianLoginResult,
 } from '@/lib/parent-auth'
+import {
+  formatRelativeTime,
+  toDeviceLimitChallenge,
+  type DeviceLimitChallenge,
+  type DeviceLimitPayload,
+} from '@/lib/sessions'
 import { useParentAuthStore } from '@/stores/parent-auth-store'
 import { withGlobalLoader } from '@/stores/loader-store'
 import i18n, { getStoredParentLang } from '@/lib/i18n'
@@ -70,7 +80,13 @@ export default function ParentLogin() {
 // Parent (guardian) authentication flow
 // ---------------------------------------------------------------------------
 
-type ParentMode = 'login' | 'forgot' | 'forgot-otp' | 'change' | 'reset-done'
+type ParentMode =
+  | 'login'
+  | 'forgot'
+  | 'forgot-otp'
+  | 'change'
+  | 'reset-done'
+  | 'device-limit'
 
 const MOBILE_RE = /^[6-9]\d{9}$/
 
@@ -93,6 +109,23 @@ function passwordToggleLabels(t: TFunction) {
   return { showLabel: t('a11y.showPassword'), hideLabel: t('a11y.hidePassword') }
 }
 
+/** The device-limit picker's copy, translated (the kit itself never calls t). */
+function deviceLimitStringsT(t: TFunction): DeviceLimitPickerStrings {
+  const when = (iso: string) => formatRelativeTime(iso, i18n.language)
+  return {
+    title: t('devices.limitTitle'),
+    description: (signedIn, limit) =>
+      t('devices.limitDesc', { count: limit, n: signedIn }),
+    lastActive: (iso) => t('devices.lastActive', { when: when(iso) }),
+    signedIn: (iso) => t('devices.signedIn', { when: when(iso) }),
+    submit: (count) => t('devices.submit', { count }),
+    selectPrompt: t('devices.selectPrompt'),
+    submitting: t('common.signingIn'),
+    raceNotice: t('devices.raceNotice'),
+    back: t('common.backToSignIn'),
+  }
+}
+
 function ParentSection() {
   const { t } = useTranslation()
   const signIn = useParentAuthStore((state) => state.signIn)
@@ -104,6 +137,78 @@ function ParentSection() {
   )
   // Remembered across the forgot → OTP steps so the verify call has the number.
   const [otpMobile, setOtpMobile] = useState('')
+  // A login paused at the device limit. The challenge token is a bearer
+  // credential, so it lives here in component state only — never storage or
+  // the URL; a reload simply means signing in again.
+  const [challenge, setChallenge] = useState<DeviceLimitChallenge | null>(null)
+  const [deviceError, setDeviceError] = useState<string | null>(null)
+  const [raced, setRaced] = useState(false)
+  // Shown on the sign-in form when the picker hands back (challenge expired).
+  const [loginError, setLoginError] = useState<string | null>(null)
+
+  function handleLoggedIn(result: GuardianLoginResult) {
+    if (result.mustChangePassword) {
+      setPendingLogin(result)
+      setMode('change')
+    } else {
+      signIn(result)
+    }
+  }
+
+  function handleDeviceLimit(payload: DeviceLimitPayload) {
+    setChallenge(toDeviceLimitChallenge(payload))
+    setDeviceError(null)
+    setRaced(false)
+    setLoginError(null)
+    setMode('device-limit')
+  }
+
+  function backToLogin(message: string | null = null) {
+    setChallenge(null)
+    setDeviceError(null)
+    setRaced(false)
+    setLoginError(message)
+    setMode('login')
+  }
+
+  async function completeDeviceLimit(sessionIds: string[]) {
+    if (!challenge) return
+    setDeviceError(null)
+    try {
+      const result = await withGlobalLoader(
+        () => parentCompleteDeviceLimit(challenge.challengeToken, sessionIds),
+        t('common.signingIn'),
+      )
+      setChallenge(null)
+      handleLoggedIn(result)
+    } catch (err) {
+      if (isDeviceLimit(err)) {
+        // A racing sign-in took the freed slot: same challenge, fresh list.
+        setChallenge(toDeviceLimitChallenge(err.data))
+        setRaced(true)
+      } else if (err instanceof ApiError && err.status === 401) {
+        // The 5-minute challenge expired — start the sign-in over.
+        backToLogin(t('devices.challengeExpired'))
+      } else {
+        setRaced(false)
+        setDeviceError(toMessageT(t, err))
+      }
+    }
+  }
+
+  if (mode === 'device-limit' && challenge) {
+    return (
+      <DeviceLimitPicker
+        sessions={challenge.sessions}
+        limit={challenge.limit}
+        error={deviceError}
+        raced={raced}
+        onSubmit={completeDeviceLimit}
+        onBack={() => backToLogin()}
+        strings={deviceLimitStringsT(t)}
+      />
+    )
+  }
 
   if (mode === 'change' && pendingLogin) {
     return (
@@ -179,15 +284,10 @@ function ParentSection() {
       />
 
       <ParentLoginForm
+        initialError={loginError}
         onForgot={() => setMode('forgot')}
-        onLoggedIn={(result) => {
-          if (result.mustChangePassword) {
-            setPendingLogin(result)
-            setMode('change')
-          } else {
-            signIn(result)
-          }
-        }}
+        onLoggedIn={handleLoggedIn}
+        onDeviceLimit={handleDeviceLimit}
       />
 
       <p className="text-center text-xs text-muted-foreground">
@@ -201,16 +301,21 @@ function ParentSection() {
 }
 
 function ParentLoginForm({
+  initialError,
   onForgot,
   onLoggedIn,
+  onDeviceLimit,
 }: {
+  initialError: string | null
   onForgot: () => void
   onLoggedIn: (result: GuardianLoginResult) => void
+  /** Every device slot is taken — hand over to the picker. */
+  onDeviceLimit: (payload: DeviceLimitPayload) => void
 }) {
   const { t } = useTranslation()
   const [mobile, setMobile] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(initialError)
   const [submitting, setSubmitting] = useState(false)
   const mobileGuard = useAutofillGuard()
 
@@ -231,8 +336,9 @@ function ParentLoginForm({
       )
       onLoggedIn(result)
     } catch (err) {
-      setError(toMessageT(t, err))
       setSubmitting(false)
+      if (isDeviceLimit(err)) onDeviceLimit(err.data)
+      else setError(toMessageT(t, err))
     }
   }
 

@@ -97,7 +97,6 @@ interface FormFieldDef {
   /** For 'enum': which context list feeds the options. */
   options?: 'blood_groups' | 'genders'
   hint?: string
-  placeholder?: string
 }
 
 interface FormGroupDef {
@@ -120,7 +119,6 @@ const FORM_GROUPS: FormGroupDef[] = [
       {
         key: 'abc_id',
         kind: 'text',
-        placeholder: '12-digit Academic Bank of Credits ID',
       },
     ],
   },
@@ -152,14 +150,14 @@ const FORM_GROUPS: FormGroupDef[] = [
       { key: 'home_country', kind: 'fk', fk: 'countries' },
       { key: 'home_state', kind: 'fk', fk: 'home_states' },
       { key: 'home_district', kind: 'fk', fk: 'home_districts' },
-      { key: 'home_pincode', kind: 'text', placeholder: '6-digit pincode' },
+      { key: 'home_pincode', kind: 'text' },
     ],
   },
   {
     label: 'Government IDs',
     fields: [
-      { key: 'aadhaar_number', kind: 'text', placeholder: '12-digit Aadhaar' },
-      { key: 'pan_number', kind: 'text', placeholder: 'AAAAA9999A' },
+      { key: 'aadhaar_number', kind: 'text' },
+      { key: 'pan_number', kind: 'text' },
     ],
   },
   {
@@ -949,7 +947,6 @@ export default function ProfileUpdateRequestPage() {
           <FormSection label="Note for the reviewer">
             <Textarea
               id="req-note"
-              placeholder="Anything the reviewer should know (optional)"
               value={note}
               maxLength={1000}
               onChange={(e) => setNote(e.target.value)}
@@ -1176,7 +1173,6 @@ function FormField({
               ? 'decimal'
               : undefined
           }
-          placeholder={def.placeholder}
           value={value}
           disabled={pending}
           onChange={(e) => onChange(e.target.value)}
@@ -1278,7 +1274,6 @@ function EntranceExamUnit({
             <Input
               id="req-entrance-year"
               inputMode="numeric"
-              placeholder={`e.g. ${CURRENT_YEAR}`}
               value={state.year}
               disabled={pending}
               onChange={(e) => onChange({ ...state, year: e.target.value })}
@@ -1328,7 +1323,6 @@ function GapUnit({
           <Input
             id="req-gap-years"
             inputMode="numeric"
-            placeholder="0–10"
             value={state.years}
             disabled={pending}
             onChange={(e) => onChange({ ...state, years: e.target.value })}
@@ -1339,7 +1333,6 @@ function GapUnit({
         <FieldBlock id="req-gap-reason" label="Reason of gap" pending={pending}>
           <Textarea
             id="req-gap-reason"
-            placeholder="Explain the gap — required when it is more than zero years"
             value={state.reason}
             disabled={pending}
             maxLength={1000}

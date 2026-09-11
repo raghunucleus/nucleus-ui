@@ -4,6 +4,7 @@ import { io, type Socket } from 'socket.io-client'
 import { useEmployeeAuthStore } from '@/stores/employee-auth-store'
 import { API_BASE_URL } from './api'
 import {
+  expireEmployeeSession,
   getEmployeeAccessToken,
   refreshEmployeeAccessToken,
 } from './employee-auth'
@@ -38,14 +39,24 @@ export function getEmployeeNotificationSocket(): Socket | null {
       reconnection: true,
     })
 
+    // Server-initiated disconnect (bad/expired token, or this session was
+    // signed out elsewhere): refresh and reconnect; a rejected refresh ends
+    // the session. A transient refresh failure leaves things alone.
     socket.on('disconnect', (reason) => {
       if (reason === 'io server disconnect') {
-        void refreshEmployeeAccessToken().then((fresh) => {
-          if (fresh && socket) {
-            socket.auth = { token: fresh }
-            socket.connect()
-          }
-        })
+        refreshEmployeeAccessToken().then(
+          (fresh) => {
+            if (!fresh) {
+              expireEmployeeSession()
+              return
+            }
+            if (socket) {
+              socket.auth = { token: fresh }
+              socket.connect()
+            }
+          },
+          () => {},
+        )
       }
     })
   }

@@ -91,7 +91,6 @@ export function SendBackDialog({
           </label>
           <Textarea
             id="send-back-note"
-            placeholder="Say exactly what to fix — this is all the requester will see"
             value={note}
             maxLength={1000}
             onChange={(e) => setNote(e.target.value)}
@@ -272,7 +271,6 @@ export function DecisionDialog({
           </label>
           <Textarea
             id="decision-note"
-            placeholder="Visible to the requester"
             value={note}
             maxLength={1000}
             onChange={(e) => setNote(e.target.value)}

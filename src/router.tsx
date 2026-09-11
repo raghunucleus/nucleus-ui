@@ -27,10 +27,14 @@ const ProfileUpdateRequest = lazyRouteComponent(
   () => import('@/pages/profile-update-request'),
 )
 const PrivacySettings = lazyRouteComponent(() => import('@/pages/privacy-settings'))
+const Devices = lazyRouteComponent(() => import('@/pages/devices'))
 const Timetable = lazyRouteComponent(() => import('@/pages/timetable'))
 const Attendance = lazyRouteComponent(() => import('@/pages/attendance'))
 const AttendanceSubject = lazyRouteComponent(
   () => import('@/pages/attendance-subject'),
+)
+const AttendanceAll = lazyRouteComponent(
+  () => import('@/pages/attendance-all'),
 )
 const ExamMarks = lazyRouteComponent(() => import('@/pages/exam-marks'))
 const Birthdays = lazyRouteComponent(() => import('@/pages/birthdays'))
@@ -93,6 +97,13 @@ const privacyRoute = createRoute({
   component: PrivacySettings,
 })
 
+// Reached from the account dropdown (next to Privacy) — signed-in devices.
+const devicesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/devices',
+  component: Devices,
+})
+
 const timetableRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/timetable',
@@ -108,6 +119,14 @@ const attendanceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/attendance',
   component: Attendance,
+})
+
+// Static segment — TanStack ranks it above `$subjectId`, so `/attendance/all`
+// never reaches the per-subject page.
+const attendanceAllRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/attendance/all',
+  component: AttendanceAll,
 })
 
 const attendanceSubjectRoute = createRoute({
@@ -251,8 +270,10 @@ const routeTree = rootRoute.addChildren([
   profileUpdateRequestRoute,
   profileGroupRoute,
   privacyRoute,
+  devicesRoute,
   timetableRoute,
   attendanceRoute,
+  attendanceAllRoute,
   attendanceSubjectRoute,
   examMarksRoute,
   birthdaysRoute,

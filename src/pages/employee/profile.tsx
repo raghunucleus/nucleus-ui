@@ -5,6 +5,7 @@ import {
   ChevronRight,
   KeyRound,
   type LucideIcon,
+  MonitorSmartphone,
   User,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -12,6 +13,7 @@ import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { DevicesList } from '@/components/devices-list'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,7 +21,9 @@ import { Switch } from '@/components/ui/switch'
 import { ApiError } from '@/lib/api'
 import {
   employeeChangePassword,
+  employeeListSessions,
   employeeMe,
+  employeeRevokeSession,
   getEmployeeAccessToken,
   storeEmployeeTokens,
   type EmployeeProfile,
@@ -31,11 +35,16 @@ import {
   type EmployeeNotificationPreference,
 } from '@/lib/employee-notifications'
 import { cn } from '@/lib/utils'
+import { useEmployeeAuthStore } from '@/stores/employee-auth-store'
 
 // Every member must also be accepted by `validateSearch` on the /profile route
 // in employee-router.tsx — anything it doesn't recognise silently falls back to
 // 'profile'.
-export type EmployeeProfileSection = 'profile' | 'password' | 'notifications'
+export type EmployeeProfileSection =
+  | 'profile'
+  | 'password'
+  | 'notifications'
+  | 'devices'
 
 type NavItem = {
   key: EmployeeProfileSection
@@ -62,6 +71,12 @@ const navItems: NavItem[] = [
     label: 'Notifications',
     description: 'Choose how each module reaches you',
     icon: Bell,
+  },
+  {
+    key: 'devices',
+    label: 'Devices',
+    description: 'Where your account is signed in',
+    icon: MonitorSmartphone,
   },
 ]
 
@@ -102,8 +117,33 @@ export default function EmployeeProfilePage() {
           {section === 'profile' && <ProfileDetails />}
           {section === 'password' && <ChangePasswordForm />}
           {section === 'notifications' && <NotificationPreferences />}
+          {section === 'devices' && <SignedInDevices />}
         </div>
       </div>
+    </div>
+  )
+}
+
+// --- Devices section --------------------------------------------------------
+
+/**
+ * Every device this employee is signed in on (two by default; an admin can
+ * raise it per person), with a per-device sign-out. Signing out this device
+ * is a logout — straight back to the login screen.
+ */
+function SignedInDevices() {
+  const signOut = useEmployeeAuthStore((s) => s.signOut)
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Sign out any device you don&apos;t recognise — it takes effect
+        immediately.
+      </p>
+      <DevicesList
+        load={employeeListSessions}
+        revoke={employeeRevokeSession}
+        onCurrentRevoked={signOut}
+      />
     </div>
   )
 }

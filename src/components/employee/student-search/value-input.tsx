@@ -155,14 +155,12 @@ export function ValueInput({
           type={inputType}
           value={displayScalar(pair[0])}
           onChange={(e) => setAt(0, e.target.value)}
-          placeholder="From"
         />
         <span className="text-xs text-muted-foreground">and</span>
         <Input
           type={inputType}
           value={displayScalar(pair[1])}
           onChange={(e) => setAt(1, e.target.value)}
-          placeholder="To"
         />
       </div>
     )
@@ -182,7 +180,6 @@ export function ValueInput({
             .filter((p) => p !== '')
           onChange(parts.map((p) => parseScalar(p, attr.kind)))
         }}
-        placeholder="Comma-separated values"
       />
     )
   }
@@ -192,7 +189,6 @@ export function ValueInput({
       type={inputType}
       value={displayScalar(value)}
       onChange={(e) => onChange(parseScalar(e.target.value, attr.kind))}
-      placeholder="Value"
     />
   )
 }

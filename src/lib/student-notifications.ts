@@ -1,11 +1,5 @@
-import { ApiError, apiFetch } from './api'
-import {
-  clearTokens,
-  getAccessToken,
-  getRefreshToken,
-  storeTokens,
-  type AuthTokens,
-} from './student-auth'
+import { apiFetch } from './api'
+import { withAuth } from './student-auth'
 
 /**
  * Student notifications API — mirrors nucleus-server's `/student/notifications/*`
@@ -118,40 +112,4 @@ export function formatNotificationTime(iso: string): string {
         hour12: true,
       })
     : d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
-}
-
-// --- auth helper (local mirror of student-auth's private withAuth) ---------
-
-async function withAuth<T>(call: (token: string) => Promise<T>): Promise<T> {
-  const token = getAccessToken()
-  if (!token) {
-    throw new ApiError(401, 'Your session has ended. Please sign in again.')
-  }
-  try {
-    return await call(token)
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 401) {
-      const refreshed = await refreshAccessToken()
-      if (refreshed) return call(refreshed)
-      clearTokens()
-      throw new ApiError(401, 'Your session has expired. Please sign in again.')
-    }
-    throw err
-  }
-}
-
-/** Refresh + persist the access token; shared with the socket layer. */
-export async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) return null
-  try {
-    const tokens = await apiFetch<AuthTokens>('/student/auth/refresh', {
-      method: 'POST',
-      body: { refreshToken },
-    })
-    storeTokens(tokens)
-    return tokens.accessToken
-  } catch {
-    return null
-  }
 }

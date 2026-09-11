@@ -661,7 +661,6 @@ function LeaveDetail({
               onChange={(e) => setCancelReason(e.target.value)}
               maxLength={1000}
               rows={3}
-              placeholder="Why do you no longer need this leave?"
               className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
@@ -1142,7 +1141,6 @@ function LeaveFormSheet({
               onChange={(e) => setReason(e.target.value)}
               maxLength={1000}
               rows={4}
-              placeholder="A short note for your in-charge"
               className="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>

@@ -25,7 +25,6 @@ export function NqlEditor({
       <Textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={meta.nql.examples[0] ?? 'ug_cgpa >= 7 AND current_backlogs = 0'}
         spellCheck={false}
         className="min-h-24 font-mono text-xs"
       />
