@@ -1,7 +1,13 @@
-import { Download } from 'lucide-react'
-import { useMemo } from 'react'
+import { CalendarDays, Download, List } from 'lucide-react'
+import { useMemo, useState } from 'react'
 
+import {
+  AttendanceCalendar,
+  type CalendarItem,
+} from '@/components/attendance/attendance-calendar'
+import { FilterChips } from '@/components/placement-filter-chips'
 import { Button } from '@/components/ui/button'
+import { Segmented } from '@/components/ui/segmented'
 import {
   Sheet,
   SheetContent,
@@ -22,8 +28,11 @@ import {
   type AnalyticsRange,
   type StudentDetailResult,
   type StudentRow,
+  type StudentSession,
 } from '@/lib/attendance-analytics'
+import { STATUS_LABEL, markToStatusKind } from '@/lib/attendance-status'
 import { downloadCsv } from '@/lib/csv'
+import { ATTENDANCE_CALENDAR_STRINGS_EN } from '@/lib/subject-sessions-strings'
 import { cn } from '@/lib/utils'
 import {
   STATUS_CLASS,
@@ -41,10 +50,23 @@ import {
 } from './ui'
 import { rangeKey, useAnalyticsQuery } from './use-analytics-query'
 
+type View = 'calendar' | 'list'
+type SubjectFilter = 'all' | `${number}`
+
+type SessionItem = CalendarItem & { session: StudentSession }
+
+const CALENDAR_STRINGS = {
+  ...ATTENDANCE_CALENDAR_STRINGS_EN,
+  dayTitle: longDay,
+}
+
+const CHIP_TONE = 'border-primary bg-primary/10 text-primary'
+
 /**
  * One student's full record: their per-subject figures and every class they
- * were marked on, newest first — the day-level detail an incharge needs when a
- * parent calls.
+ * were marked on — the day-level detail an incharge needs when a parent
+ * calls. The session section opens on the same month calendar the student
+ * sees on their own portal, so the two never disagree about a day.
  */
 export function StudentDetailSheet({
   range,
@@ -63,6 +85,8 @@ export function StudentDetailSheet({
   onClose: () => void
 }) {
   const studentId = student?.student_id ?? null
+  const [view, setView] = useState<View>('calendar')
+  const [subject, setSubject] = useState<SubjectFilter>('all')
 
   // Keyed on the student so reopening a different row refetches, and the
   // closed sheet holds no request at all.
@@ -75,23 +99,73 @@ export function StudentDetailSheet({
     'Could not load this student.',
   )
 
+  const sessions = useMemo(() => data?.sessions ?? [], [data])
+
+  const countBySubject = useMemo(() => {
+    const m = new Map<number, number>()
+    for (const s of sessions) m.set(s.subject_id, (m.get(s.subject_id) ?? 0) + 1)
+    return m
+  }, [sessions])
+
+  const filtered = useMemo(
+    () =>
+      subject === 'all'
+        ? sessions
+        : sessions.filter((s) => String(s.subject_id) === subject),
+    [sessions, subject],
+  )
+
+  const items = useMemo<SessionItem[]>(
+    () =>
+      filtered.map((s) => {
+        const kind = markToStatusKind(s.status)
+        return {
+          id: s.session_id,
+          date: s.session_date,
+          kind,
+          label: STATUS_LABEL[kind],
+          sortKey: s.start_time,
+          session: s,
+        }
+      }),
+    [filtered],
+  )
+
   /** Classes grouped by date so the list reads as a diary rather than a dump. */
   const byDate = useMemo(() => {
-    const map = new Map<string, StudentDetailResult['sessions']>()
-    for (const s of data?.sessions ?? []) {
+    const map = new Map<string, StudentSession[]>()
+    for (const s of filtered) {
       const list = map.get(s.session_date) ?? []
       list.push(s)
       map.set(s.session_date, list)
     }
     return [...map.entries()]
-  }, [data])
+  }, [filtered])
+
+  const chipItems = useMemo(() => {
+    if (!data) return []
+    return [
+      {
+        value: 'all' as SubjectFilter,
+        label: 'All',
+        count: sessions.length,
+        tone: CHIP_TONE,
+      },
+      ...data.student.per_subject.map((s) => ({
+        value: `${s.subject_id}` as SubjectFilter,
+        label: s.subject_code,
+        count: countBySubject.get(s.subject_id) ?? 0,
+        tone: CHIP_TONE,
+      })),
+    ]
+  }, [data, sessions.length, countBySubject])
 
   const exportCsv = () => {
     if (!data) return
     downloadCsv(
       `attendance-${data.student.roll_no}`,
       ['Date', 'Period', 'Time', 'Subject', 'Teacher', 'Status'],
-      data.sessions.map((s) => [
+      filtered.map((s) => [
         s.session_date,
         s.period_label,
         clockTime(s.start_time),
@@ -206,17 +280,78 @@ export function StudentDetailSheet({
                 </Table>
               </section>
 
-              <section className="space-y-2">
-                <div className="flex items-center justify-between">
+              <section className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-sm font-semibold">
                     Every class, day by day
                   </h3>
-                  <Button size="sm" variant="outline" onClick={exportCsv}>
-                    <Download className="size-4" />
-                    CSV
-                  </Button>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <Segmented<View>
+                      size="sm"
+                      aria-label="View"
+                      value={view}
+                      onChange={setView}
+                      options={[
+                        {
+                          value: 'calendar',
+                          icon: CalendarDays,
+                          label: null,
+                          ariaLabel: 'Calendar',
+                          title: 'Calendar',
+                        },
+                        {
+                          value: 'list',
+                          icon: List,
+                          label: null,
+                          ariaLabel: 'List',
+                          title: 'List',
+                        },
+                      ]}
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={exportCsv}
+                      title={
+                        subject === 'all'
+                          ? 'Download every class as CSV'
+                          : 'Download the selected subject as CSV'
+                      }
+                    >
+                      <Download className="size-4" />
+                      CSV
+                    </Button>
+                  </div>
                 </div>
-                {byDate.length === 0 ? (
+
+                {chipItems.length > 2 ? (
+                  <FilterChips<SubjectFilter>
+                    value={subject}
+                    items={chipItems}
+                    onChange={setSubject}
+                  />
+                ) : null}
+
+                {view === 'calendar' ? (
+                  <AttendanceCalendar<SessionItem>
+                    items={items}
+                    strings={CALENDAR_STRINGS}
+                    layout="stacked"
+                    bounds={
+                      range.from && range.to
+                        ? { from: range.from, to: range.to }
+                        : undefined
+                    }
+                    renderDay={(_date, list) => (
+                      <div className="rounded-lg border">
+                        <StudentSessionRows
+                          list={list.map((it) => it.session)}
+                          hideSubject={subject !== 'all'}
+                        />
+                      </div>
+                    )}
+                  />
+                ) : byDate.length === 0 ? (
                   <EmptyNote>No classes marked in this period.</EmptyNote>
                 ) : (
                   <div className="space-y-3">
@@ -234,39 +369,10 @@ export function StudentDetailSheet({
                               {present}/{list.length} present
                             </span>
                           </div>
-                          <ul className="divide-y">
-                            {list.map((s) => (
-                              <li
-                                key={s.session_id}
-                                className="flex items-center gap-2 px-3 py-1.5 text-xs"
-                              >
-                                <span className="w-14 shrink-0 text-muted-foreground">
-                                  {clockTime(s.start_time)}
-                                </span>
-                                <span className="min-w-0 flex-1 truncate">
-                                  {s.subject_name}
-                                  {s.is_elective && (
-                                    <span className="ml-1 text-muted-foreground">
-                                      (elective)
-                                    </span>
-                                  )}
-                                </span>
-                                <span className="hidden shrink-0 text-muted-foreground sm:inline">
-                                  {s.teacher_display_name}
-                                  {s.is_substitute ? ' (sub)' : ''}
-                                </span>
-                                <span
-                                  className={cn(
-                                    'shrink-0 rounded px-1.5 py-0.5 font-medium capitalize',
-                                    STATUS_CLASS[s.status] ??
-                                      'bg-muted text-muted-foreground',
-                                  )}
-                                >
-                                  {s.status}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
+                          <StudentSessionRows
+                            list={list}
+                            hideSubject={subject !== 'all'}
+                          />
                         </div>
                       )
                     })}
@@ -278,6 +384,51 @@ export function StudentDetailSheet({
         </div>
       </SheetContent>
     </Sheet>
+  )
+}
+
+/** The rows for one day — shared by the diary list and the calendar's day panel. */
+function StudentSessionRows({
+  list,
+  hideSubject,
+}: {
+  list: readonly StudentSession[]
+  hideSubject: boolean
+}) {
+  return (
+    <ul className="divide-y">
+      {list.map((s) => {
+        const kind = markToStatusKind(s.status)
+        return (
+          <li
+            key={s.session_id}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs"
+          >
+            <span className="w-14 shrink-0 text-muted-foreground">
+              {clockTime(s.start_time)}
+            </span>
+            <span className="min-w-0 flex-1 truncate">
+              {hideSubject ? s.period_label : s.subject_name}
+              {s.is_elective && !hideSubject && (
+                <span className="ml-1 text-muted-foreground">(elective)</span>
+              )}
+            </span>
+            <span className="hidden shrink-0 text-muted-foreground sm:inline">
+              {s.teacher_display_name}
+              {s.is_substitute ? ' (sub)' : ''}
+            </span>
+            <span
+              className={cn(
+                'shrink-0 rounded px-1.5 py-0.5 font-medium',
+                STATUS_CLASS[kind] ?? 'bg-muted text-muted-foreground',
+              )}
+            >
+              {STATUS_LABEL[kind]}
+            </span>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 

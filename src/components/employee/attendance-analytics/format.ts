@@ -1,5 +1,6 @@
 import type { DateRangePreset } from '@/components/ui/date-range-picker'
 import { ApiError } from '@/lib/api'
+import { STATUS_PILL_CLASS } from '@/lib/attendance-status'
 
 /**
  * Constants and formatters shared by every Attendance Analytics tab.
@@ -32,15 +33,13 @@ export const BAND_CLASS: Record<string, string> = {
   good: 'bg-icon-emerald/15 text-icon-emerald',
 }
 
-/** Attendance status → colour, shared by the day grid and session drills. */
-export const STATUS_CLASS: Record<string, string> = {
-  present: 'bg-icon-emerald/15 text-icon-emerald',
-  late: 'bg-icon-amber/15 text-icon-amber',
-  absent: 'bg-icon-rose/15 text-icon-rose',
-  od: 'bg-icon-blue/15 text-icon-blue',
-  exempt: 'bg-muted text-muted-foreground',
-  leave: 'bg-icon-violet/15 text-icon-violet',
-}
+/**
+ * Attendance status → colour, shared by the day grid and session drills.
+ *
+ * An alias of the portal-wide map so an incharge and the student they are
+ * looking at see the same colours for the same fact.
+ */
+export const STATUS_CLASS: Record<string, string> = STATUS_PILL_CLASS
 
 /** Indexed by ISO weekday (1 = Mon), matching `class_sessions.day_of_week`. */
 export const WEEKDAYS = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']

@@ -262,6 +262,18 @@ export const te: typeof en = {
     statusUnmarked: 'గుర్తించలేదు',
     statusUpcoming: 'రాబోయేది',
     sub: 'ప్రత్యామ్నాయ',
+    viewLabel: 'వీక్షణ',
+    viewCalendar: 'క్యాలెండర్',
+    viewList: 'జాబితా',
+    filterLabel: 'సెషన్లను ఫిల్టర్ చేయండి',
+    legend: 'సూచిక',
+    noClassesThisMonth: 'ఈ నెలలో తరగతులు లేవు.',
+    prevMonth: 'మునుపటి నెల',
+    nextMonth: 'తదుపరి నెల',
+    today: 'ఈరోజు',
+    dayCount_one: '{{count}} తరగతి',
+    dayCount_other: '{{count}} తరగతులు',
+    summaryOther: 'ఇతర',
   },
 
   devices: {

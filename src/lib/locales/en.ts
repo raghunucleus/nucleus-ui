@@ -270,6 +270,18 @@ export const en = {
     statusUnmarked: 'Not marked',
     statusUpcoming: 'Upcoming',
     sub: 'Sub',
+    viewLabel: 'View',
+    viewCalendar: 'Calendar',
+    viewList: 'List',
+    filterLabel: 'Filter sessions',
+    legend: 'Legend',
+    noClassesThisMonth: 'No classes this month.',
+    prevMonth: 'Previous month',
+    nextMonth: 'Next month',
+    today: 'Today',
+    dayCount_one: '{{count}} class',
+    dayCount_other: '{{count}} classes',
+    summaryOther: 'Other',
   },
 
   // Device limit (sign-in picker) + signed-in devices (profile).

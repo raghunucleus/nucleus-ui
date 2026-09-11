@@ -262,6 +262,18 @@ export const hi: typeof en = {
     statusUnmarked: 'अंकित नहीं',
     statusUpcoming: 'आगामी',
     sub: 'विकल्प',
+    viewLabel: 'दृश्य',
+    viewCalendar: 'कैलेंडर',
+    viewList: 'सूची',
+    filterLabel: 'सत्र फ़िल्टर करें',
+    legend: 'संकेत',
+    noClassesThisMonth: 'इस महीने कोई कक्षा नहीं।',
+    prevMonth: 'पिछला महीना',
+    nextMonth: 'अगला महीना',
+    today: 'आज',
+    dayCount_one: '{{count}} कक्षा',
+    dayCount_other: '{{count}} कक्षाएँ',
+    summaryOther: 'अन्य',
   },
 
   devices: {

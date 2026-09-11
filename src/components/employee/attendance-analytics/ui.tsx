@@ -736,7 +736,8 @@ export function SubjectsSkeleton() {
   )
 }
 
-/** The student sheet: three stat tiles over the per-subject and session lists. */
+/** The student sheet: three stat tiles, the per-subject table, then the
+ *  month calendar the session section opens on. */
 export function DetailSkeleton() {
   return (
     <div className="space-y-5" aria-hidden>
@@ -758,6 +759,18 @@ export function DetailSkeleton() {
             <div className={cn(BAR, 'ml-auto h-4 w-12')} />
           </div>
         ))}
+      </div>
+      <div className="rounded-xl border bg-card p-3">
+        <div className="flex items-center justify-between">
+          <div className={cn(BAR, 'size-8 rounded-md')} />
+          <div className={cn(BAR, 'h-4 w-32')} />
+          <div className={cn(BAR, 'size-8 rounded-md')} />
+        </div>
+        <div className="mt-3 grid grid-cols-7 gap-1">
+          {Array.from({ length: 35 }, (_, i) => (
+            <div key={i} className={cn(BAR, 'aspect-square rounded-lg')} />
+          ))}
+        </div>
       </div>
     </div>
   )
