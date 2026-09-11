@@ -9,6 +9,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { HolidayEmptyState, HolidayList } from '@/components/holiday-list'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { ApiError } from '@/lib/api'
 import { fetchEmployeeHolidaysPaged } from '@/lib/employee-academics'
 import { toIsoDate, type AcademicHoliday } from '@/lib/holidays'
@@ -69,18 +70,11 @@ export default function EmployeeAcademicHolidaysPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <div className="flex items-start gap-3">
-        <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-icon-blue/10 text-icon-blue">
-          <CalendarDays className="size-5" />
-        </div>
-        <div className="min-w-0">
-          <h1 className="text-lg font-semibold tracking-tight">Holidays</h1>
-          <p className="text-sm text-muted-foreground">
-            Institution holidays and no-class days. Upcoming first — switch to
-            Past for earlier ones.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        icon={CalendarDays}
+        title="Holidays"
+        subtitle="Institution holidays and no-class days. Upcoming first — switch to Past for earlier ones."
+      />
 
       <ScopeTabs
         value={scope}

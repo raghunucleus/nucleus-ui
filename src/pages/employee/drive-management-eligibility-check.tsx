@@ -5,6 +5,7 @@ import {
   type Slot,
 } from '@/components/employee/drive-student-detail-sheet'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
+import { PageHeader } from '@/components/ui/page-header'
 import {
   AcademicsCard,
   SelectionsCard,
@@ -262,15 +263,11 @@ export default function EmployeeEligibilityCheckPage() {
 
   return (
     <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 pb-4">
-      <div className="shrink-0 pt-1">
-        <h1 className="text-lg font-semibold tracking-tight">
-          Students &amp; Eligibility
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Filter the whole institution with the drive filter set — check who
-          would qualify before creating a drive.
-        </p>
-      </div>
+      <PageHeader
+        className="shrink-0"
+        title="Students & Eligibility"
+        subtitle="Filter the whole institution with the drive filter set — check who would qualify before creating a drive."
+      />
       <div className="min-h-0 flex-1">
         <StudentSearchPanel
           api={API}

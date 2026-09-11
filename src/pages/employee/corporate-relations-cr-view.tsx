@@ -18,6 +18,7 @@ import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { Combobox } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
@@ -886,12 +887,10 @@ export default function EmployeeCrViewPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <div>
-        <h1 className="text-lg font-semibold tracking-tight">CR View</h1>
-        <p className="text-sm text-muted-foreground">
-          The job roles you are accountable for, one passout year at a time.
-        </p>
-      </div>
+      <PageHeader
+        title="CR View"
+        subtitle="The job roles you are accountable for, one passout year at a time."
+      />
 
       {!scopeLoaded ? (
         <div className="h-[70vh] animate-pulse rounded-xl bg-muted" />

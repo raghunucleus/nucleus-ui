@@ -23,7 +23,7 @@ import {
   YAxis,
 } from 'recharts'
 
-import { TabBar, type TabDef } from '@/components/corporate-relations/bits'
+import { TabsBar, type TabDef } from '@/components/ui/tabs-bar'
 import {
   AXIS_TICK,
   TOOLTIP_STYLE,
@@ -201,9 +201,9 @@ export default function EmployeeInsightsAttendancePage() {
         ].join(' · ')}
         activeExtras={(semester ? 1 : 0) + (from && to ? 1 : 0)}
         tabs={
-          <TabBar
+          <TabsBar
             tabs={TABS}
-            active={tab}
+            value={tab}
             onChange={setTab}
             className="border-b-0"
           />

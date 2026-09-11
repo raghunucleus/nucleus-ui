@@ -69,7 +69,7 @@ export default function ParentProfile() {
 
       <section className="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
         <div className="flex flex-col gap-4 border-b bg-gradient-to-br from-primary/8 to-secondary/8 p-5 sm:flex-row sm:items-center">
-          <div className="grid size-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-secondary text-xl font-semibold text-primary-foreground shadow-md shadow-primary/30">
+          <div className="brand-gradient grid size-16 shrink-0 place-items-center rounded-full text-xl font-semibold shadow-md shadow-primary/30">
             {initials(guardian?.display_name || 'Parent')}
           </div>
           <div className="min-w-0 space-y-1.5">
@@ -212,7 +212,7 @@ function ChildRow({
         active ? 'border-primary/40 bg-primary/5' : 'bg-card',
       )}
     >
-      <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-primary to-secondary text-sm font-semibold text-primary-foreground">
+      <div className="brand-gradient grid size-10 shrink-0 place-items-center rounded-lg text-sm font-semibold">
         {initials(student.display_name)}
       </div>
       <div className="min-w-0 flex-1">

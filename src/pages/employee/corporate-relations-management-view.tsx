@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { Combobox } from '@/components/ui/combobox'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
@@ -37,11 +38,10 @@ import {
   CompanyStatusBadge,
   GroupHeaderRow,
   NativeSelect,
-  TabBar,
   formatDate,
   type AppliedFacet,
-  type TabDef,
 } from '@/components/corporate-relations/bits'
+import { TabsBar, type TabDef } from '@/components/ui/tabs-bar'
 import { CrViewColumnsDialog } from '@/components/corporate-relations/cr-view-columns-dialog'
 import { CrViewContactsDialog } from '@/components/corporate-relations/cr-view-contacts-dialog'
 import { CrViewFiltersDialog } from '@/components/corporate-relations/cr-view-filters-dialog'
@@ -812,7 +812,7 @@ export default function EmployeeManagementViewPage() {
     <div className="mx-auto max-w-7xl space-y-5">
       {/* No subtitle: the screen is dense and the tab row below already says
           what the year and the two views are. */}
-      <h1 className="text-lg font-semibold tracking-tight">Management View</h1>
+      <PageHeader title="Management View" />
 
       {!scopeLoaded ? (
         <div className="h-[70vh] animate-pulse rounded-xl bg-muted" />
@@ -837,9 +837,9 @@ export default function EmployeeManagementViewPage() {
               list. */}
           <div className="space-y-3">
             <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b">
-              <TabBar
+              <TabsBar
                 tabs={TABS}
-                active={tab}
+                value={tab}
                 onChange={(k) => setTab(k as PanelTab)}
                 className="border-b-0"
               />

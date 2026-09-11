@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { History, ListChecks, User } from 'lucide-react'
 
-import { CompanyLogo, TabBar } from '@/components/corporate-relations/bits'
+import { CompanyLogo } from '@/components/corporate-relations/bits'
+import { TabsBar } from '@/components/ui/tabs-bar'
 import { DriveStudentTrackTimeline } from '@/components/employee/drive-student-track'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -178,7 +179,7 @@ export function DriveStudentDetailSheet({
         </SheetHeader>
 
         <div className="px-4">
-          <TabBar tabs={TABS} active={tab} onChange={(k) => setTab(k as TabKey)} />
+          <TabsBar tabs={TABS} value={tab} onChange={(k) => setTab(k as TabKey)} />
         </div>
 
         <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto px-4 pb-4">

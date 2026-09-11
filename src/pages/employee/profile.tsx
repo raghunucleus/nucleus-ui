@@ -101,7 +101,7 @@ export default function EmployeeProfilePage() {
 
       <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
         <SideNav activeKey={section} />
-        <div className="rounded-lg border bg-card p-6 text-card-foreground">
+        <div className="min-w-0 rounded-lg border bg-card p-6 text-card-foreground">
           <header className="mb-5 flex items-start gap-3">
             <div className="grid size-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
               <active.icon className="size-4" />

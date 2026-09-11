@@ -1,28 +1,29 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-/* Inter, self-hosted. Never load a font from a CDN — the CSP is `font-src
-   'self' data:` (see SECURITY-HEADERS.md), so a Google Fonts link would be
-   blocked in production and silently fall back to the system font. */
-@import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
 
 /* =============================================================================
-   TYPE — one family for the whole product.
+   TYPE — the OS system stack, same as akrivia-central.
 
-   Without this the app inherits Tailwind's default `system-ui` stack, which on
-   Windows resolves to Segoe UI: a noticeably larger x-height than Inter at the
-   same px, which is half of why the UI read as "zoomed in". Inter is also what
-   the two mobile apps use, so web and mobile now share one voice.
+   No web font is loaded at all. The portals used to ship Inter Variable, and
+   at the same 14px root Inter reads visibly LARGER than Segoe UI (its x-height
+   is ~40% taller), which is why the product looked "zoomed in" next to Central
+   even though both apps run the identical root size. Segoe UI on Windows,
+   San Francisco on macOS, Roboto on Android — the same face as the surrounding
+   OS, so the UI never looks like a foreign object. Drop-in benefit: ~100 KB
+   less to download before first paint, and the CSP `font-src 'self' data:`
+   (SECURITY-HEADERS.md) has nothing left to guard.
 
-   The Devanagari / Telugu fallbacks are load-bearing: Inter has no glyphs for
-   either script, and the parent portal ships हिंदी and తెలుగు. Without them the
-   browser picks an arbitrary fallback per glyph and the nav jumps around.
+   The Devanagari / Telugu fallbacks stay load-bearing: the parent portal ships
+   हिंदी and తెలుగు, and naming Nirmala UI / Noto here stops the browser picking
+   an arbitrary fallback per glyph so the nav never jumps around. The mobile
+   apps keep Inter (Nucleus Compact); web and native are different canvases.
    ============================================================================= */
 @theme {
   --font-sans:
-    'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
-    Roboto, 'Nirmala UI', 'Noto Sans Devanagari', 'Noto Sans Telugu', sans-serif;
+    ui-sans-serif, system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Nirmala UI', 'Noto Sans Devanagari', 'Noto Sans Telugu', sans-serif;
 }
 
 /* =============================================================================
@@ -71,6 +72,34 @@
 
   /* Radius scale */
   --radius: 0.5rem;
+
+  /* Sidebar menu-name type scale — the single project-level knob for every
+     nav label (`.nav-label` in the components layer). 0.8125rem = 11.4px at
+     the 14px root, the same value central uses. Lower it to fit longer names;
+     raise it for legibility. */
+  --nav-label-size: 0.8125rem;
+
+  /* Brand gradient triplet (active nav pill, `.brand-gradient` avatars and
+     chips). DERIVED from the brand trio rather than declared per theme, so a
+     preset only re-points `--brand-*` and the gradient follows — and every
+     existing `from-primary to-secondary` utility keeps painting the same hues. */
+  --brand-g1: var(--brand-primary);
+  --brand-g2: var(--brand-secondary);
+  --brand-g3: var(--brand-accent);
+
+  /* Theme-aware chrome: scrollbar thumbs, mixed from the foreground so they
+     follow whatever surface a preset paints underneath. `pane` is the stronger
+     pair for panes that own their scrolling (data grids, split panels). */
+  --scrollbar-thumb: color-mix(in oklab, var(--foreground) 14%, transparent);
+  --scrollbar-thumb-hover: color-mix(in oklab, var(--foreground) 28%, transparent);
+  --pane-scrollbar-thumb: color-mix(in oklab, var(--foreground) 28%, transparent);
+  --pane-scrollbar-thumb-hover: color-mix(in oklab, var(--foreground) 45%, transparent);
+
+  /* Elevation. Two-layer card lift and the app-header underline, exposed as
+     `shadow-card` / `shadow-header` through @theme inline so no component ever
+     writes an rgba literal. */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.06);
+  --shadow-header: 0 1px 12px -8px rgb(0 0 0 / 0.3);
 
   /* shadcn semantic tokens — light theme */
   /* Canvas is a deliberate light gray so white cards/popovers lift clearly off
@@ -248,6 +277,118 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: color-mix(in oklab, oklch(0.985 0 0) 12%, var(--sidebar));
   --sidebar-ring: var(--brand-primary);
+
+  --scrollbar-thumb: color-mix(in oklab, var(--foreground) 16%, transparent);
+  --scrollbar-thumb-hover: color-mix(in oklab, var(--foreground) 30%, transparent);
+  --pane-scrollbar-thumb: color-mix(in oklab, var(--foreground) 30%, transparent);
+  --pane-scrollbar-thumb-hover: color-mix(in oklab, var(--foreground) 50%, transparent);
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.2), 0 1px 3px rgb(0 0 0 / 0.3);
+  --shadow-header: 0 1px 12px -8px rgb(0 0 0 / 0.7);
+}
+
+/* =============================================================================
+   PRESET THEMES — user-selectable re-skins (account menu → Theme).
+
+   Applied by ThemeProvider (and the pre-paint script in index.html) as classes
+   on <html>: `themed theme-<key>`, composing with the existing `dark` class so
+   every preset has a light and a dark variant and the Sun/Moon toggle keeps
+   working. The default Nucleus Blue look is the ABSENCE of these classes —
+   zero diff from the :root / .dark blocks above.
+
+   Anchors vs derivation: a `.theme-<key>` block declares only ANCHORS — the
+   `--brand-*` trio and the surfaces (`--background`, `--foreground`,
+   `--sidebar`; plus `--card` / `--popover` in dark). Everything downstream
+   already follows: `--primary` / `--ring` / `--secondary` / `--accent` alias
+   the brand vars, the gradient triplet `--brand-g1..3` is derived in :root,
+   and the `.dark` neutrals are color-mixed from `--primary`. Only the LIGHT
+   neutrals are fixed oklch values, so the shared `.themed` block re-derives
+   those from the anchors, and `.dark.themed` re-asserts the `.dark` recipes
+   (the two single classes would otherwise resolve by file order).
+
+   Specificity: `.dark.theme-<key>` / `.dark.themed` (0,2,0) out-rank the
+   single-class light blocks, which is what lets a light preset set
+   `--foreground` without bleeding into dark mode.
+
+   Never referenced from a preset: --nucleus-*, --hub-*, --brand-panel-*,
+   --icon-*, --chart-*, --google-*. The logo mark, the portal hub, the login
+   panel and the module / chart palettes are brand, not preference. The
+   catalog (labels, swatches) lives in src/config/themes.ts — keep the key
+   sets in step.
+   ============================================================================= */
+.themed {
+  --muted: color-mix(in oklab, var(--primary) 5%, var(--card));
+  --muted-foreground: color-mix(in oklab, var(--primary) 25%, oklch(0.45 0 0));
+  --border: color-mix(in oklab, var(--primary) 12%, oklch(0.87 0 0));
+  --input: color-mix(in oklab, var(--primary) 12%, oklch(0.83 0 0));
+  --sidebar-accent: color-mix(in oklab, var(--primary) 8%, var(--sidebar));
+  --sidebar-border: var(--border);
+}
+.dark.themed {
+  --foreground: oklch(0.985 0 0);
+  --muted: color-mix(in oklab, var(--primary) 12%, var(--background));
+  --muted-foreground: color-mix(in oklab, oklch(0.98 0 0) 75%, var(--background));
+  --border: color-mix(in oklab, oklch(0.985 0 0) 16%, var(--background));
+  --input: color-mix(in oklab, oklch(0.985 0 0) 24%, var(--background));
+  --sidebar-accent: color-mix(in oklab, var(--primary) 16%, var(--sidebar));
+  --sidebar-border: color-mix(in oklab, oklch(0.985 0 0) 12%, var(--sidebar));
+}
+
+/* --- Violet — Central's own look: violet brand on calm lavender neutrals. --- */
+.theme-violet {
+  --brand-primary: #7c3aed;
+  --brand-secondary: #a855f7;
+  --brand-accent: #c084fc;
+  --background: #f6f3fb;
+  --foreground: oklch(0.2 0.02 300);
+  --sidebar: #fbfafd;
+}
+.dark.theme-violet {
+  --brand-primary: #a78bfa;
+  --brand-secondary: #c4b5fd;
+  --brand-accent: #ddd6fe;
+  --background: #1e1b26;
+  --card: #29252f;
+  --popover: #29252f;
+  --sidebar: #141118;
+}
+
+/* --- Emerald — teal-green, fresh without being loud. --- */
+.theme-emerald {
+  --brand-primary: #059669;
+  --brand-secondary: #14b8a6;
+  --brand-accent: #2dd4bf;
+  --background: #f2f8f5;
+  --foreground: oklch(0.2 0.02 160);
+  --sidebar: #f8fcfa;
+}
+.dark.theme-emerald {
+  --brand-primary: #34d399;
+  --brand-secondary: #2dd4bf;
+  --brand-accent: #5eead4;
+  --background: #1a211d;
+  --card: #232b27;
+  --popover: #232b27;
+  --sidebar: #0f1512;
+}
+
+/* --- Slate — near-monochrome, for people who want the chrome to disappear. --- */
+.theme-slate {
+  --brand-primary: #475569;
+  --brand-secondary: #64748b;
+  --brand-accent: #94a3b8;
+  --background: #f4f5f7;
+  --foreground: oklch(0.2 0.01 260);
+  --sidebar: #f9fafb;
+}
+.dark.theme-slate {
+  --brand-primary: #94a3b8;
+  --brand-secondary: #cbd5e1;
+  --brand-accent: #e2e8f0;
+  --background: #1c1f24;
+  --card: #262a30;
+  --popover: #262a30;
+  --sidebar: #101216;
 }
 
 /* Map CSS vars into Tailwind v4's @theme so utilities like
@@ -328,6 +469,10 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
+  /* `shadow-card` / `shadow-header` — see the elevation tokens in :root. */
+  --shadow-card: var(--shadow-card);
+  --shadow-header: var(--shadow-header);
+
   /* Continuous gentle vertical float — used by the 404 digits and any
      hero element that needs to feel "alive" without being distracting. */
   --animate-bob: bob 3s ease-in-out infinite;
@@ -406,11 +551,105 @@
   }
 }
 
-/* Wordmark default colour (brand navy, white in dark mode). Lives in the
-   components layer so any `text-*` utility on the element overrides it. */
+/* Components layer: shared chrome recipes. Everything here is deliberately
+   BELOW utilities in the cascade, so a `text-*` / `bg-*` utility on the same
+   element always wins — that is the intended override path. */
 @layer components {
+  /* Wordmark default colour (brand navy, white in dark mode). */
   .nucleus-wordmark {
     color: var(--nucleus-wordmark);
+  }
+
+  /* --- Sidebar navigation (ported from central-ui) ----------------------- */
+
+  /* Menu names. Font size is driven by the project-level --nav-label-size
+     token so every nav label scales from one place. */
+  .nav-label {
+    font-size: var(--nav-label-size);
+    line-height: 1.15;
+  }
+
+  /* Labels and disclosure chevrons stay mounted in the collapsed rail (so the
+     nav tree never remounts on hover-expand) and are hidden by paint, not by
+     absence. The panel's `overflow-hidden` already clips them; the fade is what
+     stops a sliver of text showing beside each icon while the width is
+     mid-transition. Faster than the width transition so labels are gone
+     before the panel is narrow enough to crop them mid-word. */
+  .sidebar-panel:not([data-expanded='true']) .nav-label,
+  .sidebar-panel:not([data-expanded='true']) .nav-chevron {
+    opacity: 0;
+  }
+  .nav-label,
+  .nav-chevron {
+    transition: opacity 0.12s ease-out;
+  }
+
+  /* Nav rows: muted by default, a brand-gradient glow pill when active.
+     Driven by `data-status="active"` (TanStack Router sets it on <Link>; the
+     hand-rolled <a> rows set it themselves) so the active styles never fight
+     the hover utilities for specificity. */
+  .nav-link {
+    color: color-mix(in oklab, var(--foreground) 80%, transparent);
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  /* Hover only where hover exists. A touch browser applies `:hover` on tap
+     and leaves it until the next tap lands elsewhere, so an unguarded rule
+     leaves the last-tapped row looking permanently focused. */
+  @media (hover: hover) {
+    .nav-link:not([data-status='active']):hover {
+      background-color: var(--sidebar-accent);
+      color: var(--foreground);
+    }
+  }
+  /* `--primary-foreground` rather than central's `#fff`: the dark theme
+     lifts the brand to blue-400 and pairs it with dark ink, and the pill has
+     to follow that pairing. */
+  .nav-link[data-status='active'] {
+    background-image: linear-gradient(
+      135deg,
+      var(--brand-g1) 0%,
+      var(--brand-g2) 45%,
+      var(--brand-g3) 100%
+    );
+    color: var(--primary-foreground);
+    box-shadow: 0 8px 18px -8px color-mix(in oklab, var(--primary) 80%, transparent);
+  }
+
+  /* Every tappable row in a sidebar. `manipulation` drops the legacy
+     double-tap-to-zoom wait; the min-height is the 44px hit target a finger
+     needs, applied only while touch is the pointer in use so the mouse layout
+     keeps its tighter rhythm. */
+  .nav-tap {
+    touch-action: manipulation;
+  }
+  [data-touch] .nav-tap {
+    min-height: 44px;
+  }
+
+  /* Shared brand gradient for accents (avatars, initials chips). Tokenised so
+     presets re-point it. */
+  .brand-gradient {
+    background-image: linear-gradient(
+      135deg,
+      var(--brand-g1) 0%,
+      var(--brand-g2) 45%,
+      var(--brand-g3) 100%
+    );
+    color: var(--primary-foreground);
+  }
+
+  /* --- Tables ------------------------------------------------------------ */
+
+  /* Opt-in zebra striping (`<Table zebra>`). `:where()` keeps the specificity
+     at the attribute selector alone and the components layer sits below
+     utilities, so a row's own `bg-*` class (selected, warning, …) still wins.
+     Do not "simplify" this to an `odd:` utility on TableRow — that would beat
+     every per-row background. */
+  [data-zebra] :where(tbody > tr:nth-child(even)) {
+    background-color: color-mix(in oklab, var(--muted) 40%, transparent);
   }
 }
 
@@ -435,26 +674,77 @@
   }
 }
 
-/* Themed, thin scrollbar that follows --border / --muted-foreground in
-   both light and dark mode, instead of falling back to the OS default
-   (which on Windows renders as a stark dark gutter on white cards). */
+/* Themed, thin scrollbar (menus, dialogs, the page shell) that follows the
+   --scrollbar-thumb tokens in both modes and every preset, instead of falling
+   back to the OS default (which on Windows renders as a stark dark gutter on
+   white cards). Same recipe as central's `.thin-scrollbar`. */
 @utility scrollbar-themed {
   scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 
   &::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
   }
   &::-webkit-scrollbar-track {
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    background-color: var(--border);
-    border-radius: 4px;
+    background-color: var(--scrollbar-thumb);
+    border-radius: 9999px;
   }
   &::-webkit-scrollbar-thumb:hover {
-    background-color: var(--muted-foreground);
+    background-color: var(--scrollbar-thumb-hover);
+  }
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* Stronger scrollbar for panes that own their scrolling — data grids, split
+   panels — where the thumb is a real handle rather than a hint. The stable
+   gutter stops content shifting when a pane crosses the overflow threshold;
+   the transparent border + content-box clip inset the pill from the track. */
+@utility pane-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--pane-scrollbar-thumb) transparent;
+
+  &::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--pane-scrollbar-thumb);
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: var(--pane-scrollbar-thumb-hover);
+  }
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+/* Horizontal tab strip: scrolls without a visible scrollbar, and when it
+   actually overflows (`data-overflow="true"`, set by TabsBar's resize
+   observer) fades the trailing edge so the cut-off tab reads as "more to the
+   right" rather than as a layout bug. */
+@utility tabs-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  &[data-overflow='true'] {
+    mask-image: linear-gradient(to right, black calc(100% - 1.5rem), transparent);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 1.5rem), transparent);
   }
 }
 

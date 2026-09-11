@@ -21,6 +21,7 @@ import {
 } from '@/components/drive-management/scoped-fields'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { LazyRichTextEditor } from '@/components/ui/lazy-rich-text-editor'
@@ -461,18 +462,18 @@ export default function EmployeeDriveFormPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 pb-16">
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => employeeNavigateTo(LIST_ROUTE)}
-        >
-          <ArrowLeft className="size-4" /> Back
-        </Button>
-        <h1 className="text-lg font-semibold tracking-tight">
-          {isEdit ? 'Edit drive' : 'New drive'}
-        </h1>
-      </div>
+      <PageHeader
+        leading={
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => employeeNavigateTo(LIST_ROUTE)}
+          >
+            <ArrowLeft className="size-4" /> Back
+          </Button>
+        }
+        title={isEdit ? 'Edit drive' : 'New drive'}
+      />
 
       {/* --- Company & identity --- */}
       <Section title="Company & drive">

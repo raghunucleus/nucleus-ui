@@ -5,6 +5,7 @@ import LookupEditor from '@/components/employee/lookup-editor'
 import PassoutYearsEditor from '@/components/employee/passout-years-editor'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { useScreenAccess } from '@/hooks/use-screen-access'
+import { PageHeader } from '@/components/ui/page-header'
 import { cn } from '@/lib/utils'
 import {
   LOOKUP_KINDS,
@@ -61,19 +62,11 @@ export default function EmployeeCompanyAttributesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <div className="flex items-center gap-2">
-        <SlidersHorizontal className="size-5 text-muted-foreground" />
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">
-            Company Attributes
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Configure the categories companies can be tagged with, the
-            relationship types and current statuses CR View records against, and
-            the passout years.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        icon={SlidersHorizontal}
+        title="Company Attributes"
+        subtitle="Configure the categories companies can be tagged with, the relationship types and current statuses CR View records against, and the passout years."
+      />
 
       <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
         <nav className="flex gap-1 overflow-x-auto sm:flex-col sm:overflow-visible">

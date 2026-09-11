@@ -21,8 +21,8 @@ import {
 } from '@/components/employee/empty-states'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { StickyHeader } from '@/components/ui/sticky-header'
 import {
   Dialog,
   DialogContent,
@@ -426,26 +426,27 @@ export default function EmployeeMarksUploadBatchPage() {
 
   return (
     <section className="space-y-4">
-      <StickyHeader className="flex items-start gap-3 border-b pb-3 pt-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Back to batches"
-          onClick={() => navigateTo('/marks/upload')}
-        >
-          <ArrowLeft />
-        </Button>
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Upload marks</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {batch === undefined
-              ? 'Loading batch…'
-              : batch === null
-                ? 'This batch is not available to you.'
-                : batch.label}
-          </p>
-        </div>
-      </StickyHeader>
+      <PageHeader
+        sticky
+        leading={
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Back to batches"
+            onClick={() => navigateTo('/marks/upload')}
+          >
+            <ArrowLeft />
+          </Button>
+        }
+        title="Upload marks"
+        subtitle={
+          batch === undefined
+            ? 'Loading batch…'
+            : batch === null
+              ? 'This batch is not available to you.'
+              : batch.label
+        }
+      />
 
       {batch === null ? (
         <div className="rounded-md border border-dashed bg-muted/20 px-6 py-12 text-center">

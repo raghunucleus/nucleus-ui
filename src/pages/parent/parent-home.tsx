@@ -173,7 +173,7 @@ function IdentityCard({
   return (
     <Card className="overflow-hidden">
       <div className="flex flex-col gap-4 bg-gradient-to-br from-primary/8 to-secondary/8 p-5 sm:flex-row sm:items-center">
-        <div className="grid size-14 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-secondary text-lg font-semibold text-primary-foreground shadow-md shadow-primary/30">
+        <div className="brand-gradient grid size-14 shrink-0 place-items-center rounded-full text-lg font-semibold shadow-md shadow-primary/30">
           {initials(child.display_name)}
         </div>
         <div className="min-w-0 flex-1 space-y-1">

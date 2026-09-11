@@ -48,6 +48,15 @@ export const en = {
 
   account: { switchStudent: 'Switch student', switch: 'Switch', collapse: 'Collapse' },
 
+  // Preset theme picker in the account menu (config/themes.ts keys).
+  theme: {
+    heading: 'Theme',
+    default: 'Nucleus Blue',
+    violet: 'Violet',
+    emerald: 'Emerald',
+    slate: 'Slate',
+  },
+
   loginChrome: {
     eyebrow: 'Welcome to Nucleus',
     title: 'Sign in',

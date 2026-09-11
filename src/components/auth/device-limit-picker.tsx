@@ -137,7 +137,10 @@ export function DeviceLimitPicker({
         </p>
       )}
 
-      <fieldset>
+      {/* `min-w-0`: browsers default a fieldset to `min-inline-size:
+          min-content` (preflight doesn't reset it), so a long `truncate`d
+          device name would otherwise widen the whole list past the column. */}
+      <fieldset className="min-w-0">
         <legend className="sr-only">{copy.title}</legend>
         <ul className="divide-y overflow-hidden rounded-xl border bg-card">
           {sessions.map((s) => {

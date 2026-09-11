@@ -28,6 +28,7 @@ import {
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import {
   Dialog,
   DialogContent,
@@ -324,22 +325,18 @@ export default function EmployeeDrivesPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <CalendarDays className="size-5 text-muted-foreground" />
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">Drives</h1>
-            <p className="text-sm text-muted-foreground">
-              Create and manage placement drives.
-            </p>
-          </div>
-        </div>
-        {actions.includes('create') && (
-          <Button onClick={() => employeeNavigateTo(`${LIST_ROUTE}/new`)}>
-            <Plus className="size-4" /> New drive
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        icon={CalendarDays}
+        title="Drives"
+        subtitle="Create and manage placement drives."
+        actions={
+          actions.includes('create') && (
+            <Button onClick={() => employeeNavigateTo(`${LIST_ROUTE}/new`)}>
+              <Plus className="size-4" /> New drive
+            </Button>
+          )
+        }
+      />
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -585,7 +582,7 @@ function DriveTable({
 }) {
   return (
     <div className="min-h-[62vh] rounded-xl border bg-card">
-      <Table containerClassName="max-h-[62vh] overflow-y-auto">
+      <Table zebra containerClassName="max-h-[62vh] overflow-y-auto">
         <TableHeader className="sticky top-0 z-10 bg-card">
           <TableRow>
             <TableHead className="w-12" />

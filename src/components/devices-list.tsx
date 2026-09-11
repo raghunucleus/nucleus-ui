@@ -228,7 +228,9 @@ export function DevicesList({
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>{target ? copy.confirmTitle(target) : null}</DialogTitle>
+            <DialogTitle className="wrap-anywhere">
+              {target ? copy.confirmTitle(target) : null}
+            </DialogTitle>
             <DialogDescription>
               {target ? copy.confirmDescription(target) : null}
             </DialogDescription>

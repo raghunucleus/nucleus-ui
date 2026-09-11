@@ -53,7 +53,7 @@ export function Pagination({
         token === '…' ? (
           <span
             key={`gap-${i}`}
-            className="px-1.5 text-sm text-muted-foreground select-none"
+            className="px-1.5 text-xs text-muted-foreground select-none"
           >
             …
           </span>
@@ -62,7 +62,7 @@ export function Pagination({
             key={token}
             variant={token === page ? 'default' : 'outline'}
             size="sm"
-            className="min-w-9"
+            className="size-8 min-w-8 px-0 text-xs tabular-nums"
             aria-current={token === page ? 'page' : undefined}
             onClick={() => onPage(token)}
           >

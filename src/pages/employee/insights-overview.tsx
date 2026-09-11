@@ -22,7 +22,7 @@ import {
   YAxis,
 } from 'recharts'
 
-import { TabBar, type TabDef } from '@/components/corporate-relations/bits'
+import { TabsBar, type TabDef } from '@/components/ui/tabs-bar'
 import {
   AXIS_TICK,
   TOOLTIP_STYLE,
@@ -168,7 +168,7 @@ export default function EmployeeInsightsOverviewPage() {
         hideScope={tab === 'compare'}
         summary={`Change vs prior ${window} days`}
         activeExtras={window === 30 ? 0 : 1}
-        tabs={<TabBar tabs={TABS} active={tab} onChange={setTab} size="sm" className="border-b-0" />}
+        tabs={<TabsBar tabs={TABS} value={tab} onChange={setTab} className="border-b-0" />}
         controls={windowControl}
       />
 

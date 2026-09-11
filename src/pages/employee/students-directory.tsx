@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
+import { PageHeader } from '@/components/ui/page-header'
 import { StudentSearchPanel } from '@/components/employee/student-search/student-search-panel'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import { studentsDirectorySearchApi } from '@/lib/students-directory'
@@ -40,14 +41,11 @@ export default function EmployeeStudentsDirectoryPage() {
 
   return (
     <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 pb-4">
-      <div className="shrink-0 pt-1">
-        <h1 className="text-lg font-semibold tracking-tight">
-          Student directory
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Search, filter and export students within your assigned scope.
-        </p>
-      </div>
+      <PageHeader
+        className="shrink-0"
+        title="Student directory"
+        subtitle="Search, filter and export students within your assigned scope."
+      />
       <div className="min-h-0 flex-1">
         <StudentSearchPanel
           api={API}

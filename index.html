@@ -14,10 +14,19 @@
     <meta name="description" content="Nucleus — the campus platform of Raghu Engineering College: student, parent and staff portals." />
     <title>Nucleus</title>
     <script>
-      // Apply the saved theme before the first paint, so the boot splash and
+      // Apply the saved look before the first paint, so the boot splash and
       // the app render in the correct theme on refresh (no flash of light).
-      // Mirrors ThemeProvider: storageKey "nucleus-ui-theme", default "system".
+      // Mirrors ThemeProvider (src/components/theme-provider.tsx): mode under
+      // storageKey "nucleus-ui-theme" (default "system"), preset under
+      // "nucleus-ui-theme-preset" (default "default") — keep them in step.
       (function () {
+        var root = document.documentElement;
+        // The portal hub (app.*) is dark whatever the saved theme and is never
+        // themed. The `app` label mirrors LABEL_TO_VARIANT in
+        // src/lib/subdomain.ts, and `app=hub` mirrors its dev query override —
+        // keep all three in step.
+        var label = location.hostname.split('.')[0].toLowerCase();
+        var isHub = label === 'app' || location.search.indexOf('app=hub') > -1;
         try {
           var t = localStorage.getItem('nucleus-ui-theme');
           if (
@@ -25,19 +34,40 @@
             ((!t || t === 'system') &&
               window.matchMedia('(prefers-color-scheme: dark)').matches)
           ) {
-            document.documentElement.classList.add('dark');
+            root.classList.add('dark');
           }
         } catch (e) {
           /* localStorage unavailable — fall back to the light splash. */
         }
-        // The portal hub (app.*) is dark whatever the saved theme, so tag <html>
-        // and let the [data-portal="hub"] rules below paint the splash on its
-        // canvas instead of flashing light before the hub renders.
-        // The `app` label mirrors LABEL_TO_VARIANT in src/lib/subdomain.ts, and
-        // `app=hub` mirrors its dev query override — keep all three in step.
-        var label = location.hostname.split('.')[0].toLowerCase();
-        if (label === 'app' || location.search.indexOf('app=hub') > -1) {
-          document.documentElement.setAttribute('data-portal', 'hub');
+        try {
+          // Preset themes are for signed-in portals only: the login pages, the
+          // hub and the 404 always render the brand look (ThemePresetScope is
+          // what mounts the classes after boot, and this mirrors its gate).
+          // Key whitelist by shape — never class-inject freeform storage.
+          var p = localStorage.getItem('nucleus-ui-theme-preset');
+          var signedIn = [
+            'nucleus.employee.accessToken',
+            'nucleus.parent.accessToken',
+            'nucleus.student.accessToken',
+          ].some(function (k) {
+            return !!localStorage.getItem(k);
+          });
+          if (
+            p &&
+            p !== 'default' &&
+            /^[a-z]{2,24}$/.test(p) &&
+            signedIn &&
+            !isHub
+          ) {
+            root.classList.add('themed', 'theme-' + p);
+          }
+        } catch (e) {
+          /* localStorage unavailable — brand look. */
+        }
+        // Tag <html> and let the [data-portal="hub"] rules below paint the
+        // splash on the hub canvas instead of flashing light before it renders.
+        if (isHub) {
+          root.setAttribute('data-portal', 'hub');
         }
       })();
     </script>
@@ -54,7 +84,7 @@
         align-items: center;
         justify-content: center;
         background: #f4f4f5;
-        font-family: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         z-index: 9999;
       }
       .nucleus-splash__card {

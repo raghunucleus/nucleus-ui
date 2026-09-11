@@ -26,7 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { StickyHeader } from '@/components/ui/sticky-header'
+import { PageHeader } from '@/components/ui/page-header'
 import { EMPTY_SELECTION } from '@/lib/insights'
 import { cn } from '@/lib/utils'
 import { go, nf } from './insights-utils'
@@ -44,9 +44,12 @@ const COLLAPSE_SCROLL_PX = 120
 /**
  * The pinned header every insights page shares, kept to two lines by default:
  *
- *   1. title · scope summary · tabs · Views
+ *   1. title · tabs · Views — the shared PageHeader row. The tabs box takes
+ *      only the width the title and Views leave and scrolls inside it, and
+ *      drops to its own row below `lg`, so the three can never overlap.
  *   2. the filter line — a Filters button wearing the applied count, a muted
- *      readout of what is applied, and Clear all
+ *      readout of the scope size ("5 depts · 13 batches · 1,180 students")
+ *      plus what is applied, and Clear all
  *
  * Opening Filters reveals the full bar (facets + the screen's own controls)
  * and the applied chips under that line; Done folds it away, and so does
@@ -120,22 +123,25 @@ export function InsightsHeader({
         sel.attendance_group_ids.length &&
           `Sections ${sel.attendance_group_ids.length}`,
       ].filter((x): x is string => typeof x === 'string')
+  const scopeSummary = !hideScope && tree ? scopeSummaryText(scope) : null
   const readout = [
-    ...(scopeParts.length ? scopeParts : hideScope ? [] : ['Whole scope']),
+    ...(scopeSummary ? [scopeSummary] : []),
+    ...(scopeParts.length
+      ? scopeParts
+      : hideScope || scopeSummary
+        ? []
+        : ['Whole scope']),
     ...(summary ? [summary] : []),
   ].join(' · ')
 
   return (
-    <StickyHeader className="z-30 -mx-4 -mt-6 -top-6 space-y-1.5 border-b px-4 pb-2 pt-5 sm:-mx-6 sm:px-6">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        <h1 className="text-base font-semibold">{title}</h1>
-        {!hideScope && tree && <ScopeSummary scope={scope} />}
-        {tabs && <div className="min-w-0 flex-1 basis-64">{tabs}</div>}
-        <span className="ml-auto">
-          <ViewsMenu screenKey={screenKey} route={route} />
-        </span>
-      </div>
-
+    <PageHeader
+      sticky
+      title={title}
+      tabs={tabs}
+      actions={<ViewsMenu screenKey={screenKey} route={route} />}
+      className="space-y-1.5"
+    >
       <div className="flex flex-wrap items-center gap-2">
         <Button
           size="sm"
@@ -194,24 +200,26 @@ export function InsightsHeader({
             <AppliedScopeChips scope={scope} />
           </>
         ))}
-    </StickyHeader>
+    </PageHeader>
   )
 }
 
-function ScopeSummary({ scope }: { scope: InsightsScopeState }) {
+/** "5 depts · 5 programmes · 13 batches · 7 sections · 1,180 students" —
+ * the size of the scope, for the filter-line readout. */
+function scopeSummaryText(scope: InsightsScopeState): string | null {
   if (!scope.tree) return null
   const students = scope.batches.reduce((a, b) => a + b.student_count, 0)
   const depts = new Set(scope.batches.map((b) => b.department_id)).size
   const progs = new Set(scope.batches.map((b) => b.programme_id)).size
-  return (
-    <p className="hidden text-xs text-muted-foreground md:block">
-      {depts} {depts === 1 ? 'dept' : 'depts'} · {progs}{' '}
-      {progs === 1 ? 'programme' : 'programmes'} · {scope.batches.length}{' '}
-      {scope.batches.length === 1 ? 'batch' : 'batches'} · {scope.groups.length}{' '}
-      {scope.groups.length === 1 ? 'section' : 'sections'} · {nf(students)}{' '}
-      students
-    </p>
-  )
+  const batches = scope.batches.length
+  const sections = scope.groups.length
+  return [
+    `${depts} ${depts === 1 ? 'dept' : 'depts'}`,
+    `${progs} ${progs === 1 ? 'programme' : 'programmes'}`,
+    `${batches} ${batches === 1 ? 'batch' : 'batches'}`,
+    `${sections} ${sections === 1 ? 'section' : 'sections'}`,
+    `${nf(students)} students`,
+  ].join(' · ')
 }
 
 // --- panels -------------------------------------------------------------------

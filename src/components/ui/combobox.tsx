@@ -248,7 +248,7 @@ export function Combobox({
       className={cn(
         'flex w-full items-center justify-between gap-2 rounded-md border border-input bg-background shadow-xs outline-none transition',
         size === 'sm' ? 'h-8 px-2.5 text-xs' : 'h-9 px-3 text-sm',
-        'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
+        'focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40',
         'hover:bg-accent/40 hover:text-accent-foreground',
         'disabled:cursor-not-allowed disabled:opacity-50',
         invalid && 'border-destructive',

@@ -262,7 +262,7 @@ export function AttendanceTile({ className }: { className?: string }) {
       className={className}
       pulseIcon={!loading && !failed && !hasData}
     >
-      <p className="mt-4 text-2xl font-semibold tabular-nums">
+      <p className="mt-4 text-xl font-semibold tabular-nums">
         {loading ? (
           <span className="inline-block h-8 w-16 animate-pulse rounded bg-muted/70 align-middle" />
         ) : failed ? (
@@ -339,7 +339,7 @@ export function CgpaTile({ className }: { className?: string }) {
       className={className}
       pulseIcon={!loading && !failed && !hasResults}
     >
-      <p className="mt-4 text-2xl font-semibold tabular-nums">
+      <p className="mt-4 text-xl font-semibold tabular-nums">
         {loading ? (
           <span className="inline-block h-8 w-16 animate-pulse rounded bg-muted/70 align-middle" />
         ) : failed ? (

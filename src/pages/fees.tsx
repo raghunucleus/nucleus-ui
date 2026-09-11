@@ -132,7 +132,7 @@ export default function Fees() {
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Pending dues
             </p>
-            <p className="text-3xl font-semibold tracking-tight tabular-nums">
+            <p className="text-2xl font-semibold tracking-tight tabular-nums">
               {formatINR(totals.pending)}
             </p>
             <Badge variant={totals.pending > 0 ? 'warning' : 'success'}>

@@ -10,6 +10,8 @@ import {
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { EmptyState as EmptyStatePanel } from '@/components/ui/empty-state'
+import { PageHeader } from '@/components/ui/page-header'
 import { Input } from '@/components/ui/input'
 import { ApiError } from '@/lib/api'
 import {
@@ -157,17 +159,11 @@ export default function EmployeeBirthdaysPage() {
   const upcoming = items.filter((p) => p.days_until > 0)
 
   const header = (
-    <div className="flex items-start gap-3">
-      <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-icon-rose/10 text-icon-rose">
-        <Cake className="size-5" />
-      </div>
-      <div className="min-w-0">
-        <h1 className="text-lg font-semibold tracking-tight">Birthdays</h1>
-        <p className="text-sm text-muted-foreground">
-          Birthdays of colleagues in your department.
-        </p>
-      </div>
-    </div>
+    <PageHeader
+      icon={Cake}
+      title="Birthdays"
+      subtitle="Birthdays of colleagues in your department."
+    />
   )
 
   // Very first paint, before we know anything about the roster.
@@ -360,18 +356,11 @@ function ListSkeleton() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
-      <div className="grid size-12 place-items-center rounded-full bg-icon-rose/10 text-icon-rose">
-        <Cake className="size-6" />
-      </div>
-      <div className="space-y-1">
-        <h2 className="text-sm font-semibold">No birthdays right now</h2>
-        <p className="max-w-sm text-xs text-muted-foreground">
-          None of your colleagues have a birthday coming up, or their dates of
-          birth haven&rsquo;t been recorded yet. Check back later.
-        </p>
-      </div>
-    </div>
+    <EmptyStatePanel
+      icon={Cake}
+      title="No birthdays right now"
+      description="None of your colleagues have a birthday coming up, or their dates of birth haven’t been recorded yet. Check back later."
+    />
   )
 }
 

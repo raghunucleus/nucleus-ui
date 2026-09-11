@@ -4,6 +4,8 @@ import { toast } from 'sonner'
 
 import { employeeNavigate } from '@/components/employee/notification-navigate'
 import { Button } from '@/components/ui/button'
+import { EmptyState as EmptyStatePanel } from '@/components/ui/empty-state'
+import { PageHeader } from '@/components/ui/page-header'
 import { ApiError } from '@/lib/api'
 import { metaFor } from '@/lib/employee-notification-meta'
 import {
@@ -171,25 +173,20 @@ export default function EmployeeNotificationsPage() {
 
   const header = (
     <div className="space-y-4">
-      <div className="flex items-end justify-between gap-3">
-        <header>
-          <h1 className="text-xl font-semibold tracking-tight">Notifications</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {unreadCount > 0 ? `${unreadCount} unread` : 'You are all caught up'}
-          </p>
-        </header>
-        {unreadCount > 0 ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void markAll()}
-            className="mb-1 shrink-0"
-          >
-            <CheckCheck />
-            Mark all read
-          </Button>
-        ) : null}
-      </div>
+      <PageHeader
+        title="Notifications"
+        subtitle={
+          unreadCount > 0 ? `${unreadCount} unread` : 'You are all caught up'
+        }
+        actions={
+          unreadCount > 0 ? (
+            <Button variant="outline" size="sm" onClick={() => void markAll()}>
+              <CheckCheck />
+              Mark all read
+            </Button>
+          ) : null
+        }
+      />
       <div className="inline-flex rounded-lg border bg-card p-0.5">
         <FilterTab
           label="All"
@@ -346,21 +343,15 @@ function ListSkeleton() {
 
 function EmptyState({ onlyUnread }: { onlyUnread: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
-      <div className="grid size-12 place-items-center rounded-full bg-icon-violet/10 text-icon-violet">
-        <Bell className="size-6" />
-      </div>
-      <div className="space-y-1">
-        <h2 className="text-sm font-semibold">
-          {onlyUnread ? 'No unread notifications' : 'No notifications yet'}
-        </h2>
-        <p className="max-w-sm text-xs text-muted-foreground">
-          {onlyUnread
-            ? "You're all caught up — switch to All to see earlier notifications."
-            : 'When something needs your attention — a request to review, a timetable change — it’ll show up here.'}
-        </p>
-      </div>
-    </div>
+    <EmptyStatePanel
+      icon={Bell}
+      title={onlyUnread ? 'No unread notifications' : 'No notifications yet'}
+      description={
+        onlyUnread
+          ? "You're all caught up — switch to All to see earlier notifications."
+          : 'When something needs your attention — a request to review, a timetable change — it’ll show up here.'
+      }
+    />
   )
 }
 

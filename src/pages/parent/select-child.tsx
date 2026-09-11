@@ -6,6 +6,7 @@ import { NucleusLogo } from '@/components/brand'
 import { ParentLanguageSwitcher } from '@/components/parent-language-switcher'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
+import { EmptyState as EmptyStatePanel } from '@/components/ui/empty-state'
 import { parentLogout, type LinkedStudent } from '@/lib/parent-auth'
 import { cn } from '@/lib/utils'
 import { useParentAuthStore } from '@/stores/parent-auth-store'
@@ -153,16 +154,11 @@ function ChildCard({
 function EmptyState() {
   const { t } = useTranslation()
   return (
-    <div className="mt-8 flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
-      <div className="grid size-12 place-items-center rounded-full bg-icon-blue/10 text-icon-blue">
-        <Users className="size-6" />
-      </div>
-      <div className="space-y-1">
-        <h2 className="text-sm font-semibold">{t('selectChild.emptyTitle')}</h2>
-        <p className="max-w-sm text-xs text-muted-foreground">
-          {t('selectChild.emptyDesc')}
-        </p>
-      </div>
-    </div>
+    <EmptyStatePanel
+      className="mt-8"
+      icon={Users}
+      title={t('selectChild.emptyTitle')}
+      description={t('selectChild.emptyDesc')}
+    />
   )
 }

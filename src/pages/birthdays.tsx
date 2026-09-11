@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 
 import { PageHeader } from '@/components/portal-layout'
 import { Button } from '@/components/ui/button'
+import { EmptyState as EmptyStatePanel } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { sendBirthdayWishes, useChatConnection } from '@/lib/chat-socket'
 import { ApiError } from '@/lib/api'
@@ -440,18 +441,11 @@ function ListSkeleton() {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
-      <div className="grid size-12 place-items-center rounded-full bg-icon-rose/10 text-icon-rose">
-        <Cake className="size-6" />
-      </div>
-      <div className="space-y-1">
-        <h2 className="text-sm font-semibold">No birthdays right now</h2>
-        <p className="max-w-sm text-xs text-muted-foreground">
-          None of your classmates have a birthday coming up, or you&rsquo;re not
-          in a class group yet. Check back later.
-        </p>
-      </div>
-    </div>
+    <EmptyStatePanel
+      icon={Cake}
+      title="No birthdays right now"
+      description="None of your classmates have a birthday coming up, or you’re not in a class group yet. Check back later."
+    />
   )
 }
 

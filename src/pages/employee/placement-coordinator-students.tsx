@@ -2,7 +2,7 @@ import { BarChart3, Bell, UserCheck, Users } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
-import { TabBar, type TabDef } from '@/components/corporate-relations/bits'
+import { TabsBar, type TabDef } from '@/components/ui/tabs-bar'
 import { CoordinatorStudentsAnalyticsTab } from '@/components/employee/coordinator-students-analytics'
 import {
   StudentProfileDetails,
@@ -13,6 +13,7 @@ import { NotifyStudentDialog } from '@/components/employee/notify-student-dialog
 import { StudentSearchPanel } from '@/components/employee/student-search/student-search-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { Combobox } from '@/components/ui/combobox'
 import {
   Dialog,
@@ -242,31 +243,27 @@ export default function EmployeePlacementCoordinatorStudentsPage() {
 
   return (
     <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 pb-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <UserCheck className="size-5 text-muted-foreground" />
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">Students</h1>
-            <p className="text-sm text-muted-foreground">
-              Placement readiness for the batches you verify.
-            </p>
-          </div>
-        </div>
-        {batches.length > 0 && (
-          <div className="min-w-64">
-            <Combobox
-              value={batchId}
-              options={batches.map((b) => ({
-                value: b.programme_admission_year_id,
-                label: b.label,
-              }))}
-              onChange={changeBatch}
-              placeholder="Select a batch…"
-              searchPlaceholder="Search batches…"
-            />
-          </div>
-        )}
-      </div>
+      <PageHeader
+        icon={UserCheck}
+        title="Students"
+        subtitle="Placement readiness for the batches you verify."
+        actions={
+          batches.length > 0 && (
+            <div className="min-w-64">
+              <Combobox
+                value={batchId}
+                options={batches.map((b) => ({
+                  value: b.programme_admission_year_id,
+                  label: b.label,
+                }))}
+                onChange={changeBatch}
+                placeholder="Select a batch…"
+                searchPlaceholder="Search batches…"
+              />
+            </div>
+          )
+        }
+      />
 
       {batchesLoaded && batches.length === 0 ? (
         <div className="rounded-xl border border-dashed p-10 text-center">
@@ -279,7 +276,7 @@ export default function EmployeePlacementCoordinatorStudentsPage() {
         </div>
       ) : (
         <>
-          <TabBar tabs={TABS} active={tab} onChange={setTab} />
+          <TabsBar tabs={TABS} value={tab} onChange={setTab} />
 
           {/* The search panel needs a height-bounded parent; the analytics tab
               scrolls on its own. Both are kept mounted-on-demand so switching

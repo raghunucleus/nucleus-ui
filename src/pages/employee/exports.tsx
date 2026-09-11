@@ -13,6 +13,8 @@ import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EmptyState as EmptyStatePanel } from '@/components/ui/empty-state'
+import { PageHeader } from '@/components/ui/page-header'
 import { ApiError } from '@/lib/api'
 import {
   getExportDownloadUrl,
@@ -118,23 +120,16 @@ export default function EmployeeExportsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <div className="flex items-end justify-between gap-3">
-        <header>
-          <h1 className="text-xl font-semibold tracking-tight">My exports</h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Files stay downloadable for 24 hours, then expire.
-          </p>
-        </header>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void load()}
-          className="mb-1 shrink-0"
-        >
-          <RefreshCw />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        title="My exports"
+        subtitle="Files stay downloadable for 24 hours, then expire."
+        actions={
+          <Button variant="outline" size="sm" onClick={() => void load()}>
+            <RefreshCw />
+            Refresh
+          </Button>
+        }
+      />
 
       {loading ? (
         <div className="space-y-2">
@@ -282,18 +277,11 @@ function readOpenParam(): number | null {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
-      <div className="grid size-12 place-items-center rounded-full bg-icon-cyan/10 text-icon-cyan">
-        <FileDown className="size-6" />
-      </div>
-      <div className="space-y-1">
-        <h2 className="text-sm font-semibold">No exports yet</h2>
-        <p className="max-w-sm text-xs text-muted-foreground">
-          Start one from a data screen — like a drive&rsquo;s Filter tab — and
-          it&rsquo;ll appear here when it&rsquo;s ready to download.
-        </p>
-      </div>
-    </div>
+    <EmptyStatePanel
+      icon={FileDown}
+      title="No exports yet"
+      description="Start one from a data screen — like a drive’s Filter tab — and it’ll appear here when it’s ready to download."
+    />
   )
 }
 

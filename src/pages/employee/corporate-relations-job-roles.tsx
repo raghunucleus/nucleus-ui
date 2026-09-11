@@ -19,6 +19,7 @@ import { toast } from 'sonner'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { Input } from '@/components/ui/input'
 import {
   Sheet,
@@ -396,21 +397,17 @@ export default function EmployeeJobRolesPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">
-            Roles or Designations
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            The job roles you are accountable for, company by company.
-          </p>
-        </div>
-        {canCreate && (
-          <Button onClick={() => void openSheet(null)}>
-            <Plus className="size-4" /> Add company
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Roles or Designations"
+        subtitle="The job roles you are accountable for, company by company."
+        actions={
+          canCreate && (
+            <Button onClick={() => void openSheet(null)}>
+              <Plus className="size-4" /> Add company
+            </Button>
+          )
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-48 flex-1">

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 
 import { useEmployeeAccess } from '@/hooks/use-screen-access'
+import { PageHeader } from '@/components/ui/page-header'
 import { cn } from '@/lib/utils'
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -36,13 +37,10 @@ export default function EmployeeHome() {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="text-xl font-semibold tracking-tight">Welcome</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Pick a module to get started. Only the modules and screens your role
-          grants are shown.
-        </p>
-      </header>
+      <PageHeader
+        title="Welcome"
+        subtitle="Pick a module to get started. Only the modules and screens your role grants are shown."
+      />
 
       {!access ? (
         <div className="rounded-md border border-dashed bg-muted/20 px-6 py-12 text-center text-sm text-muted-foreground">

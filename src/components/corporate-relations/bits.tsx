@@ -24,7 +24,7 @@ export const Textarea = React.forwardRef<
     className={cn(
       'flex min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs',
       'placeholder:text-muted-foreground outline-none transition-[color,box-shadow,border-color]',
-      'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
+      'focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40',
       'disabled:cursor-not-allowed disabled:opacity-50',
       className,
     )}
@@ -579,59 +579,7 @@ export function ChipRow({ items }: { items: Chip[] | { id: number; name: string 
   )
 }
 
-export interface TabDef {
-  key: string
-  label: string
-  icon?: React.ComponentType<{ className?: string }>
-}
-
-/**
- * Bottom-bordered button-row tab switcher (shared inner tabs).
- *
- * `className` exists so a caller that puts the bar in a row with other controls
- * can move the divider to that row's wrapper (`border-b-0` here, `border-b`
- * there) instead of underlining only the tabs.
- */
-export function TabBar({
-  tabs,
-  active,
-  onChange,
-  className,
-  size = 'default',
-}: {
-  tabs: TabDef[]
-  active: string
-  onChange: (key: string) => void
-  className?: string
-  /** `sm` = tighter tabs for dense analytics headers. */
-  size?: 'sm' | 'default'
-}) {
-  return (
-    <div className={cn('flex gap-1 overflow-x-auto border-b', className)}>
-      {tabs.map((t) => {
-        const on = t.key === active
-        const Icon = t.icon
-        return (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => onChange(t.key)}
-            className={cn(
-              'flex items-center gap-1.5 whitespace-nowrap border-b-2 font-medium transition-colors',
-              size === 'sm' ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm',
-              on
-                ? 'border-primary text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {Icon ? <Icon className="size-4" /> : null}
-            {t.label}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
+// Tabs moved to `@/components/ui/tabs-bar` (`TabsBar`, `TabDef`).
 
 // --- filter bits (shared by the drives lists and CR View) ------------------
 

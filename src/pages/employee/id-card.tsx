@@ -3,6 +3,7 @@ import { CircleAlert, IdCard as IdCardIcon, RefreshCw } from 'lucide-react'
 
 import { ExpiringQr } from '@/components/expiring-qr'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { ApiError } from '@/lib/api'
 import {
   employeeIdCard,
@@ -44,17 +45,11 @@ export default function EmployeeIdCardPage() {
   }, [load])
 
   const header = (
-    <div className="flex items-start gap-3">
-      <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-icon-violet/10 text-icon-violet">
-        <IdCardIcon className="size-5" />
-      </div>
-      <div className="min-w-0">
-        <h1 className="text-lg font-semibold tracking-tight">ID Card</h1>
-        <p className="text-sm text-muted-foreground">
-          Your digital employee identity card.
-        </p>
-      </div>
-    </div>
+    <PageHeader
+      icon={IdCardIcon}
+      title="ID Card"
+      subtitle="Your digital employee identity card."
+    />
   )
 
   return (

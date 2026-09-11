@@ -24,6 +24,9 @@ import { ConnectMenu } from '@/components/connect-menu'
 import { ModulesDrawer } from '@/components/modules-drawer'
 import { NotificationBell } from '@/components/notification-bell'
 import { NotificationNotifier } from '@/components/notification-notifier'
+import { PageHeader as SharedPageHeader } from '@/components/ui/page-header'
+import { ThemePresetMenuItems } from '@/components/theme-preset-menu'
+import { ThemePresetScope } from '@/components/theme-preset-scope'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { MODULE_GRADIENT, type ModuleColor } from '@/lib/modules'
 import { studentLogout } from '@/lib/student-auth'
@@ -57,8 +60,10 @@ export function PortalLayout() {
       {/* App-wide toasts, available on every signed-in page. */}
       <ChatNotifier />
       <NotificationNotifier />
-      <header className="sticky top-0 z-10 border-b bg-card/80 shadow-sm backdrop-blur">
-        <div className="mx-auto grid h-14 max-w-5xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
+      {/* Signed-in shell → the chosen preset theme may apply. */}
+      <ThemePresetScope />
+      <header className="sticky top-0 z-10 border-b bg-card shadow-header">
+        <div className="mx-auto grid h-12 max-w-5xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
           <Link to="/" className="flex w-fit items-center" aria-label="Nucleus home">
             <NucleusLogo />
           </Link>
@@ -100,6 +105,7 @@ export function PortalLayout() {
                     Devices
                   </Link>
                 </DropdownMenuItem>
+                <ThemePresetMenuItems />
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
@@ -115,7 +121,8 @@ export function PortalLayout() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6">
+      {/* Padding is mirrored by PAGE_BLEED (src/lib/page-bleed.ts) — change both. */}
+      <main className="mx-auto max-w-5xl space-y-4 px-4 py-4 sm:px-6">
         {/* Keyed on the reconnect nonce: on recovery the active page remounts
             and its data-loading effects re-run, clearing stale empty states. */}
         <Outlet key={reconnectNonce} />
@@ -125,9 +132,10 @@ export function PortalLayout() {
 }
 
 /**
- * Compact page heading for the feature pages — a back link to the dashboard
- * plus a small icon badge and the page title. Kept deliberately short to
- * preserve vertical space for the actual page content.
+ * Compact page heading for the student / parent feature pages — the shared
+ * `PageHeader` with a back link to the dashboard and an optional module icon
+ * badge in its leading slot. Kept deliberately short to preserve vertical
+ * space for the actual page content.
  */
 export function PageHeader({
   title,
@@ -135,6 +143,7 @@ export function PageHeader({
   accent,
   backTo = '/',
   backLabel = 'Back to dashboard',
+  actions,
 }: {
   title: string
   /**
@@ -150,28 +159,35 @@ export function PageHeader({
   backTo?: string
   /** Override label for the back link. */
   backLabel?: string
+  /** Trailing controls, pushed to the far edge of the heading row. */
+  actions?: React.ReactNode
 }) {
   return (
-    <div className="flex items-center gap-3">
-      <Link
-        to={backTo}
-        aria-label={backLabel}
-        title={backLabel}
-        className="inline-grid size-9 shrink-0 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-      </Link>
-      {Icon && accent ? (
-        <div
-          className={cn(
-            'grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br text-icon-on shadow-md ring-1 ring-inset ring-icon-on/15',
-            MODULE_GRADIENT[accent],
-          )}
-        >
-          <Icon className="size-5" />
-        </div>
-      ) : null}
-      <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-    </div>
+    <SharedPageHeader
+      title={title}
+      actions={actions}
+      leading={
+        <>
+          <Link
+            to={backTo}
+            aria-label={backLabel}
+            title={backLabel}
+            className="inline-grid size-8 shrink-0 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" />
+          </Link>
+          {Icon && accent ? (
+            <div
+              className={cn(
+                'grid size-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br text-icon-on shadow-md ring-1 ring-inset ring-icon-on/15',
+                MODULE_GRADIENT[accent],
+              )}
+            >
+              <Icon className="size-4" />
+            </div>
+          ) : null}
+        </>
+      }
+    />
   )
 }

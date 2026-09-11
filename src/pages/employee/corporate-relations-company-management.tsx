@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/ui/pagination'
 import {
@@ -111,21 +112,17 @@ export default function EmployeeCompanyManagementPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">
-            Company Management
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Manage the recruiting-company catalog.
-          </p>
-        </div>
-        {actions.includes('create') && (
-          <Button onClick={() => navigateTo(`${BASE_ROUTE}/new`)}>
-            <Plus className="size-4" /> New company
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Company Management"
+        subtitle="Manage the recruiting-company catalog."
+        actions={
+          actions.includes('create') && (
+            <Button onClick={() => navigateTo(`${BASE_ROUTE}/new`)}>
+              <Plus className="size-4" /> New company
+            </Button>
+          )
+        }
+      />
 
       {/* Status is read-only here — activating/deactivating is an edit like any
           other now, so it lives in the form and goes through approval. */}
@@ -329,7 +326,7 @@ function CompanyList({ canEdit }: { canEdit: boolean }) {
         </div>
       ) : (
         <div className="min-h-[62vh] overflow-hidden rounded-xl border bg-card">
-          <Table containerClassName="max-h-[62vh] overflow-y-auto">
+          <Table zebra containerClassName="max-h-[62vh] overflow-y-auto">
             <TableHeader>
               <TableRow className="sticky top-0 z-10 [&>th]:bg-card">
                 <TableHead className="w-10"></TableHead>

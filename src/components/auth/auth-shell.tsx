@@ -37,7 +37,7 @@ export function AuthShell({ variant, actions, children }: Props) {
           sat marooned in the right-hand corner. Both sides now grow together
           and the form centres in its half, which is how a split sign-in screen
           is expected to behave at any width. */}
-      <main className="relative flex flex-1 basis-0 flex-col px-6 py-6 sm:px-10 lg:px-10">
+      <main className="relative flex min-w-0 flex-1 basis-0 flex-col px-6 py-6 sm:px-10 lg:px-10">
         {/* Fixed height so the form below sits at the same vertical centre on
             every portal, whether the header holds one control or two. */}
         <div className="flex h-10 items-center justify-between">

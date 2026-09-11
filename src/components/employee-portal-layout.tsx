@@ -1,42 +1,21 @@
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import {
   Award,
-  BarChart3,
-  BookOpen,
-  Briefcase,
-  CalendarDays,
   ChevronDown,
-  ClipboardCheck,
-  ClipboardList,
   FileDown,
-  GraduationCap,
   Home,
-  IdCard,
-  LayoutGrid,
   Lock,
   LockOpen,
   LogOut,
-  type LucideIcon,
   Menu,
   PanelLeftClose,
-  Search,
-  SearchX,
   Settings,
-  UserCheck,
-  Users,
-  Wallet,
-  X,
 } from 'lucide-react'
-import {
-  type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import { NucleusLoader, NucleusLogo, NucleusMark } from '@/components/brand'
+import { MenuSearchDialog, MenuSearchTrigger } from '@/components/employee/menu-search'
+import { MODULE_TONES, iconFor, toneFor } from '@/components/employee/module-icons'
 import { EmployeeNotificationBell } from '@/components/employee/notification-bell'
 import { employeeNavigate } from '@/components/employee/notification-navigate'
 import { EmployeeNotificationNotifier } from '@/components/employee/notification-notifier'
@@ -49,7 +28,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
+import { ThemePresetMenuItems } from '@/components/theme-preset-menu'
+import { ThemePresetScope } from '@/components/theme-preset-scope'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { EmployeeAccessContext } from '@/hooks/use-screen-access'
 import { fetchEmployeeAccess, type EffectiveAccess } from '@/lib/employee-access'
@@ -58,70 +38,11 @@ import {
   employeeMe,
   type EmployeeProfile,
 } from '@/lib/employee-auth'
+import { menuGroups, navigateTo, sortModules } from '@/lib/employee-menu'
 import { cn } from '@/lib/utils'
 import { useEmployeeAuthStore } from '@/stores/employee-auth-store'
 import { withGlobalLoader } from '@/stores/loader-store'
 import { useNetworkStore } from '@/stores/network-store'
-
-const ICON_MAP: Record<string, LucideIcon> = {
-  BarChart3,
-  BookOpen,
-  CalendarDays,
-  GraduationCap,
-  ClipboardCheck,
-  ClipboardList,
-  Users,
-  Wallet,
-  IdCard,
-  Briefcase,
-  UserCheck,
-  LayoutGrid,
-}
-
-function iconFor(name: string): LucideIcon {
-  return ICON_MAP[name] ?? LayoutGrid
-}
-
-// Per-module tonal chip styles. Tailwind v4 needs the full class strings to
-// appear verbatim in source for JIT to emit them — hence the static map rather
-// than template-string interpolation.
-type ToneName =
-  | 'violet'
-  | 'blue'
-  | 'emerald'
-  | 'amber'
-  | 'rose'
-  | 'cyan'
-  | 'orange'
-
-const MODULE_TONES: Record<ToneName, { bg: string; text: string }> = {
-  violet: { bg: 'bg-icon-violet/12', text: 'text-icon-violet' },
-  blue: { bg: 'bg-icon-blue/12', text: 'text-icon-blue' },
-  emerald: { bg: 'bg-icon-emerald/12', text: 'text-icon-emerald' },
-  amber: { bg: 'bg-icon-amber/14', text: 'text-icon-amber' },
-  rose: { bg: 'bg-icon-rose/12', text: 'text-icon-rose' },
-  cyan: { bg: 'bg-icon-cyan/12', text: 'text-icon-cyan' },
-  orange: { bg: 'bg-icon-orange/12', text: 'text-icon-orange' },
-}
-
-const ICON_TONE: Record<string, ToneName> = {
-  BarChart3: 'violet',
-  BookOpen: 'violet',
-  CalendarDays: 'cyan',
-  GraduationCap: 'blue',
-  ClipboardCheck: 'emerald',
-  ClipboardList: 'amber',
-  Users: 'cyan',
-  Wallet: 'amber',
-  IdCard: 'rose',
-  Briefcase: 'orange',
-  UserCheck: 'rose',
-  LayoutGrid: 'blue',
-}
-
-function toneFor(icon: string): ToneName {
-  return ICON_TONE[icon] ?? 'blue'
-}
 
 const SIDEBAR_STORAGE_KEY = 'nucleus-employee-sidebar'
 const MOBILE_MQ = '(max-width: 767px)' // matches Tailwind's < md
@@ -191,6 +112,19 @@ export function EmployeePortalLayout() {
     }
   }, [])
 
+  // Menu search (header button, Ctrl/⌘-K from anywhere in the portal).
+  const [searchOpen, setSearchOpen] = useState(false)
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   useEffect(() => {
     let alive = true
     void (async () => {
@@ -246,6 +180,8 @@ export function EmployeePortalLayout() {
         {/* Keeps the notification socket connected and toasts arrivals on any
             employee page. Renders nothing. */}
         <EmployeeNotificationNotifier />
+        {/* Signed-in shell → the chosen preset theme may apply. */}
+        <ThemePresetScope />
         <EmployeeSidebar
           access={access}
           accessError={accessError}
@@ -253,11 +189,18 @@ export function EmployeePortalLayout() {
           onLockedChange={setSidebarLocked}
         />
 
+        <MenuSearchDialog
+          open={searchOpen}
+          onOpenChange={setSearchOpen}
+          access={access}
+        />
+
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-14 shrink-0 items-center justify-between border-b bg-card/80 px-4 backdrop-blur sm:px-6">
+          <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4 shadow-header sm:px-6">
             <Button
               variant="ghost"
               size="icon"
+              className="-ml-2"
               onClick={() => setSidebarLocked((l) => !l)}
               aria-label={sidebarLocked ? 'Auto-hide menu' : 'Pin menu open'}
               aria-expanded={sidebarLocked}
@@ -266,7 +209,12 @@ export function EmployeePortalLayout() {
               <Menu />
             </Button>
 
-            <div className="flex items-center gap-2">
+            <MenuSearchTrigger
+              className="ml-auto"
+              onOpen={() => setSearchOpen(true)}
+            />
+
+            <div className="flex items-center gap-1.5">
               <Button
                 variant="outline"
                 size="icon"
@@ -277,32 +225,26 @@ export function EmployeePortalLayout() {
               </Button>
               <EmployeeNotificationBell />
               <ThemeToggle />
+              <div aria-hidden className="mx-1 hidden h-5 w-px bg-border sm:block" />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
                     aria-label="Open account menu"
-                    className="flex items-center gap-2 rounded-md px-2 py-1 text-left transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+                    className="h-9 gap-2 px-2"
                   >
-                    <div className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                    <span className="brand-gradient grid size-7 shrink-0 place-items-center rounded-full text-[11px] font-semibold">
                       {computeInitials(
                         profile?.emp_display_name ||
                           profile?.email ||
                           'Account',
                       )}
-                    </div>
-                    <div className="hidden max-w-[14rem] leading-tight md:block">
-                      <div className="truncate text-sm font-medium">
-                        {profile?.emp_display_name ?? 'Account'}
-                      </div>
-                      {profile?.email && (
-                        <div className="truncate text-xs text-muted-foreground">
-                          {profile.email}
-                        </div>
-                      )}
-                    </div>
+                    </span>
+                    <span className="hidden max-w-[10rem] truncate text-sm font-medium sm:inline">
+                      {profile?.emp_display_name ?? 'Account'}
+                    </span>
                     <ChevronDown className="size-4 text-muted-foreground" />
-                  </button>
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-60">
                   <DropdownMenuLabel>
@@ -333,6 +275,7 @@ export function EmployeePortalLayout() {
                   >
                     <Settings /> Profile settings
                   </DropdownMenuItem>
+                  <ThemePresetMenuItems />
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     variant="destructive"
@@ -347,7 +290,8 @@ export function EmployeePortalLayout() {
             </div>
           </header>
 
-          <main className="scrollbar-themed min-w-0 flex-1 overflow-auto px-4 py-6 sm:px-6">
+          {/* Padding is mirrored by PAGE_BLEED (src/lib/page-bleed.ts) — change both. */}
+          <main className="scrollbar-themed min-w-0 flex-1 overflow-auto px-4 py-4 sm:px-6">
             {/* Gate page content until the access payload has resolved.
                 Screens read their permissions from `EmployeeAccessContext`
                 and render a "No access" state when it's null — which is also
@@ -401,31 +345,29 @@ const SKELETON_GROUPS = [
 function SidebarMenuSkeleton({ collapsed }: { collapsed: boolean }) {
   if (collapsed) {
     return (
-      <div className="space-y-2 py-3" aria-hidden>
+      <div className="space-y-3 py-2" aria-hidden>
         {[0, 1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className="shimmer mx-auto size-8 rounded-md bg-muted/60"
-          />
+          <div key={i} className="flex h-8 items-center px-3">
+            <div className="shimmer size-4 rounded bg-muted/60" />
+          </div>
         ))}
       </div>
     )
   }
 
   return (
-    <div className="space-y-4 px-1 py-3" aria-hidden>
+    <div className="space-y-3 py-2" aria-hidden>
       {SKELETON_GROUPS.map((group, g) => (
-        <div key={g} className="space-y-2">
-          <div className="flex items-center gap-2 px-1">
-            <div className="shimmer size-7 shrink-0 rounded-md bg-muted/60" />
+        <div key={g}>
+          <div className="flex h-8 items-center gap-3 px-3">
+            <div className="shimmer size-4 shrink-0 rounded bg-muted/60" />
             <div
               className={cn('shimmer h-2.5 rounded bg-muted/60', group.label)}
             />
           </div>
-          <div className="space-y-2 pl-3">
+          <div className="mt-1 ml-5 space-y-1 border-l border-sidebar-border pt-1 pl-3">
             {group.items.map((w, s) => (
-              <div key={s} className="flex items-center gap-2.5 px-2">
-                <div className="size-1.5 shrink-0 rounded-full bg-muted/50" />
+              <div key={s} className="flex h-7 items-center px-3">
                 <div className={cn('shimmer h-2 rounded bg-muted/60', w)} />
               </div>
             ))}
@@ -433,26 +375,6 @@ function SidebarMenuSkeleton({ collapsed }: { collapsed: boolean }) {
         </div>
       ))}
     </div>
-  )
-}
-
-function navigateTo(route: string) {
-  window.history.pushState({}, '', route)
-  window.dispatchEvent(new PopStateEvent('popstate'))
-}
-
-function highlight(text: string, q: string): ReactNode {
-  if (!q) return text
-  const i = text.toLowerCase().indexOf(q)
-  if (i < 0) return text
-  return (
-    <>
-      {text.slice(0, i)}
-      <mark className="rounded-sm bg-primary/15 px-0.5 text-primary">
-        {text.slice(i, i + q.length)}
-      </mark>
-      {text.slice(i + q.length)}
-    </>
   )
 }
 
@@ -468,75 +390,15 @@ function EmployeeSidebar({
   onLockedChange: (locked: boolean) => void
 }) {
   const pathname = useLocation({ select: (l) => l.pathname })
-  const [query, setQuery] = useState('')
   const [moduleClosed, setModuleClosed] = useState<Set<string>>(new Set())
   const [hovered, setHovered] = useState(false)
-  const [searchFocused, setSearchFocused] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-  // Auto-hide: rest as an icon rail, expand while hovered or while the search
-  // box has focus — unless pinned open (locked). Hover is honoured only on
-  // pointer devices (see CAN_HOVER) so a tap doesn't leave the rail stuck open.
-  const collapsed = !(locked || hovered || searchFocused)
-  const isMac =
-    typeof navigator !== 'undefined' &&
-    /Mac|iPod|iPhone|iPad/.test(navigator.platform)
+  // Auto-hide: rest as an icon rail, expand while hovered — unless pinned open
+  // (locked). Hover is honoured only on pointer devices (see CAN_HOVER) so a
+  // tap doesn't leave the rail stuck open.
+  const collapsed = !(locked || hovered)
 
-  // Cmd/Ctrl + K focuses search. When the rail is collapsed the input
-  // isn't mounted, so expand first and focus after the next paint.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        if (collapsed) {
-          onLockedChange(true)
-          requestAnimationFrame(() => {
-            inputRef.current?.focus()
-            inputRef.current?.select()
-          })
-        } else {
-          inputRef.current?.focus()
-          inputRef.current?.select()
-        }
-      }
-      if (e.key === 'Escape' && document.activeElement === inputRef.current) {
-        setQuery('')
-        inputRef.current?.blur()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [collapsed, onLockedChange])
-
-  const modules = useMemo(() => {
-    if (!access) return []
-    return Object.values(access.modules).sort((a, b) => a.order - b.order)
-  }, [access])
-
-  const q = query.trim().toLowerCase()
-  const searching = q.length > 0
-
-  const filtered = useMemo(() => {
-    if (!access) return []
-    return modules
-      .map((mod) => {
-        const screens = mod.screen_keys
-          .map((k) => access.screens[k])
-          .filter(
-            (s): s is NonNullable<typeof s> =>
-              Boolean(s) && Boolean(s.web_route),
-          )
-        const moduleHit = mod.label.toLowerCase().includes(q)
-        const matched = searching
-          ? screens.filter(
-              (s) => moduleHit || s.label.toLowerCase().includes(q),
-            )
-          : screens
-        return { mod, screens: matched }
-      })
-      .filter(({ screens }) => !searching || screens.length > 0)
-  }, [modules, q, searching, access])
-
-  const totalMatches = filtered.reduce((n, { screens }) => n + screens.length, 0)
+  const modules = useMemo(() => sortModules(access), [access])
+  const groups = useMemo(() => menuGroups(access, modules, ''), [access, modules])
 
   function toggleModule(key: string) {
     setModuleClosed((prev) => {
@@ -545,17 +407,6 @@ function EmployeeSidebar({
       else next.add(key)
       return next
     })
-  }
-
-  function onSearchKeyDown(e: ReactKeyboardEvent<HTMLInputElement>) {
-    if (e.key !== 'Enter' || !searching) return
-    const first = filtered.find(({ screens }) => screens.length > 0)?.screens[0]
-    if (first?.web_route) {
-      e.preventDefault()
-      navigateTo(first.web_route)
-      setQuery('')
-      inputRef.current?.blur()
-    }
   }
 
   function expandAndOpenModule(key: string) {
@@ -573,8 +424,10 @@ function EmployeeSidebar({
       id="employee-sidebar"
       onMouseEnter={CAN_HOVER ? () => setHovered(true) : undefined}
       onMouseLeave={CAN_HOVER ? () => setHovered(false) : undefined}
+      data-expanded={!collapsed}
+      data-touch={!CAN_HOVER || undefined}
       className={cn(
-        'relative isolate flex shrink-0 flex-col overflow-hidden border-r bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-out',
+        'sidebar-panel relative isolate flex shrink-0 flex-col overflow-hidden border-r bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-out motion-reduce:transition-none',
         collapsed ? 'w-16' : 'w-64',
       )}
     >
@@ -584,100 +437,37 @@ function EmployeeSidebar({
         className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/[0.06] via-secondary/[0.03] to-transparent"
       />
 
-      {/* Brand row — vertically aligned with the main header's h-14. */}
-      <div
-        className={cn(
-          'relative flex h-14 shrink-0 items-center border-b transition-[padding] duration-300 ease-out',
-          collapsed ? 'justify-center px-0' : 'gap-2 px-4',
-        )}
-      >
+      {/* Brand row — vertically aligned with the main header's h-12. `px-3.5`
+          in both states keeps the mark from jumping as the rail expands. */}
+      <div className="relative flex h-12 shrink-0 items-center gap-2 border-b px-3.5">
         <Link
           to="/"
-          className={cn(
-            'flex items-center transition-colors',
-            collapsed ? '' : 'gap-2',
-          )}
+          className="flex items-center gap-2 transition-colors"
           aria-label="Nucleus home"
         >
           {collapsed ? (
-            <NucleusMark size={36} />
+            <NucleusMark size={28} />
           ) : (
             <NucleusLogo eyebrow="Staff portal" />
           )}
         </Link>
       </div>
 
-      {/* Search — full input when expanded; an icon button that expands
-          the rail when collapsed. */}
-      {collapsed ? (
-        <button
-          type="button"
-          onClick={() => {
-            onLockedChange(true)
-            requestAnimationFrame(() => inputRef.current?.focus())
-          }}
-          aria-label="Search menu"
-          title="Search menu"
-          className="mx-auto mt-3 grid size-9 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
-        >
-          <Search className="size-4" />
-        </button>
-      ) : (
-        <div className="relative shrink-0 border-b p-3">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              ref={inputRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={onSearchKeyDown}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-              placeholder="Search menu"
-              aria-label="Search menu"
-              className="h-9 pl-9 pr-16 text-sm"
-            />
-            {query ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setQuery('')
-                  inputRef.current?.focus()
-                }}
-                className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                aria-label="Clear search"
-              >
-                <X className="size-3.5" />
-              </button>
-            ) : (
-              <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none items-center gap-1 rounded border bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground lg:flex">
-                {isMac ? '⌘' : 'Ctrl'} K
-              </kbd>
-            )}
-          </div>
-        </div>
-      )}
-
-      <nav className="scrollbar-themed relative min-h-0 flex-1 space-y-0.5 overflow-y-auto overflow-x-hidden p-2">
+      {/* `px-3` on the nav and on every row keeps each icon at a fixed 24px from
+          the panel edge whether collapsed or not, so expanding reveals labels
+          instead of sliding every row sideways. Labels stay mounted and fade
+          via `.nav-label` (index.css). */}
+      <nav className="scrollbar-themed relative min-h-0 flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-3">
         <Link
           to="/"
           activeOptions={{ exact: true }}
           title={collapsed ? 'Home' : undefined}
-          className={cn(
-            'flex items-center rounded-lg text-sm font-medium transition-all',
-            collapsed ? 'justify-center px-0 py-2' : 'gap-2.5 px-3 py-2',
-          )}
-          activeProps={{
-            className:
-              'bg-gradient-to-r from-primary to-secondary text-primary-foreground shadow-md shadow-primary/25',
-          }}
-          inactiveProps={{
-            className:
-              'text-foreground/80 hover:bg-sidebar-accent/70 hover:text-foreground',
-          }}
+          className="nav-link nav-tap flex items-center gap-3 rounded-lg px-3 py-2 font-medium data-[status=active]:font-semibold"
         >
           <Home className="size-4 shrink-0" />
-          {!collapsed && <span>{highlight('Home', q)}</span>}
+          <span className="nav-label truncate" aria-hidden={collapsed}>
+            Home
+          </span>
         </Link>
 
         {accessError && !collapsed && (
@@ -690,70 +480,51 @@ function EmployeeSidebar({
           <SidebarMenuSkeleton collapsed={collapsed} />
         )}
 
-        {filtered.map(({ mod, screens }) => {
+        {groups.map(({ mod, screens }) => {
           const Icon = iconFor(mod.icon)
           const tone = MODULE_TONES[toneFor(mod.icon)]
-          const open = searching || !moduleClosed.has(mod.key)
+          const open = !moduleClosed.has(mod.key)
           const hasActiveScreen = screens.some(
             (s) => pathname === s.web_route,
           )
 
-          if (collapsed) {
-            return (
+          return (
+            <div key={mod.key}>
+              {/* Collapsed: a tap expands the rail and opens this module —
+                  a disclosure only makes sense once its children are visible. */}
               <button
-                key={mod.key}
                 type="button"
-                title={mod.label}
-                onClick={() => expandAndOpenModule(mod.key)}
+                onClick={() =>
+                  collapsed ? expandAndOpenModule(mod.key) : toggleModule(mod.key)
+                }
+                aria-expanded={collapsed ? false : open}
+                aria-label={collapsed ? `${mod.label} — open menu` : undefined}
+                title={collapsed ? mod.label : undefined}
                 className={cn(
-                  'flex w-full items-center justify-center rounded-lg py-2 transition-colors',
+                  'nav-tap flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left font-medium transition-colors',
                   hasActiveScreen
-                    ? 'bg-sidebar-accent'
-                    : 'hover:bg-sidebar-accent/60',
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground',
+                  collapsed && hasActiveScreen && 'bg-sidebar-accent',
                 )}
               >
+                <Icon className={cn('size-4 shrink-0', tone.text)} />
                 <span
-                  className={cn(
-                    'grid size-8 place-items-center rounded-md',
-                    tone.bg,
-                    tone.text,
-                  )}
+                  className="nav-label flex-1 truncate"
+                  aria-hidden={collapsed}
                 >
-                  <Icon className="size-4" />
-                </span>
-              </button>
-            )
-          }
-
-          return (
-            <div key={mod.key} className="pt-2">
-              <button
-                type="button"
-                onClick={() => toggleModule(mod.key)}
-                aria-expanded={open}
-                className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/40"
-              >
-                <span
-                  className={cn(
-                    'grid size-7 shrink-0 place-items-center rounded-md transition-transform group-hover:scale-105',
-                    tone.bg,
-                    tone.text,
-                  )}
-                >
-                  <Icon className="size-4" />
-                </span>
-                <span className="flex-1 truncate text-[11px] font-semibold uppercase tracking-wider text-muted-foreground group-hover:text-foreground">
-                  {highlight(mod.label, q)}
+                  {mod.label}
                 </span>
                 <ChevronDown
                   className={cn(
-                    'size-3.5 shrink-0 text-muted-foreground transition-transform',
+                    'nav-chevron size-4 shrink-0 text-muted-foreground transition-transform',
                     open ? '' : '-rotate-90',
                   )}
+                  aria-hidden
                 />
               </button>
-              {open && (
-                <div className="mt-0.5 space-y-0.5 pl-2">
+              {!collapsed && open && (
+                <div className="relative mt-1 ml-5 space-y-1 border-l border-sidebar-border pt-1 pl-3">
                   {screens.length === 0 ? (
                     <div className="px-3 py-1.5 text-xs text-muted-foreground">
                       No web screens
@@ -765,28 +536,14 @@ function EmployeeSidebar({
                         <a
                           key={s.key}
                           href={s.web_route}
+                          data-status={isActive ? 'active' : undefined}
                           onClick={(e) => {
                             e.preventDefault()
                             if (s.web_route) navigateTo(s.web_route)
                           }}
-                          className={cn(
-                            'group flex items-center gap-2.5 rounded-md px-3 py-1.5 text-sm transition-all',
-                            isActive
-                              ? 'bg-gradient-to-r from-primary to-secondary font-medium text-primary-foreground shadow-sm shadow-primary/25'
-                              : 'text-foreground/75 hover:bg-sidebar-accent/60 hover:text-foreground',
-                          )}
+                          className="nav-link nav-tap flex items-center rounded-lg px-3 py-2 font-medium data-[status=active]:font-semibold"
                         >
-                          <span
-                            className={cn(
-                              'size-1.5 shrink-0 rounded-full transition-all',
-                              isActive
-                                ? 'bg-primary-foreground/80'
-                                : 'bg-foreground/20 group-hover:bg-foreground/50',
-                            )}
-                          />
-                          <span className="truncate">
-                            {isActive ? s.label : highlight(s.label, q)}
-                          </span>
+                          <span className="nav-label truncate">{s.label}</span>
                         </a>
                       )
                     })
@@ -796,18 +553,6 @@ function EmployeeSidebar({
             </div>
           )
         })}
-
-        {searching && totalMatches === 0 && access && !collapsed && (
-          <div className="mt-2 flex flex-col items-center gap-1.5 rounded-md border border-dashed bg-muted/20 px-3 py-6 text-center">
-            <SearchX className="size-5 text-muted-foreground" />
-            <div className="text-xs text-muted-foreground">
-              No menu items match{' '}
-              <span className="font-medium text-foreground">
-                &ldquo;{query}&rdquo;
-              </span>
-            </div>
-          </div>
-        )}
 
         {access && modules.length === 0 && !accessError && !collapsed && (
           <div className="mt-2 rounded-md border border-dashed bg-muted/20 px-3 py-4 text-center text-xs text-muted-foreground">
@@ -821,7 +566,7 @@ function EmployeeSidebar({
           rail; Lock pins the sidebar open, disabling hover expansion. */}
       <div
         className={cn(
-          'flex shrink-0 items-center border-t p-2',
+          'flex shrink-0 items-center border-t p-3',
           collapsed ? 'flex-col gap-1' : 'gap-1',
         )}
       >
@@ -836,8 +581,8 @@ function EmployeeSidebar({
           aria-label="Collapse sidebar (auto-hide)"
           title="Collapse — auto-hide on hover"
           className={cn(
-            'flex h-9 items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground',
-            collapsed ? 'w-9 justify-center px-0' : 'flex-1 justify-center px-2',
+            'nav-tap flex h-9 items-center gap-2 rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground',
+            collapsed ? 'w-full justify-center px-0' : 'flex-1 justify-center px-3',
           )}
         >
           <PanelLeftClose className="size-4 shrink-0" />
@@ -860,11 +605,11 @@ function EmployeeSidebar({
               : 'Auto-hide — click to keep open'
           }
           className={cn(
-            'flex h-9 items-center gap-2 rounded-md text-sm transition-colors',
+            'nav-tap flex h-9 items-center gap-2 rounded-lg text-sm font-medium transition-colors',
             locked
               ? 'text-primary hover:bg-sidebar-accent/60'
               : 'text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground',
-            collapsed ? 'w-9 justify-center px-0' : 'flex-1 justify-center px-2',
+            collapsed ? 'w-full justify-center px-0' : 'flex-1 justify-center px-3',
           )}
         >
           {locked ? (

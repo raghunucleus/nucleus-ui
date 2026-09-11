@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { TabBar, type TabDef } from '@/components/corporate-relations/bits'
+import { TabsBar, type TabDef } from '@/components/ui/tabs-bar'
 import { DailyTab } from '@/components/employee/attendance-analytics/daily-tab'
 import { GroupPickerDialog } from '@/components/employee/attendance-analytics/group-picker-dialog'
 import { OverviewTab } from '@/components/employee/attendance-analytics/overview-tab'
@@ -28,7 +28,7 @@ import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
-import { StickyHeader } from '@/components/ui/sticky-header'
+import { PageHeader } from '@/components/ui/page-header'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import {
   fetchAnalyticsScope,
@@ -208,81 +208,83 @@ export default function EmployeeAttendanceAnalyticsPage() {
           the header for rows to scroll through. `-top-6` pins flush under the
           app bar, `-mt-6`+`pt-6` restores the resting position, and the
           negative insets let the opaque background span the gutter. */}
-      <StickyHeader className="z-30 -mx-4 -mt-6 -top-6 space-y-2 border-b px-4 pb-2 pt-6 sm:-mx-6 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <h1 className="text-lg font-semibold">Attendance Analytics</h1>
-
-          {group &&
-            (groups !== null && groups.length > 1 ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-9 max-w-full"
-                onClick={() => setPickerOpen(true)}
-                aria-label={`Attendance group: ${group.name} ${group.code}. Change group.`}
-              >
-                <Users className="size-4" />
-                <span className="truncate font-medium">{group.name}</span>
-                <span className="text-muted-foreground">{group.code}</span>
-                <span className="hidden text-muted-foreground md:inline">
-                  · {groupMeta}
-                </span>
-                <ChevronsUpDown className="size-4 opacity-50" />
-              </Button>
-            ) : (
-              <p className="text-sm">
-                <span className="font-medium">{group.name}</span>
-                <span className="ml-1 text-muted-foreground">{group.code}</span>
-                <span className="ml-1 text-xs text-muted-foreground">
-                  · {groupMeta}
-                </span>
-              </p>
-            ))}
-        </div>
-
+      <PageHeader
+        sticky
+        title="Attendance Analytics"
+        actions={
+          group &&
+          (groups !== null && groups.length > 1 ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="max-w-full"
+              onClick={() => setPickerOpen(true)}
+              aria-label={`Attendance group: ${group.name} ${group.code}. Change group.`}
+            >
+              <Users className="size-4" />
+              <span className="truncate font-medium">{group.name}</span>
+              <span className="text-muted-foreground">{group.code}</span>
+              <span className="hidden text-muted-foreground md:inline">
+                · {groupMeta}
+              </span>
+              <ChevronsUpDown className="size-4 opacity-50" />
+            </Button>
+          ) : (
+            <p className="text-sm">
+              <span className="font-medium">{group.name}</span>
+              <span className="ml-1 text-muted-foreground">{group.code}</span>
+              <span className="ml-1 text-xs text-muted-foreground">
+                · {groupMeta}
+              </span>
+            </p>
+          ))
+        }
+      >
         {groups !== null &&
           groups.length > 0 &&
           group &&
           group.programme_semesters.length > 0 && (
-            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
-              <TabBar
-                tabs={TABS}
-                active={tab}
-                onChange={changeTab}
-                className="border-b-0"
-              />
-              <div className="flex flex-wrap items-center gap-2 pb-1">
-                <label htmlFor="analytics-semester" className="sr-only">
-                  Semester
-                </label>
-                <Combobox
-                  id="analytics-semester"
-                  className="w-40"
-                  value={psId}
-                  options={group.programme_semesters.map((ps) => ({
-                    value: ps.id,
-                    label: `Semester ${ps.semester.sem_number}${
-                      ps.status === 'ongoing' ? ' (current)' : ''
-                    }`,
-                  }))}
-                  onChange={setPsId}
-                  placeholder="Semester…"
-                  searchPlaceholder="Search semesters…"
-                />
-                <DateRangePicker
-                  from={from}
-                  to={to}
-                  onChange={changeRange}
-                  presets={presets}
-                  emptyLabel="Whole semester"
-                  min={semester?.planned_start_date ?? undefined}
-                  align="end"
-                  aria-label="Date range"
-                />
-              </div>
-            </div>
+            <TabsBar
+              tabs={TABS}
+              value={tab}
+              onChange={changeTab}
+              className="border-b-0"
+              actions={
+                <>
+                  <label htmlFor="analytics-semester" className="sr-only">
+                    Semester
+                  </label>
+                  <Combobox
+                    id="analytics-semester"
+                    size="sm"
+                    className="w-40"
+                    value={psId}
+                    options={group.programme_semesters.map((ps) => ({
+                      value: ps.id,
+                      label: `Semester ${ps.semester.sem_number}${
+                        ps.status === 'ongoing' ? ' (current)' : ''
+                      }`,
+                    }))}
+                    onChange={setPsId}
+                    placeholder="Semester…"
+                    searchPlaceholder="Search semesters…"
+                  />
+                  <DateRangePicker
+                    size="sm"
+                    from={from}
+                    to={to}
+                    onChange={changeRange}
+                    presets={presets}
+                    emptyLabel="Whole semester"
+                    min={semester?.planned_start_date ?? undefined}
+                    align="end"
+                    aria-label="Date range"
+                  />
+                </>
+              }
+            />
           )}
-      </StickyHeader>
+      </PageHeader>
 
       {loadError && <EmptyNote>{loadError}</EmptyNote>}
 

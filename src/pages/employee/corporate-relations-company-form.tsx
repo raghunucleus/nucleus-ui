@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
+import { PageHeader } from '@/components/ui/page-header'
 import { CompanyForm } from '@/components/corporate-relations/company-form'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import {
@@ -138,32 +139,25 @@ export default function EmployeeCompanyFormPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      {/* Manual sticky header (not the shared <StickyHeader>): the portal
-          `<main>` scroll container has `py-6`, and `sticky top-0` pins to its
-          content box — 24px below the padding edge — leaving an uncovered band
-          where content scrolls through. `-top-6` (= the 24px padding) pins the
-          header flush under the app header; `-mt-6`+`pt-6` keeps its resting
-          position while the opaque `bg-background` + `pt-6` cover the band. */}
-      <div className="sticky -top-6 z-10 -mx-4 -mt-6 flex items-center gap-3 border-b bg-background px-4 pb-3 pt-6 sm:-mx-6 sm:px-6">
-        <button
-          type="button"
-          onClick={() => navigateTo(LIST_ROUTE)}
-          className="flex size-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          aria-label="Back to companies"
-        >
-          <ArrowLeft className="size-4" />
-        </button>
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">
-            {isEdit ? 'Edit company' : 'New company'}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isEdit
-              ? company?.name ?? 'Update the company record.'
-              : 'Add a company to the catalog.'}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        sticky
+        leading={
+          <button
+            type="button"
+            onClick={() => navigateTo(LIST_ROUTE)}
+            className="flex size-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="Back to companies"
+          >
+            <ArrowLeft className="size-4" />
+          </button>
+        }
+        title={isEdit ? 'Edit company' : 'New company'}
+        subtitle={
+          isEdit
+            ? (company?.name ?? 'Update the company record.')
+            : 'Add a company to the catalog.'
+        }
+      />
 
       {loading || !access ? (
         <div className="flex items-center justify-center py-24 text-muted-foreground">

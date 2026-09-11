@@ -18,7 +18,7 @@ export default function DevicesPage() {
   }, [])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader title="Devices" icon={MonitorSmartphone} accent="blue" />
 
       <section className="space-y-4">

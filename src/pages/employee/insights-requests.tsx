@@ -17,7 +17,7 @@ import {
   YAxis,
 } from 'recharts'
 
-import { TabBar, type TabDef } from '@/components/corporate-relations/bits'
+import { TabsBar, type TabDef } from '@/components/ui/tabs-bar'
 import {
   AXIS_TICK,
   TOOLTIP_STYLE,
@@ -143,7 +143,7 @@ export default function EmployeeInsightsRequestsPage() {
         route="/insights/requests"
         summary={from && to ? `${shortDay(from)} – ${shortDay(to)}` : 'Last 90 days'}
         activeExtras={from && to ? 1 : 0}
-        tabs={<TabBar tabs={TABS} active={tab} onChange={setTab} size="sm" className="border-b-0" />}
+        tabs={<TabsBar tabs={TABS} value={tab} onChange={setTab} className="border-b-0" />}
         controls={<DateRangePicker size="sm" from={from} to={to} onChange={changeRange} emptyLabel="Last 90 days" align="end" aria-label="Window" />}
       />
       {scope.error && <EmptyNote>{scope.error}</EmptyNote>}

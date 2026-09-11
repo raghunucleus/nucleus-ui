@@ -35,9 +35,8 @@ import {
   Field,
   NativeSelect,
   SearchableMultiSelect,
-  TabBar,
-  type TabDef,
 } from '@/components/corporate-relations/bits'
+import { TabsBar, type TabDef } from '@/components/ui/tabs-bar'
 import { DriveAnalyticsTab } from '@/components/drive-management/drive-analytics'
 import { DriveSelectionUploadDialog } from '@/components/drive-management/drive-selection-upload-dialog'
 import { DriveStudentsExportDialog } from '@/components/drive-management/drive-students-export-dialog'
@@ -386,7 +385,7 @@ export default function EmployeeDriveDetailPage() {
           </div>
         </div>
 
-        <TabBar tabs={TABS} active={tab} onChange={setTab} />
+        <TabsBar tabs={TABS} value={tab} onChange={setTab} />
       </div>
 
       <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto">

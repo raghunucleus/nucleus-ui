@@ -24,6 +24,7 @@ import {
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import {
   Dialog,
   DialogContent,
@@ -323,17 +324,11 @@ export default function EmployeePlacementCoordinatorDrivesPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <UserCheck className="size-5 text-muted-foreground" />
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">Drives</h1>
-            <p className="text-sm text-muted-foreground">
-              Placement drives open to your programmes and passout years.
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        icon={UserCheck}
+        title="Drives"
+        subtitle="Placement drives open to your programmes and passout years."
+      />
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -579,7 +574,7 @@ function DriveTable({
 }) {
   return (
     <div className="min-h-[62vh] rounded-xl border bg-card">
-      <Table containerClassName="max-h-[62vh] overflow-y-auto">
+      <Table zebra containerClassName="max-h-[62vh] overflow-y-auto">
         <TableHeader className="sticky top-0 z-10 bg-card">
           <TableRow>
             <TableHead className="w-12" />

@@ -32,6 +32,7 @@ import {
 } from '@/components/requests/status-chips'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import { ApiError } from '@/lib/api'
 import {
@@ -89,12 +90,10 @@ export default function EmployeeRequestsMinePage() {
 /** Shown in every state of the list — loading and error included. */
 function PageHead() {
   return (
-    <header>
-      <h1 className="text-xl font-semibold tracking-tight">My Requests</h1>
-      <p className="mt-0.5 text-sm text-muted-foreground">
-        Things you asked for and where they stand.
-      </p>
-    </header>
+    <PageHeader
+      title="My Requests"
+      subtitle="Things you asked for and where they stand."
+    />
   )
 }
 

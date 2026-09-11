@@ -340,7 +340,7 @@ function ProfileAvatar({
     .toUpperCase()
 
   return (
-    <div className="grid size-16 place-items-center rounded-full bg-gradient-to-br from-primary to-secondary text-xl font-semibold text-primary-foreground shadow-md shadow-primary/30">
+    <div className="brand-gradient grid size-16 place-items-center rounded-full text-xl font-semibold shadow-md shadow-primary/30">
       {initials || '—'}
     </div>
   )

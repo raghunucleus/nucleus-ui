@@ -37,6 +37,7 @@ import {
 } from '@/components/requests/status-chips'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/ui/page-header'
 import { Pagination } from '@/components/ui/pagination'
 import {
   Table,
@@ -179,13 +180,10 @@ function Approvals({ actions }: { actions: string[] }) {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="text-xl font-semibold tracking-tight">Approvals</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Requests routed to you — from students of the batches you verify, the
-          attendance groups you are in-charge of, and approvals assigned to you.
-        </p>
-      </header>
+      <PageHeader
+        title="Approvals"
+        subtitle="Requests routed to you — from students of the batches you verify, the attendance groups you are in-charge of, and approvals assigned to you."
+      />
 
       <StatusChips
         value={status}
@@ -254,7 +252,7 @@ function Approvals({ actions }: { actions: string[] }) {
           ) : (
             <>
               <div className="overflow-x-auto rounded-lg border">
-            <Table>
+            <Table zebra>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12"></TableHead>

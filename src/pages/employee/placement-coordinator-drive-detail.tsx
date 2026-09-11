@@ -21,9 +21,8 @@ import { useEffect, useMemo, useState } from 'react'
 
 import {
   CompanyLogo,
-  TabBar,
-  type TabDef,
 } from '@/components/corporate-relations/bits'
+import { TabsBar, type TabDef } from '@/components/ui/tabs-bar'
 import { DriveEligibilitySummary } from '@/components/drive-management/drive-eligibility-summary'
 import { DriveStudentsExportDialog } from '@/components/drive-management/drive-students-export-dialog'
 import { DriveStatusHistory } from '@/components/drive-management/drive-status-history'
@@ -210,7 +209,7 @@ export default function EmployeePlacementCoordinatorDriveDetailPage() {
           </Badge>
         </div>
 
-        <TabBar tabs={TABS} active={tab} onChange={setTab} />
+        <TabsBar tabs={TABS} value={tab} onChange={setTab} />
       </div>
 
       <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto">

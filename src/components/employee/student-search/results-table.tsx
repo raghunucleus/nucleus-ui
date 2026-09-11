@@ -235,7 +235,10 @@ export function ResultsTable({
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden rounded-lg border">
-        <Table containerClassName="h-full max-h-[62vh] overflow-y-auto scrollbar-themed lg:max-h-none">
+        <Table
+          zebra
+          containerClassName="h-full max-h-[62vh] overflow-y-auto scrollbar-themed lg:max-h-none"
+        >
           <TableHeader className="sticky top-0 z-10 bg-card">
             <TableRow>
               {showImport ? (

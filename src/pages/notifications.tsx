@@ -23,6 +23,7 @@ import { toast } from 'sonner'
 
 import { PageHeader } from '@/components/portal-layout'
 import { Button } from '@/components/ui/button'
+import { EmptyState as EmptyStatePanel } from '@/components/ui/empty-state'
 import { ApiError } from '@/lib/api'
 import {
   useNotificationConnection,
@@ -388,21 +389,15 @@ function ListSkeleton() {
 
 function EmptyState({ onlyUnread }: { onlyUnread: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border bg-card p-10 text-center text-card-foreground">
-      <div className="grid size-12 place-items-center rounded-full bg-icon-violet/10 text-icon-violet">
-        <Bell className="size-6" />
-      </div>
-      <div className="space-y-1">
-        <h2 className="text-sm font-semibold">
-          {onlyUnread ? 'No unread notifications' : 'No notifications yet'}
-        </h2>
-        <p className="max-w-sm text-xs text-muted-foreground">
-          {onlyUnread
-            ? "You're all caught up — switch to All to see earlier notifications."
-            : 'When something needs your attention — a new message, a timetable change, marks published — it’ll show up here.'}
-        </p>
-      </div>
-    </div>
+    <EmptyStatePanel
+      icon={Bell}
+      title={onlyUnread ? 'No unread notifications' : 'No notifications yet'}
+      description={
+        onlyUnread
+          ? "You're all caught up — switch to All to see earlier notifications."
+          : 'When something needs your attention — a new message, a timetable change, marks published — it’ll show up here.'
+      }
+    />
   )
 }
 

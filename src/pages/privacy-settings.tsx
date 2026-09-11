@@ -119,7 +119,7 @@ export default function PrivacySettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Privacy"
         subtitle="Choose what classmates can see on your profile. Your name and roll number are always visible."

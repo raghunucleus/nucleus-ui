@@ -44,6 +44,14 @@ export const hi: typeof en = {
 
   account: { switchStudent: 'छात्र बदलें', switch: 'बदलें', collapse: 'छोटा करें' },
 
+  theme: {
+    heading: 'थीम',
+    default: 'न्यूक्लियस ब्लू',
+    violet: 'बैंगनी',
+    emerald: 'पन्ना',
+    slate: 'स्लेट',
+  },
+
   loginChrome: {
     eyebrow: 'न्यूक्लियस में आपका स्वागत है',
     title: 'साइन इन करें',
