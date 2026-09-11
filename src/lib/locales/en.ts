@@ -165,6 +165,7 @@ export const en = {
     classes: '{{a}} / {{h}} classes',
     missed: '{{n}} missed',
     viewHistory: 'View class history',
+    viewAllClasses: 'View all classes',
     noDataTitle: 'No attendance yet',
     noDataDesc:
       'No subjects with attendance data yet. Check back once classes start.',
@@ -281,7 +282,18 @@ export const en = {
     today: 'Today',
     dayCount_one: '{{count}} class',
     dayCount_other: '{{count}} classes',
+    dayAbsent_one: '{{count}} absent',
+    dayAbsent_other: '{{count}} absent',
+    prevDay: 'Previous day',
+    nextDay: 'Next day',
+    close: 'Close',
+    tapDayHint: 'Tap a day to see its classes.',
     summaryOther: 'Other',
+    filterAllSubjects: 'All subjects',
+    allTitle: 'All classes',
+    allSubtitle: '{{count}} sessions · {{absent}} absent',
+    allNoClassesYet: 'No classes recorded this semester yet.',
+    allErrLoad: "Couldn't load the classes.",
   },
 
   // Device limit (sign-in picker) + signed-in devices (profile).

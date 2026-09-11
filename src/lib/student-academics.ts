@@ -211,6 +211,37 @@ export function fetchStudentSubjectSessions(
   )
 }
 
+/** A session row that also names its subject — the all-subjects view. */
+export interface AllSessionRow extends SubjectSessionRow {
+  subject_id: number
+  subject_code: string
+  subject_name: string
+  is_elective: boolean
+}
+
+export interface SessionSubject {
+  id: number
+  code: string
+  name: string
+}
+
+export interface AllSessionsResult {
+  semester: { programme_semester_id: number; semester_number: number | null }
+  /** Distinct subjects with at least one session, ordered by code. */
+  subjects: SessionSubject[]
+  sessions: AllSessionRow[]
+}
+
+/**
+ * Every class_session across all subjects for the current semester — the
+ * "Overall attendance" drill-down. One call; the calendar is built client-side.
+ */
+export function fetchStudentAllSessions(): Promise<AllSessionsResult> {
+  return withAuth((token) =>
+    apiFetch<AllSessionsResult>('/student/attendance/sessions', { token }),
+  )
+}
+
 /**
  * Holidays that apply to the signed-in student — institution-wide ones plus
  * any scoped to their programme or attendance group. Scoped server-side from

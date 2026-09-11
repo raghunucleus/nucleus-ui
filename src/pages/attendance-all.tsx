@@ -1,57 +1,45 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams } from '@tanstack/react-router'
 import { ClipboardCheck } from 'lucide-react'
 
 import { SessionsView } from '@/components/attendance/sessions-view'
 import { PageHeader } from '@/components/portal-layout'
 import { ApiError } from '@/lib/api'
 import {
-  fetchStudentSubjectSessions,
-  type SubjectSessionsResult,
+  fetchStudentAllSessions,
+  type AllSessionsResult,
 } from '@/lib/student-academics'
-import { SUBJECT_SESSIONS_STRINGS_EN } from '@/lib/subject-sessions-strings'
+import { ALL_SESSIONS_STRINGS_EN } from '@/lib/subject-sessions-strings'
 import { useAuthStore } from '@/stores/auth-store'
 
-export default function AttendanceSubject() {
-  const { subjectId: rawId } = useParams({ strict: false }) as {
-    subjectId?: string
-  }
-  const subjectId = Number(rawId)
+/** Every subject's classes on one calendar — the "Overall attendance" drill-down. */
+export default function AttendanceAll() {
   const signOut = useAuthStore((state) => state.signOut)
-  const [data, setData] = useState<SubjectSessionsResult | null>(null)
+  const [data, setData] = useState<AllSessionsResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const requestedRef = useRef(false)
 
   useEffect(() => {
-    document.title = 'Attendance — Nucleus'
+    document.title = 'All classes — Nucleus'
   }, [])
 
   const load = useCallback(async () => {
-    if (!Number.isFinite(subjectId)) {
-      setError('Missing subject.')
-      setLoading(false)
-      return
-    }
     setLoading(true)
     setError(null)
     try {
-      const res = await fetchStudentSubjectSessions(subjectId)
-      setData(res)
+      setData(await fetchStudentAllSessions())
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         signOut()
         return
       }
       setError(
-        err instanceof Error
-          ? err.message
-          : "Couldn't load this subject's sessions.",
+        err instanceof Error ? err.message : "Couldn't load the classes.",
       )
     } finally {
       setLoading(false)
     }
-  }, [signOut, subjectId])
+  }, [signOut])
 
   useEffect(() => {
     if (requestedRef.current) return
@@ -63,14 +51,22 @@ export default function AttendanceSubject() {
   const absentCount = sessions.filter(
     (s) => s.attendance_status === 'absent',
   ).length
-  const subtitle = data?.subject
-    ? `${data.subject.code} · ${sessions.length} session${sessions.length === 1 ? '' : 's'} · ${absentCount} absent`
+  const subtitle = data
+    ? [
+        data.semester.semester_number
+          ? `Semester ${data.semester.semester_number}`
+          : null,
+        `${sessions.length} session${sessions.length === 1 ? '' : 's'}`,
+        `${absentCount} absent`,
+      ]
+        .filter(Boolean)
+        .join(' · ')
     : undefined
 
   return (
     <>
       <PageHeader
-        title={data?.subject?.name ?? 'Subject attendance'}
+        title="All classes"
         subtitle={subtitle}
         icon={ClipboardCheck}
         accent="emerald"
@@ -79,10 +75,11 @@ export default function AttendanceSubject() {
       />
       <SessionsView
         sessions={data?.sessions ?? null}
+        subjects={data?.subjects}
         loading={loading}
         error={error}
         onRetry={load}
-        strings={SUBJECT_SESSIONS_STRINGS_EN}
+        strings={ALL_SESSIONS_STRINGS_EN}
       />
     </>
   )

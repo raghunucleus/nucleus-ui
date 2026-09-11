@@ -157,6 +157,7 @@ export const hi: typeof en = {
     classes: '{{a}} / {{h}} कक्षाएँ',
     missed: '{{n}} छूटीं',
     viewHistory: 'कक्षा इतिहास देखें',
+    viewAllClasses: 'सभी कक्षाएँ देखें',
     noDataTitle: 'अभी कोई उपस्थिति नहीं',
     noDataDesc:
       'अभी उपस्थिति डेटा वाले कोई विषय नहीं। कक्षाएँ शुरू होने पर देखें।',
@@ -273,7 +274,18 @@ export const hi: typeof en = {
     today: 'आज',
     dayCount_one: '{{count}} कक्षा',
     dayCount_other: '{{count}} कक्षाएँ',
+    dayAbsent_one: '{{count}} अनुपस्थित',
+    dayAbsent_other: '{{count}} अनुपस्थित',
+    prevDay: 'पिछला दिन',
+    nextDay: 'अगला दिन',
+    close: 'बंद करें',
+    tapDayHint: 'किसी दिन पर टैप करके उसकी कक्षाएँ देखें।',
     summaryOther: 'अन्य',
+    filterAllSubjects: 'सभी विषय',
+    allTitle: 'सभी कक्षाएँ',
+    allSubtitle: '{{count}} सत्र · {{absent}} अनुपस्थित',
+    allNoClassesYet: 'इस सेमेस्टर में अभी कोई कक्षा दर्ज नहीं।',
+    allErrLoad: 'कक्षाएँ लोड नहीं हो सकीं।',
   },
 
   devices: {

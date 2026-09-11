@@ -33,6 +33,9 @@ const Attendance = lazyRouteComponent(() => import('@/pages/attendance'))
 const AttendanceSubject = lazyRouteComponent(
   () => import('@/pages/attendance-subject'),
 )
+const AttendanceAll = lazyRouteComponent(
+  () => import('@/pages/attendance-all'),
+)
 const ExamMarks = lazyRouteComponent(() => import('@/pages/exam-marks'))
 const Birthdays = lazyRouteComponent(() => import('@/pages/birthdays'))
 const Connect = lazyRouteComponent(() => import('@/pages/connect'))
@@ -116,6 +119,14 @@ const attendanceRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/attendance',
   component: Attendance,
+})
+
+// Static segment — TanStack ranks it above `$subjectId`, so `/attendance/all`
+// never reaches the per-subject page.
+const attendanceAllRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/attendance/all',
+  component: AttendanceAll,
 })
 
 const attendanceSubjectRoute = createRoute({
@@ -262,6 +273,7 @@ const routeTree = rootRoute.addChildren([
   devicesRoute,
   timetableRoute,
   attendanceRoute,
+  attendanceAllRoute,
   attendanceSubjectRoute,
   examMarksRoute,
   birthdaysRoute,

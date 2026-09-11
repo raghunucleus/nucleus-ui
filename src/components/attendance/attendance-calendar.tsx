@@ -2,7 +2,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import * as React from 'react'
 import { useMemo, useRef, useState } from 'react'
 
+import { DayDetailSheet } from '@/components/attendance/day-detail-sheet'
 import { Button } from '@/components/ui/button'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import {
   STATUS_CELL_CLASS,
   STATUS_DOT_CLASS,
@@ -51,7 +53,13 @@ const MAX_PIPS = 3
  * the data on every render rather than synced by effects, so a change of
  * `items` (the employee sheet's subject filter) can never leave the view on
  * an empty month or a vanished day.
+ *
+ * Day detail lives in two places by width: beside the grid from `lg`, and in
+ * a bottom sheet below it — on a phone the panel under the grid meant a
+ * scroll down after every tap and back up for the next day. The sheet pages
+ * across days with classes so the grid need not be touched at all.
  */
+const WIDE_MQ = '(min-width: 1024px)' // Tailwind `lg`
 export function AttendanceCalendar<T extends CalendarItem>({
   items,
   strings,
@@ -72,6 +80,8 @@ export function AttendanceCalendar<T extends CalendarItem>({
 }) {
   const today = todayIso()
   const gridRef = useRef<HTMLDivElement>(null)
+  const wide = useMediaQuery(WIDE_MQ)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   const byDate = useMemo(() => {
     const map = new Map<string, T[]>()
@@ -154,6 +164,22 @@ export function AttendanceCalendar<T extends CalendarItem>({
   const go = (delta: number) => {
     const next = clampKey(shiftMonthKey(month, delta), minMonth, maxMonth)
     setChosenMonth(next)
+  }
+
+  const pick = (iso: string) => {
+    setChosenDay(iso)
+    if (!wide) setSheetOpen(true)
+  }
+
+  /** Neighbouring day WITH classes, across month boundaries. */
+  const selectedIdx = selected ? dates.indexOf(selected) : -1
+  const canPrevDay = selectedIdx > 0
+  const canNextDay = selectedIdx >= 0 && selectedIdx < dates.length - 1
+  const stepDay = (delta: number) => {
+    const next = dates[selectedIdx + delta]
+    if (!next) return
+    setChosenDay(next)
+    setChosenMonth(clampKey(monthKey(next), minMonth, maxMonth))
   }
 
   /** Roving focus across the month's item-days only. */
@@ -324,7 +350,7 @@ export function AttendanceCalendar<T extends CalendarItem>({
                   tabIndex={iso === tabStop ? 0 : -1}
                   aria-pressed={isSelected}
                   aria-label={label}
-                  onClick={() => setChosenDay(iso)}
+                  onClick={() => pick(iso)}
                   className={cn(
                     'flex size-full flex-col items-center justify-center rounded-lg text-sm font-medium tabular-nums outline-none motion-safe:transition-colors',
                     'focus-visible:ring-[3px] focus-visible:ring-ring/50',
@@ -379,30 +405,55 @@ export function AttendanceCalendar<T extends CalendarItem>({
         </div>
       </div>
 
-      {/* Day detail */}
-      <section
-        aria-live="polite"
-        className={cn(
-          'min-w-0 space-y-2',
-          layout === 'auto' && 'lg:sticky lg:top-4',
-        )}
-      >
-        {selected ? (
-          <>
-            <div className="flex items-baseline justify-between gap-2 px-1">
-              <h3 className="text-sm font-semibold">{dayTitle(selected)}</h3>
-              <span className="text-xs text-muted-foreground tabular-nums">
-                {strings.dayCount(byDate.get(selected)?.length ?? 0)}
-              </span>
-            </div>
-            {renderDay(selected, byDate.get(selected) ?? [])}
-          </>
-        ) : (
-          <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-            {strings.noClassesThisMonth}
-          </p>
-        )}
-      </section>
+      {/* Day detail — beside the grid on wide screens … */}
+      {wide ? (
+        <section
+          aria-live="polite"
+          className={cn(
+            'min-w-0 space-y-2',
+            layout === 'auto' && 'lg:sticky lg:top-4',
+          )}
+        >
+          {selected ? (
+            <>
+              <div className="flex items-baseline justify-between gap-2 px-1">
+                <h3 className="text-sm font-semibold">{dayTitle(selected)}</h3>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {strings.dayCount(byDate.get(selected)?.length ?? 0)}
+                </span>
+              </div>
+              {renderDay(selected, byDate.get(selected) ?? [])}
+            </>
+          ) : (
+            <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+              {strings.noClassesThisMonth}
+            </p>
+          )}
+        </section>
+      ) : (
+        <p className="px-1 text-center text-xs text-muted-foreground">
+          {monthDates.length > 0
+            ? strings.tapDayHint
+            : strings.noClassesThisMonth}
+        </p>
+      )}
+
+      {/* … and in a bottom sheet on phones. */}
+      {!wide ? (
+        <DayDetailSheet<T>
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          date={selected}
+          items={selected ? (byDate.get(selected) ?? []) : []}
+          isToday={selected === today}
+          canPrev={canPrevDay}
+          canNext={canNextDay}
+          onPrev={() => stepDay(-1)}
+          onNext={() => stepDay(1)}
+          renderDay={renderDay}
+          strings={strings}
+        />
+      ) : null}
     </div>
   )
 }

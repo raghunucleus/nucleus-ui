@@ -6,37 +6,47 @@ import {
   type CalendarItem,
 } from '@/components/attendance/attendance-calendar'
 import { ErrorBanner } from '@/components/attendance/error-banner'
-import { SubjectSessionListRow } from '@/components/attendance/subject-session-row'
+import {
+  SubjectSessionListRow,
+  type SessionRowData,
+} from '@/components/attendance/subject-session-row'
+import { FilterChips } from '@/components/placement-filter-chips'
 import { Card } from '@/components/ui/card'
 import { Segmented } from '@/components/ui/segmented'
 import { deriveSessionStatus } from '@/lib/attendance-status'
-import type {
-  SubjectSessionRow,
-  SubjectSessionsResult,
-} from '@/lib/student-academics'
+import type { SessionSubject } from '@/lib/student-academics'
 import type { SubjectSessionsStrings } from '@/lib/subject-sessions-strings'
 import { cn } from '@/lib/utils'
 
 type View = 'calendar' | 'list'
 type Filter = 'all' | 'absent'
+type SubjectFilter = 'all' | `${number}`
 
-type SessionItem = CalendarItem & { session: SubjectSessionRow }
+type SessionItem = CalendarItem & { session: SessionRowData }
+
+const CHIP_TONE = 'border-primary bg-primary/10 text-primary'
 
 /**
- * One subject's sessions for one student — the body under the page header
- * on both the student and parent portals. The calendar is the default: a
- * semester is 60–90 rows, and the question is almost always "which days did
- * I miss", which a coloured month answers at a glance. The list stays one
- * click away for anyone who wants the chronological detail.
+ * A student's sessions — one subject's, or every subject's — as the body
+ * under a page header on the student and parent portals. The calendar is
+ * the default: a semester is 60–90 rows per subject, and the question is
+ * almost always "which days did I miss", which a coloured month answers at
+ * a glance. The list stays one click away for the chronological detail.
+ *
+ * With `subjects` (more than one) a chip row narrows BOTH views to one
+ * subject; while "All subjects" is active each row names its subject.
  */
-export function SubjectSessionsView({
-  data,
+export function SessionsView({
+  sessions,
+  subjects,
   loading,
   error,
   onRetry,
   strings,
 }: {
-  data: SubjectSessionsResult | null
+  /** `null` until the first response lands (drives the skeletons). */
+  sessions: readonly SessionRowData[] | null
+  subjects?: readonly SessionSubject[]
   loading: boolean
   error: string | null
   onRetry: () => void
@@ -44,20 +54,37 @@ export function SubjectSessionsView({
 }) {
   const [view, setView] = useState<View>('calendar')
   const [filter, setFilter] = useState<Filter>('all')
+  const [subject, setSubject] = useState<SubjectFilter>('all')
 
-  const sessions = useMemo(() => data?.sessions ?? [], [data])
+  const all = useMemo(() => sessions ?? [], [sessions])
+  const multi = (subjects?.length ?? 0) > 1
+  // A chosen chip that vanished (subjects changed) falls back to "all".
+  const activeSubject =
+    multi && subjects?.some((s) => `${s.id}` === subject) ? subject : 'all'
+  const showSubject = multi && activeSubject === 'all'
+
+  const bySubject = useMemo(
+    () =>
+      activeSubject === 'all'
+        ? all
+        : all.filter(
+            (s) => 'subject_id' in s && `${s.subject_id}` === activeSubject,
+          ),
+    [all, activeSubject],
+  )
+
   const absentCount = useMemo(
-    () => sessions.filter((s) => s.attendance_status === 'absent').length,
-    [sessions],
+    () => bySubject.filter((s) => s.attendance_status === 'absent').length,
+    [bySubject],
   )
   const visibleSessions =
     filter === 'absent'
-      ? sessions.filter((s) => s.attendance_status === 'absent')
-      : sessions
+      ? bySubject.filter((s) => s.attendance_status === 'absent')
+      : bySubject
 
   const items = useMemo<SessionItem[]>(
     () =>
-      sessions.map((s) => {
+      bySubject.map((s) => {
         const kind = deriveSessionStatus(s)
         return {
           id: s.session_id,
@@ -68,8 +95,34 @@ export function SubjectSessionsView({
           session: s,
         }
       }),
-    [sessions, strings],
+    [bySubject, strings],
   )
+
+  // Chip counts are totals, untouched by "Only absent", so the row stays
+  // stable while the list filter toggles.
+  const chipItems = useMemo(() => {
+    if (!multi || !subjects) return []
+    const counts = new Map<number, number>()
+    for (const s of all) {
+      if ('subject_id' in s) {
+        counts.set(s.subject_id, (counts.get(s.subject_id) ?? 0) + 1)
+      }
+    }
+    return [
+      {
+        value: 'all' as SubjectFilter,
+        label: strings.filterAllSubjects,
+        count: all.length,
+        tone: CHIP_TONE,
+      },
+      ...subjects.map((s) => ({
+        value: `${s.id}` as SubjectFilter,
+        label: s.code,
+        count: counts.get(s.id) ?? 0,
+        tone: CHIP_TONE,
+      })),
+    ]
+  }, [multi, subjects, all, strings.filterAllSubjects])
 
   const rowStrings = {
     reason: strings.reason,
@@ -114,16 +167,24 @@ export function SubjectSessionsView({
             ]}
           />
         ) : null}
-        {view === 'list' && data ? (
+        {view === 'list' && sessions ? (
           <p className="basis-full text-xs text-muted-foreground sm:ml-auto sm:basis-auto">
             {filter === 'absent'
-              ? strings.showingAbsent(visibleSessions.length, sessions.length)
-              : strings.showingAll(sessions.length, absentCount)}
+              ? strings.showingAbsent(visibleSessions.length, bySubject.length)
+              : strings.showingAll(bySubject.length, absentCount)}
           </p>
         ) : null}
       </div>
 
-      {error && !data ? (
+      {chipItems.length > 0 ? (
+        <FilterChips<SubjectFilter>
+          value={activeSubject}
+          items={chipItems}
+          onChange={setSubject}
+        />
+      ) : null}
+
+      {error && !sessions ? (
         <ErrorBanner
           message={error}
           retryLabel={strings.retry}
@@ -131,13 +192,13 @@ export function SubjectSessionsView({
         />
       ) : null}
 
-      {loading && !data ? (
+      {loading && !sessions ? (
         view === 'calendar' ? (
           <CalendarSkeleton />
         ) : (
           <ListSkeleton />
         )
-      ) : data ? (
+      ) : sessions ? (
         view === 'calendar' ? (
           <AttendanceCalendar<SessionItem>
             items={items}
@@ -151,6 +212,7 @@ export function SubjectSessionsView({
                       session={it.session}
                       strings={rowStrings}
                       hideDate
+                      showSubject={showSubject}
                     />
                   ))}
                 </ul>
@@ -169,6 +231,7 @@ export function SubjectSessionsView({
                   key={s.session_id}
                   session={s}
                   strings={rowStrings}
+                  showSubject={showSubject}
                 />
               ))}
             </ul>

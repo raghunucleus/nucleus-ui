@@ -7,7 +7,11 @@ import {
   formatDateShort,
   type AttendanceStatusKind,
 } from '@/lib/attendance-status'
-import { shortTime, type SubjectSessionRow } from '@/lib/student-academics'
+import {
+  shortTime,
+  type AllSessionRow,
+  type SubjectSessionRow,
+} from '@/lib/student-academics'
 import { cn } from '@/lib/utils'
 
 export interface SubjectSessionRowStrings {
@@ -18,20 +22,28 @@ export interface SubjectSessionRowStrings {
   dateLabel?: (iso: string) => string
 }
 
+export type SessionRowData = SubjectSessionRow | AllSessionRow
+
+function hasSubject(s: SessionRowData): s is AllSessionRow {
+  return 'subject_name' in s
+}
+
 /**
- * One class of one subject, as a list item. Shared by the student and parent
- * portals (which were verbatim forks of each other) and by the calendar's
- * day-detail panel, where `hideDate` drops the date column because the panel
- * heading already carries it.
+ * One class, as a list item. Shared by the student and parent portals (which
+ * were verbatim forks of each other) and by the calendar's day-detail panel,
+ * where `hideDate` drops the date column because the panel heading already
+ * carries it. `showSubject` names the subject — the all-subjects view.
  */
 export function SubjectSessionListRow({
   session,
   strings,
   hideDate = false,
+  showSubject = false,
 }: {
-  session: SubjectSessionRow
+  session: SessionRowData
   strings: SubjectSessionRowStrings
   hideDate?: boolean
+  showSubject?: boolean
 }) {
   const kind = deriveSessionStatus(session)
   const time = session.start_time
@@ -59,6 +71,14 @@ export function SubjectSessionListRow({
         )}
       </div>
       <div className="min-w-0 flex-1 space-y-1">
+        {showSubject && hasSubject(session) ? (
+          <p className="text-sm font-medium leading-tight">
+            {session.subject_name}
+            <span className="ml-1.5 font-mono text-[11px] font-normal text-muted-foreground">
+              {session.subject_code}
+            </span>
+          </p>
+        ) : null}
         <div className="flex items-center gap-1.5">
           <StatusPill kind={kind}>{strings.statusLabel(kind)}</StatusPill>
           {session.is_substitute ? (

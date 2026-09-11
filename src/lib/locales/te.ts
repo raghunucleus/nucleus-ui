@@ -157,6 +157,7 @@ export const te: typeof en = {
     classes: '{{a}} / {{h}} తరగతులు',
     missed: '{{n}} మిస్',
     viewHistory: 'తరగతి చరిత్ర చూడండి',
+    viewAllClasses: 'అన్ని తరగతులు చూడండి',
     noDataTitle: 'ఇంకా హాజరు లేదు',
     noDataDesc:
       'ఇంకా హాజరు డేటా ఉన్న సబ్జెక్టులు లేవు. తరగతులు మొదలయ్యాక చూడండి.',
@@ -273,7 +274,18 @@ export const te: typeof en = {
     today: 'ఈరోజు',
     dayCount_one: '{{count}} తరగతి',
     dayCount_other: '{{count}} తరగతులు',
+    dayAbsent_one: '{{count}} గైర్హాజరు',
+    dayAbsent_other: '{{count}} గైర్హాజరు',
+    prevDay: 'మునుపటి రోజు',
+    nextDay: 'తదుపరి రోజు',
+    close: 'మూసివేయి',
+    tapDayHint: 'ఒక రోజుపై నొక్కి ఆ రోజు తరగతులు చూడండి.',
     summaryOther: 'ఇతర',
+    filterAllSubjects: 'అన్ని సబ్జెక్టులు',
+    allTitle: 'అన్ని తరగతులు',
+    allSubtitle: '{{count}} సెషన్లు · {{absent}} గైర్హాజరు',
+    allNoClassesYet: 'ఈ సెమిస్టర్‌లో ఇంకా తరగతులు నమోదు కాలేదు.',
+    allErrLoad: 'తరగతులు లోడ్ కాలేదు.',
   },
 
   devices: {

@@ -13,6 +13,8 @@ import { getSelectedStudentId, withParentAuth } from './parent-auth'
 // ---------------------------------------------------------------------------
 
 export type {
+  AllSessionRow,
+  AllSessionsResult,
   AttendanceMarkStatus,
   ClassSessionStatus,
   DashboardResult,
@@ -21,6 +23,7 @@ export type {
   ExamResultSubject,
   ExamResultsView,
   PaginatedHolidays,
+  SessionSubject,
   SubjectAttendanceRow,
   SubjectSessionRow,
   SubjectSessionsResult,
@@ -37,6 +40,7 @@ export {
 } from './student-academics'
 
 import type {
+  AllSessionsResult,
   DashboardResult,
   ExamResultsView,
   PaginatedHolidays,
@@ -89,6 +93,16 @@ export function fetchChildSubjectSessions(
   return withParentAuth((token) =>
     apiFetch<SubjectSessionsResult>(
       `/guardian/students/${id}/attendance/subject/${subjectId}/sessions`,
+      { token },
+    ),
+  )
+}
+
+export function fetchChildAllSessions(): Promise<AllSessionsResult> {
+  const id = requireSelectedStudent()
+  return withParentAuth((token) =>
+    apiFetch<AllSessionsResult>(
+      `/guardian/students/${id}/attendance/sessions`,
       { token },
     ),
   )

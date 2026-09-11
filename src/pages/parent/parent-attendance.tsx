@@ -196,31 +196,46 @@ function OverallCard({
   const summaryKey = 'attendance.summaryNone'
 
   return (
-    <Card className="p-5 sm:p-6">
-      <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
-        <div className="space-y-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {t('attendance.overall')}
-          </p>
-          <div className="flex items-end gap-1">
-            <span className="text-3xl font-semibold tracking-tight tabular-nums">
-              {percent.toFixed(1)}
-            </span>
-            <span className="pb-1.5 text-xl font-semibold text-muted-foreground">
-              %
-            </span>
+    <Card className="overflow-hidden">
+      <a
+        href="/attendance/all"
+        onClick={(e) => {
+          e.preventDefault()
+          parentNavigate('/attendance/all')
+        }}
+        aria-label={t('attendance.viewAllClasses')}
+        className="block p-5 transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:p-6"
+      >
+        <div className="grid gap-6 sm:grid-cols-[auto_1fr] sm:items-center">
+          <div className="space-y-1">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {t('attendance.overall')}
+            </p>
+            <div className="flex items-end gap-1">
+              <span className="text-3xl font-semibold tracking-tight tabular-nums">
+                {percent.toFixed(1)}
+              </span>
+              <span className="pb-1.5 text-xl font-semibold text-muted-foreground">
+                %
+              </span>
+            </div>
+            <Badge variant={meta.badge}>{t(STANDING_LABEL_KEY[standing])}</Badge>
           </div>
-          <Badge variant={meta.badge}>{t(STANDING_LABEL_KEY[standing])}</Badge>
+
+          <div className="space-y-2.5">
+            <Progress value={percent} indicatorClassName={meta.bar} />
+            <div className="flex items-start gap-2 text-sm text-muted-foreground">
+              <Icon className={cn('mt-0.5 size-4 shrink-0', meta.text)} />
+              <p>{t(summaryKey, { a: attended, h: held })}</p>
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-2.5">
-          <Progress value={percent} indicatorClassName={meta.bar} />
-          <div className="flex items-start gap-2 text-sm text-muted-foreground">
-            <Icon className={cn('mt-0.5 size-4 shrink-0', meta.text)} />
-            <p>{t(summaryKey, { a: attended, h: held })}</p>
-          </div>
+        <div className="mt-4 flex items-center justify-between border-t pt-3 text-[11px] font-medium text-muted-foreground">
+          <span>{t('attendance.viewAllClasses')}</span>
+          <ChevronRight className="size-3.5" />
         </div>
-      </div>
+      </a>
     </Card>
   )
 }
