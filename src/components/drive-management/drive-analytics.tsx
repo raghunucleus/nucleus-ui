@@ -357,6 +357,7 @@ export function KpiTile({
   value,
   sub,
   highlight,
+  foot,
 }: {
   icon: LucideIcon
   color: string
@@ -364,6 +365,8 @@ export function KpiTile({
   value: string
   sub: string
   highlight?: boolean
+  /** Optional row under `sub` — a period-over-period delta chip, typically. */
+  foot?: React.ReactNode
 }) {
   return (
     <Card
@@ -387,6 +390,7 @@ export function KpiTile({
       <p className="mt-0.5 truncate text-xs text-muted-foreground" title={sub}>
         {sub}
       </p>
+      {foot ? <div className="mt-1.5">{foot}</div> : null}
     </Card>
   )
 }

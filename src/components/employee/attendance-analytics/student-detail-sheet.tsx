@@ -74,8 +74,15 @@ export function StudentDetailSheet({
   threshold,
   sessionsRemaining,
   onClose,
+  load,
+  loadKey,
 }: {
-  range: AnalyticsRange
+  /** The incharge endpoint's pin. Omit (with `load`) on other surfaces. */
+  range?: AnalyticsRange
+  /** Alternative loader — the Insights screen answers from its own endpoint. */
+  load?: (studentId: number) => Promise<StudentDetailResult>
+  /** Cache key for `load`; must change whenever `load` would answer differently. */
+  loadKey?: string
   student: StudentRow | null
   /** The cutoff the opening list was drawn at, so the sheet agrees with it. */
   threshold: number
@@ -91,11 +98,13 @@ export function StudentDetailSheet({
   // Keyed on the student so reopening a different row refetches, and the
   // closed sheet holds no request at all.
   const { data, loading, error } = useAnalyticsQuery<StudentDetailResult | null>(
-    rangeKey(range, studentId),
-    () =>
-      studentId === null
-        ? Promise.resolve(null)
-        : fetchAnalyticsStudent(range, studentId),
+    range ? rangeKey(range, studentId) : `${loadKey ?? ''}|${studentId ?? ''}`,
+    () => {
+      if (studentId === null) return Promise.resolve(null)
+      if (load) return load(studentId)
+      if (range) return fetchAnalyticsStudent(range, studentId)
+      return Promise.resolve(null)
+    },
     'Could not load this student.',
   )
 
@@ -338,7 +347,7 @@ export function StudentDetailSheet({
                     strings={CALENDAR_STRINGS}
                     layout="stacked"
                     bounds={
-                      range.from && range.to
+                      range?.from && range?.to
                         ? { from: range.from, to: range.to }
                         : undefined
                     }

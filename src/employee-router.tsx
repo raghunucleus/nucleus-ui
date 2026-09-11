@@ -76,6 +76,24 @@ const EmployeePlacementCoordinatorDrivesPage = lazyRouteComponent(
   () => import('@/pages/employee/placement-coordinator-drives'),
 )
 const EmployeeHome = lazyRouteComponent(() => import('@/pages/employee/home'))
+const EmployeeInsightsOverviewPage = lazyRouteComponent(
+  () => import('@/pages/employee/insights-overview'),
+)
+const EmployeeInsightsAttendancePage = lazyRouteComponent(
+  () => import('@/pages/employee/insights-attendance'),
+)
+const EmployeeInsightsResultsPage = lazyRouteComponent(
+  () => import('@/pages/employee/insights-results'),
+)
+const EmployeeInsightsPlacementsPage = lazyRouteComponent(
+  () => import('@/pages/employee/insights-placements'),
+)
+const EmployeeInsightsStudentsPage = lazyRouteComponent(
+  () => import('@/pages/employee/insights-students'),
+)
+const EmployeeInsightsRequestsPage = lazyRouteComponent(
+  () => import('@/pages/employee/insights-requests'),
+)
 const EmployeeIdCardPage = lazyRouteComponent(
   () => import('@/pages/employee/id-card'),
 )
@@ -206,6 +224,84 @@ const attendanceAnalyticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/attendance/analytics',
   component: EmployeeAttendanceAnalyticsPage,
+})
+
+// The Insights module (HOD / dean / management). Paths must stay byte-identical
+// to the `web_route` values on the six `insights.*` screens. `?tab=` is the
+// deep-link target for the overview's attention feed, and the four scope keys
+// make a copied address reproduce the view (comma-separated positive ints;
+// anything else is dropped). The pages read them through the scope hook.
+const ID_LIST_RE = /^[1-9]\d*(,[1-9]\d*)*$/
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const WORD_RE = /^[a-z_]{1,32}$/
+// Each screen's own filters ride in the address too, so a saved view or a
+// copied link reproduces the whole state. Every key has a shape check.
+const INSIGHTS_SEARCH_KEYS: Record<string, RegExp> = {
+  department_ids: ID_LIST_RE,
+  programme_ids: ID_LIST_RE,
+  programme_admission_year_ids: ID_LIST_RE,
+  attendance_group_ids: ID_LIST_RE,
+  passout_years: ID_LIST_RE,
+  semester: /^[1-8]$/,
+  from: DATE_RE,
+  to: DATE_RE,
+  group_by: WORD_RE,
+  min_backlogs: /^[1-5]$/,
+  window: /^(7|30|90)$/,
+  compare: /^[dpb]:[1-9]\d*(,[dpb]:[1-9]\d*){0,3}$/,
+}
+const insightsTabSearch = (search: Record<string, unknown>) => {
+  const out: Record<string, string> = {}
+  if (typeof search.tab === 'string' && WORD_RE.test(search.tab)) {
+    out.tab = search.tab
+  }
+  for (const [k, re] of Object.entries(INSIGHTS_SEARCH_KEYS)) {
+    const v = search[k]
+    if (typeof v === 'string' && re.test(v)) out[k] = v
+  }
+  return out
+}
+
+const insightsOverviewRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/insights',
+  component: EmployeeInsightsOverviewPage,
+  validateSearch: insightsTabSearch,
+})
+
+const insightsAttendanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/insights/attendance',
+  component: EmployeeInsightsAttendancePage,
+  validateSearch: insightsTabSearch,
+})
+
+const insightsResultsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/insights/results',
+  component: EmployeeInsightsResultsPage,
+  validateSearch: insightsTabSearch,
+})
+
+const insightsPlacementsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/insights/placements',
+  component: EmployeeInsightsPlacementsPage,
+  validateSearch: insightsTabSearch,
+})
+
+const insightsStudentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/insights/students',
+  component: EmployeeInsightsStudentsPage,
+  validateSearch: insightsTabSearch,
+})
+
+const insightsRequestsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/insights/requests',
+  component: EmployeeInsightsRequestsPage,
+  validateSearch: insightsTabSearch,
 })
 
 const inchargeTemplatesRoute = createRoute({
@@ -420,6 +516,12 @@ const routeTree = rootRoute.addChildren([
   attendanceMarkSessionRoute,
   attendanceHistoryRoute,
   attendanceAnalyticsRoute,
+  insightsOverviewRoute,
+  insightsAttendanceRoute,
+  insightsResultsRoute,
+  insightsPlacementsRoute,
+  insightsStudentsRoute,
+  insightsRequestsRoute,
   inchargeTemplatesRoute,
   inchargeTemplateDetailRoute,
   inchargeScheduleRoute,

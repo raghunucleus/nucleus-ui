@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import {
+  BarChart3,
   BookOpen,
   Briefcase,
   ClipboardCheck,
@@ -15,6 +16,7 @@ import { useEmployeeAccess } from '@/hooks/use-screen-access'
 import { cn } from '@/lib/utils'
 
 const ICON_MAP: Record<string, LucideIcon> = {
+  BarChart3,
   BookOpen,
   GraduationCap,
   ClipboardCheck,

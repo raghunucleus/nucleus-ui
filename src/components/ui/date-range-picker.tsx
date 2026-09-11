@@ -39,6 +39,7 @@ export function DateRangePicker({
   align = 'end',
   className,
   triggerClassName,
+  size = 'default',
   'aria-label': ariaLabel = 'Date range',
 }: {
   /** 'YYYY-MM-DD', or '' for unset. */
@@ -54,6 +55,8 @@ export function DateRangePicker({
   align?: 'start' | 'end'
   className?: string
   triggerClassName?: string
+  /** `sm` = 32px trigger, for dense analytics headers. */
+  size?: 'sm' | 'default'
   'aria-label'?: string
 }) {
   const [open, setOpen] = useState(false)
@@ -82,7 +85,8 @@ export function DateRangePicker({
           aria-label={ariaLabel}
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            'h-9 gap-2 font-normal',
+            'gap-2 font-normal',
+            size === 'sm' ? 'h-8 text-xs' : 'h-9',
             active && 'rounded-r-none',
             triggerClassName,
           )}
@@ -102,7 +106,10 @@ export function DateRangePicker({
             aria-label={`Clear ${ariaLabel.toLowerCase()}`}
             title={`Clear ${ariaLabel.toLowerCase()}`}
             onClick={clear}
-            className="h-9 rounded-l-none border-l border-border px-2"
+            className={cn(
+              'rounded-l-none border-l border-border px-2',
+              size === 'sm' ? 'h-8' : 'h-9',
+            )}
           >
             <X className="size-4" />
           </Button>

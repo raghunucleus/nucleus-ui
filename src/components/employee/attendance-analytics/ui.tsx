@@ -524,6 +524,7 @@ export function ResultCard({
   scroll = true,
   scrollClassName,
   className,
+  actions,
   children,
 }: {
   summary?: React.ReactNode
@@ -533,11 +534,20 @@ export function ResultCard({
   scroll?: boolean
   scrollClassName?: string
   className?: string
+  /** Right-aligned controls on the readout strip (an expand button, say). */
+  actions?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <Card className={cn('relative isolate overflow-hidden p-0', className)}>
-      {summary ? <SummaryStrip>{summary}</SummaryStrip> : null}
+      {summary || actions ? (
+        <SummaryStrip>
+          {summary}
+          {actions ? (
+            <span className="ml-auto flex items-center gap-1">{actions}</span>
+          ) : null}
+        </SummaryStrip>
+      ) : null}
       {scroll ? (
         <div className={cn(RESULT_SCROLL, scrollClassName)}>{children}</div>
       ) : (

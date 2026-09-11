@@ -29,6 +29,8 @@ export interface ComboboxProps {
   invalid?: boolean
   id?: string
   className?: string
+  /** `sm` = 32px trigger, for dense analytics headers. */
+  size?: 'sm' | 'default'
   /**
    * Supply this to drive the options from a SERVER search: the query is handed
    * back on every keystroke and the local filter is skipped, because `options`
@@ -57,6 +59,7 @@ export function Combobox({
   invalid,
   id,
   className,
+  size = 'default',
   onQueryChange,
   loading,
   selectedOption,
@@ -243,7 +246,8 @@ export function Combobox({
       onClick={() => !disabled && setOpen((o) => !o)}
       onKeyDown={onTriggerKeyDown}
       className={cn(
-        'flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none transition',
+        'flex w-full items-center justify-between gap-2 rounded-md border border-input bg-background shadow-xs outline-none transition',
+        size === 'sm' ? 'h-8 px-2.5 text-xs' : 'h-9 px-3 text-sm',
         'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/30',
         'hover:bg-accent/40 hover:text-accent-foreground',
         'disabled:cursor-not-allowed disabled:opacity-50',

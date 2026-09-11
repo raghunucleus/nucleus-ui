@@ -597,11 +597,14 @@ export function TabBar({
   active,
   onChange,
   className,
+  size = 'default',
 }: {
   tabs: TabDef[]
   active: string
   onChange: (key: string) => void
   className?: string
+  /** `sm` = tighter tabs for dense analytics headers. */
+  size?: 'sm' | 'default'
 }) {
   return (
     <div className={cn('flex gap-1 overflow-x-auto border-b', className)}>
@@ -614,7 +617,8 @@ export function TabBar({
             type="button"
             onClick={() => onChange(t.key)}
             className={cn(
-              'flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+              'flex items-center gap-1.5 whitespace-nowrap border-b-2 font-medium transition-colors',
+              size === 'sm' ? 'px-2.5 py-1.5 text-xs' : 'px-3 py-2 text-sm',
               on
                 ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground',

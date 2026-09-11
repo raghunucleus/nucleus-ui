@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import {
   Award,
+  BarChart3,
   BookOpen,
   Briefcase,
   CalendarDays,
@@ -63,6 +64,7 @@ import { withGlobalLoader } from '@/stores/loader-store'
 import { useNetworkStore } from '@/stores/network-store'
 
 const ICON_MAP: Record<string, LucideIcon> = {
+  BarChart3,
   BookOpen,
   CalendarDays,
   GraduationCap,
@@ -103,6 +105,7 @@ const MODULE_TONES: Record<ToneName, { bg: string; text: string }> = {
 }
 
 const ICON_TONE: Record<string, ToneName> = {
+  BarChart3: 'violet',
   BookOpen: 'violet',
   CalendarDays: 'cyan',
   GraduationCap: 'blue',
