@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Cake,
   Droplet,
   Image as ImageIcon,
-  Lock,
   Mail,
   Phone,
   User,
@@ -11,7 +10,6 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { PageHeader } from '@/components/portal-layout'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -41,43 +39,51 @@ const ICONS: Record<HideableField, LucideIcon> = {
   gender: User,
 }
 
-export default function PrivacySettingsPage() {
+/**
+ * Settings → Privacy: which profile fields classmates can see. Explicit Save
+ * (not optimistic) so a burst of toggles is one request.
+ */
+export function PrivacyPanel() {
   const signOut = useAuthStore((state) => state.signOut)
+  // null = still loading (or failed — see `error`).
   const [hidden, setHidden] = useState<Set<HideableField> | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [saving, setSaving] = useState(false)
   // Confirm dialog for hiding the birthday (it also drops you from Birthdays).
   const [confirmBirthday, setConfirmBirthday] = useState(false)
 
   useEffect(() => {
-    document.title = 'Privacy — Nucleus'
-  }, [])
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetchProfilePrivacy()
-      setHidden(new Set(res.hidden))
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        signOut()
-        return
+    let alive = true
+    void (async () => {
+      try {
+        const res = await fetchProfilePrivacy()
+        if (alive) setHidden(new Set(res.hidden))
+      } catch (err) {
+        if (!alive) return
+        if (err instanceof ApiError && err.status === 401) {
+          signOut()
+          return
+        }
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load your privacy settings.',
+        )
       }
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Could not load your privacy settings.',
-      )
-    } finally {
-      setLoading(false)
+    })()
+    return () => {
+      alive = false
     }
-  }, [signOut])
+  }, [signOut, reloadKey])
 
-  useEffect(() => {
-    void load()
-  }, [load])
+  function retry() {
+    setError(null)
+    setHidden(null)
+    setReloadKey((k) => k + 1)
+  }
+
+  const loading = hidden === null && error === null
 
   function applyToggle(key: HideableField, visible: boolean) {
     setHidden((prev) => {
@@ -120,12 +126,10 @@ export default function PrivacySettingsPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Privacy"
-        subtitle="Choose what classmates can see on your profile. Your name and roll number are always visible."
-        icon={Lock}
-        accent="violet"
-      />
+      <p className="text-sm text-muted-foreground">
+        Choose what classmates can see on your profile. Your name and roll
+        number are always visible.
+      </p>
 
       {loading ? (
         <div className="flex justify-center py-16">
@@ -134,7 +138,7 @@ export default function PrivacySettingsPage() {
       ) : error ? (
         <div className="space-y-3 rounded-xl border p-6 text-center">
           <p className="text-sm text-muted-foreground">{error}</p>
-          <Button variant="outline" onClick={() => void load()}>
+          <Button variant="outline" onClick={retry}>
             Try again
           </Button>
         </div>

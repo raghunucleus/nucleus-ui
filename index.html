@@ -40,14 +40,15 @@
           /* localStorage unavailable — fall back to the light splash. */
         }
         try {
-          // Preset themes are for signed-in portals only: the login pages, the
-          // hub and the 404 always render the brand look (ThemePresetScope is
-          // what mounts the classes after boot, and this mirrors its gate).
+          // Preset themes are for the signed-in student and employee portals
+          // only: the login pages, the parent portal, the hub and the 404
+          // always render the brand look (ThemePresetScope is what mounts the
+          // classes after boot, and this mirrors its gate — the parent shell
+          // does not mount one, so its token must stay out of this list).
           // Key whitelist by shape — never class-inject freeform storage.
           var p = localStorage.getItem('nucleus-ui-theme-preset');
           var signedIn = [
             'nucleus.employee.accessToken',
-            'nucleus.parent.accessToken',
             'nucleus.student.accessToken',
           ].some(function (k) {
             return !!localStorage.getItem(k);

@@ -6,6 +6,7 @@ import {
   KeyRound,
   type LucideIcon,
   MonitorSmartphone,
+  Palette,
   User,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -14,6 +15,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { DevicesList } from '@/components/devices-list'
+import { ThemePanel } from '@/components/settings/theme-panel'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -42,6 +44,7 @@ import { useEmployeeAuthStore } from '@/stores/employee-auth-store'
 // 'profile'.
 export type EmployeeProfileSection =
   | 'profile'
+  | 'theme'
   | 'password'
   | 'notifications'
   | 'devices'
@@ -59,6 +62,12 @@ const navItems: NavItem[] = [
     label: 'Profile',
     description: 'Your account details',
     icon: User,
+  },
+  {
+    key: 'theme',
+    label: 'Theme',
+    description: 'Colour accent for the portal',
+    icon: Palette,
   },
   {
     key: 'password',
@@ -115,6 +124,7 @@ export default function EmployeeProfilePage() {
           </header>
 
           {section === 'profile' && <ProfileDetails />}
+          {section === 'theme' && <ThemePanel />}
           {section === 'password' && <ChangePasswordForm />}
           {section === 'notifications' && <NotificationPreferences />}
           {section === 'devices' && <SignedInDevices />}

@@ -28,7 +28,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ThemePresetMenuItems } from '@/components/theme-preset-menu'
 import { ThemePresetScope } from '@/components/theme-preset-scope'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { EmployeeAccessContext } from '@/hooks/use-screen-access'
@@ -176,7 +175,10 @@ export function EmployeePortalLayout() {
 
   return (
     <EmployeeAccessContext.Provider value={access}>
-      <div className="flex h-svh bg-background text-foreground">
+      {/* `portal-shell` / `app-header` (and the sidebar's `sidebar-panel`) are
+          hooks for the Glass preset's chrome (index.css) — keep them when
+          restyling the shell. */}
+      <div className="portal-shell flex h-svh bg-background text-foreground">
         {/* Keeps the notification socket connected and toasts arrivals on any
             employee page. Renders nothing. */}
         <EmployeeNotificationNotifier />
@@ -196,7 +198,7 @@ export function EmployeePortalLayout() {
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4 shadow-header sm:px-6">
+          <header className="app-header flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4 shadow-header sm:px-6">
             <Button
               variant="ghost"
               size="icon"
@@ -275,7 +277,6 @@ export function EmployeePortalLayout() {
                   >
                     <Settings /> Profile settings
                   </DropdownMenuItem>
-                  <ThemePresetMenuItems />
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     variant="destructive"

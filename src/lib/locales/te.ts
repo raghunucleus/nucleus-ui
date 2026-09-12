@@ -44,14 +44,6 @@ export const te: typeof en = {
 
   account: { switchStudent: 'విద్యార్థిని మార్చు', switch: 'మార్చు', collapse: 'కుదించు' },
 
-  theme: {
-    heading: 'థీమ్',
-    default: 'న్యూక్లియస్ బ్లూ',
-    violet: 'వైలెట్',
-    emerald: 'ఎమరాల్డ్',
-    slate: 'స్లేట్',
-  },
-
   loginChrome: {
     eyebrow: 'న్యూక్లియస్‌కు స్వాగతం',
     title: 'సైన్ ఇన్ చేయండి',

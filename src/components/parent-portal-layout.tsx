@@ -28,8 +28,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ThemePresetMenuItems } from '@/components/theme-preset-menu'
-import { ThemePresetScope } from '@/components/theme-preset-scope'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { parentLogout } from '@/lib/parent-auth'
 import { parentNavigate } from '@/lib/parent-nav'
@@ -148,8 +146,8 @@ export function ParentPortalLayout() {
 
   return (
     <div className="flex h-svh bg-background text-foreground">
-      {/* Signed-in shell → the chosen preset theme may apply. */}
-      <ThemePresetScope />
+      {/* No <ThemePresetScope /> here: the parent portal always renders the
+          brand look (light/dark only — no colour presets). */}
       <ParentSidebar
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
@@ -236,15 +234,6 @@ export function ParentPortalLayout() {
                     <Users /> {t('account.switchStudent')}
                   </DropdownMenuItem>
                 )}
-                <ThemePresetMenuItems
-                  heading={t('theme.heading')}
-                  labels={{
-                    default: t('theme.default'),
-                    violet: t('theme.violet'),
-                    emerald: t('theme.emerald'),
-                    slate: t('theme.slate'),
-                  }}
-                />
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"

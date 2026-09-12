@@ -310,6 +310,16 @@
    single-class light blocks, which is what lets a light preset set
    `--foreground` without bleeding into dark mode.
 
+   Presets ported from central-ui's "Everyday themes" (sky … glass) take two
+   further liberties: they pin `--brand-g1..3` explicitly (central's gradient
+   is not derivable from its primary) — in BOTH blocks, because the light
+   block's pins would otherwise persist into dark mode on the same element —
+   and the dark block sets `--primary-foreground` (a lifted dark primary pairs
+   with tinted dark ink, exactly as central does). Glass is the one preset
+   with element chrome; its rules sit right after the anchor blocks and hook
+   `.portal-shell` / `.app-header` (both shells), `.sidebar-panel` (employee),
+   the `data-slot` overlays and card-shaped `bg-card` containers.
+
    Never referenced from a preset: --nucleus-*, --hub-*, --brand-panel-*,
    --icon-*, --chart-*, --google-*. The logo mark, the portal hub, the login
    panel and the module / chart palettes are brand, not preference. The
@@ -389,6 +399,380 @@
   --card: #262a30;
   --popover: #262a30;
   --sidebar: #101216;
+}
+
+/* -----------------------------------------------------------------------------
+   Ported from central-ui's "Everyday themes". Light `--brand-secondary` is the
+   stop that carries `bg-secondary` / `to-secondary` — chosen to differ from the
+   primary by hue or lightness and to keep white text legible; the gradient is
+   pinned separately by `--brand-g1..3`, so adjusting one never moves the other.
+   ---------------------------------------------------------------------------- */
+
+/* --- Sky — classic light blue, airy and unfussy. --- */
+.theme-sky {
+  --brand-primary: #0284c7;
+  --brand-secondary: #2563eb;
+  --brand-accent: #38bdf8;
+  --brand-g1: #38bdf8;
+  --brand-g2: #0ea5e9;
+  --brand-g3: #2563eb;
+  --background: #f2f8fd;
+  --foreground: oklch(0.2 0.02 240);
+  --sidebar: #f9fcfe;
+}
+.dark.theme-sky {
+  --brand-primary: #38bdf8;
+  --brand-secondary: #7dd3fc;
+  --brand-accent: #bae6fd;
+  --brand-g1: #38bdf8;
+  --brand-g2: #7dd3fc;
+  --brand-g3: #bae6fd;
+  --primary-foreground: #082f49;
+  --background: #171e26;
+  --card: #1f2833;
+  --popover: #1f2833;
+  --sidebar: #0e141b;
+}
+
+/* --- Sakura — soft pink, warm blush surfaces. --- */
+.theme-sakura {
+  --brand-primary: #db2777;
+  --brand-secondary: #9d174d;
+  --brand-accent: #f472b6;
+  --brand-g1: #f472b6;
+  --brand-g2: #db2777;
+  --brand-g3: #e11d48;
+  --background: #fbf1f6;
+  --foreground: oklch(0.2 0.02 354);
+  --sidebar: #fdf9fb;
+}
+.dark.theme-sakura {
+  --brand-primary: #f472b6;
+  --brand-secondary: #f9a8d4;
+  --brand-accent: #fbcfe8;
+  --brand-g1: #f472b6;
+  --brand-g2: #f9a8d4;
+  --brand-g3: #fbcfe8;
+  --primary-foreground: #500724;
+  --background: #251a20;
+  --card: #2f2129;
+  --popover: #2f2129;
+  --sidebar: #180f14;
+}
+
+/* --- Neon Pulse — cyberpunk magenta; electric on a near-black indigo dark. --- */
+.theme-neon {
+  --brand-primary: #c026d3;
+  --brand-secondary: #0891b2;
+  --brand-accent: #e879f9;
+  --brand-g1: #0891b2;
+  --brand-g2: #a21caf;
+  --brand-g3: #c026d3;
+  --background: #faf3fc;
+  --foreground: oklch(0.19 0.03 322);
+  --sidebar: #fdf9fe;
+}
+.dark.theme-neon {
+  --brand-primary: #e879f9;
+  --brand-secondary: #f0abfc;
+  --brand-accent: #f5d0fe;
+  /* Keeps central's cyan lead stop; every stop clears 6:1 under the dark ink. */
+  --brand-g1: #22d3ee;
+  --brand-g2: #e879f9;
+  --brand-g3: #f0abfc;
+  --primary-foreground: #4a044e;
+  --background: #0d0a14;
+  --card: #171224;
+  --popover: #171224;
+  --sidebar: #080611;
+}
+
+/* --- Sunset — warm amber; cream light, ember dark. --- */
+.theme-sunset {
+  --brand-primary: #c2410c;
+  --brand-secondary: #e11d48;
+  --brand-accent: #fb923c;
+  --brand-g1: #fb923c;
+  --brand-g2: #ea580c;
+  --brand-g3: #e11d48;
+  --background: #fdf5ef;
+  --foreground: oklch(0.21 0.02 45);
+  --sidebar: #fefaf6;
+}
+.dark.theme-sunset {
+  --brand-primary: #fb923c;
+  --brand-secondary: #fdba74;
+  --brand-accent: #fed7aa;
+  --brand-g1: #fb923c;
+  --brand-g2: #fdba74;
+  --brand-g3: #fed7aa;
+  --primary-foreground: #431407;
+  --background: #241c17;
+  --card: #2e241e;
+  --popover: #2e241e;
+  --sidebar: #17100b;
+}
+
+/* --- Ocean — teal sea-glass. --- */
+.theme-ocean {
+  --brand-primary: #0d9488;
+  --brand-secondary: #0284c7;
+  --brand-accent: #2dd4bf;
+  --brand-g1: #2dd4bf;
+  --brand-g2: #0d9488;
+  --brand-g3: #0284c7;
+  --background: #f0f8f7;
+  --foreground: oklch(0.2 0.02 183);
+  --sidebar: #f7fcfb;
+}
+.dark.theme-ocean {
+  --brand-primary: #2dd4bf;
+  --brand-secondary: #5eead4;
+  --brand-accent: #99f6e4;
+  --brand-g1: #2dd4bf;
+  --brand-g2: #5eead4;
+  --brand-g3: #99f6e4;
+  --primary-foreground: #042f2e;
+  --background: #16211f;
+  --card: #1e2b29;
+  --popover: #1e2b29;
+  --sidebar: #0d1514;
+}
+
+/* --- Crimson — deep carmine (kept off --destructive's orange-red). --- */
+.theme-crimson {
+  --brand-primary: #be123c;
+  --brand-secondary: #881337;
+  --brand-accent: #fb7185;
+  --brand-g1: #fb7185;
+  --brand-g2: #e11d48;
+  --brand-g3: #be123c;
+  --background: #fcf3f5;
+  --foreground: oklch(0.2 0.02 13);
+  --sidebar: #fdf8f9;
+}
+.dark.theme-crimson {
+  --brand-primary: #fb7185;
+  --brand-secondary: #fda4af;
+  --brand-accent: #fecdd3;
+  --brand-g1: #fb7185;
+  --brand-g2: #fda4af;
+  --brand-g3: #fecdd3;
+  --primary-foreground: #4c0519;
+  --background: #241a1c;
+  --card: #2e2225;
+  --popover: #2e2225;
+  --sidebar: #170f11;
+}
+
+/* --- Midnight — indigo corporate classic, the violet preset's cooler sibling. --- */
+.theme-midnight {
+  --brand-primary: #4f46e5;
+  --brand-secondary: #7c3aed;
+  --brand-accent: #818cf8;
+  --brand-g1: #818cf8;
+  --brand-g2: #4f46e5;
+  --brand-g3: #7c3aed;
+  --background: #f3f4fc;
+  --foreground: oklch(0.19 0.025 277);
+  --sidebar: #f9fafe;
+}
+.dark.theme-midnight {
+  --brand-primary: #818cf8;
+  --brand-secondary: #a5b4fc;
+  --brand-accent: #c7d2fe;
+  --brand-g1: #818cf8;
+  --brand-g2: #a5b4fc;
+  --brand-g3: #c7d2fe;
+  --primary-foreground: #1e1b4b;
+  --background: #1c1c2a;
+  --card: #252536;
+  --popover: #252536;
+  --sidebar: #111120;
+}
+
+/* --- Gold — champagne light, black-and-gold dark. --- */
+.theme-gold {
+  --brand-primary: #a16207;
+  --brand-secondary: #ca8a04;
+  --brand-accent: #facc15;
+  --brand-g1: #ca8a04;
+  --brand-g2: #a16207;
+  --brand-g3: #854d0e;
+  --background: #fdf8ee;
+  --foreground: oklch(0.21 0.02 85);
+  --sidebar: #fefbf4;
+}
+.dark.theme-gold {
+  --brand-primary: #facc15;
+  --brand-secondary: #fde047;
+  --brand-accent: #fef08a;
+  --brand-g1: #facc15;
+  --brand-g2: #fde047;
+  --brand-g3: #fef08a;
+  --primary-foreground: #422006;
+  --background: #211d15;
+  --card: #2b261c;
+  --popover: #2b261c;
+  --sidebar: #15120c;
+}
+
+/* --- Glass — liquid glass: frosted translucent chrome over an ambient aurora.
+   Anchors here; element chrome in the unlayered rules just below. HARD RULE:
+   --card / --popover stay OPAQUE — translucency lives on ELEMENTS (the
+   --glass-* tokens), never on those tokens, so anything that paints from the
+   resolved card colour (exports, canvases) keeps working. --- */
+.theme-glass {
+  --brand-primary: #007aff;
+  --brand-secondary: #5e5ce6;
+  --brand-accent: #5ac8fa;
+  --brand-g1: #5ac8fa;
+  --brand-g2: #007aff;
+  --brand-g3: #5e5ce6;
+  --background: #eef3f9;
+  --foreground: oklch(0.24 0.03 255);
+  --sidebar: #f6f9fc;
+  /* Softer Apple corners; cascades to --radius-sm/md/lg/xl via @theme inline. */
+  --radius: 0.75rem;
+  /* Translucent cool hairlines — out-rank the .themed mixes by file order. */
+  --border: rgba(30, 48, 80, 0.14);
+  --input: rgba(30, 48, 80, 0.22);
+  /* Private glass tokens: one set per mode keeps every chrome rule below
+     mode-agnostic. */
+  --glass-blur: 20px;
+  --glass-saturate: 1.5;
+  --glass-panel: rgba(255, 255, 255, 0.6);
+  --glass-overlay: rgba(255, 255, 255, 0.72);
+  --glass-card: rgba(255, 255, 255, 0.78);
+  --glass-rim: rgba(255, 255, 255, 0.72);
+  --glass-specular: rgba(255, 255, 255, 0.95);
+  --glass-shadow: rgba(20, 40, 80, 0.16);
+}
+.dark.theme-glass {
+  --brand-primary: #0a84ff;
+  --brand-secondary: #64d2ff;
+  --brand-accent: #5e5ce6;
+  --brand-g1: #0a84ff;
+  --brand-g2: #64d2ff;
+  --brand-g3: #5e5ce6;
+  /* White on Apple blue, as central pairs it (3.7:1 — accepted). */
+  --primary-foreground: #ffffff;
+  --background: #0c111c;
+  --card: #151b2a;
+  --popover: #151b2a;
+  --sidebar: #070b13;
+  --border: rgba(190, 215, 255, 0.14);
+  --input: rgba(190, 215, 255, 0.22);
+  --glass-panel: rgba(18, 25, 42, 0.55);
+  --glass-overlay: rgba(20, 27, 44, 0.66);
+  --glass-card: rgba(255, 255, 255, 0.06);
+  --glass-rim: rgba(255, 255, 255, 0.12);
+  --glass-specular: rgba(255, 255, 255, 0.22);
+  --glass-shadow: rgba(0, 0, 0, 0.55);
+}
+
+/* -----------------------------------------------------------------------------
+   Glass chrome. Deliberately UNLAYERED so it out-ranks the utilities on the
+   elements it frosts. Only ever active under `.theme-glass`.
+   ---------------------------------------------------------------------------- */
+
+/* Ambient aurora on a fixed pseudo-element — NOT `background-attachment:
+   fixed`, which iOS Safari ignores. A fixed element holds still whether the
+   shell scrolls the document (student) or an inner pane (employee). z-index -1
+   puts it under the content but over the canvas (body's own background
+   propagates there), so the shell root has to go transparent below. */
+.theme-glass body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(
+      50rem 34rem at 10% -6%,
+      color-mix(in srgb, var(--primary) 16%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(44rem 30rem at 90% 8%, rgba(94, 92, 230, 0.12), transparent 62%),
+    radial-gradient(48rem 32rem at 45% 110%, rgba(90, 200, 250, 0.14), transparent 62%);
+}
+.dark.theme-glass body::before {
+  background-image:
+    radial-gradient(
+      50rem 34rem at 10% -6%,
+      color-mix(in srgb, var(--primary) 13%, transparent),
+      transparent 62%
+    ),
+    radial-gradient(44rem 30rem at 90% 8%, rgba(94, 92, 230, 0.09), transparent 62%),
+    radial-gradient(48rem 32rem at 45% 110%, rgba(100, 210, 255, 0.06), transparent 62%);
+}
+.theme-glass .portal-shell {
+  background-color: transparent;
+}
+
+/* Shell chrome — the header (both shells) and the employee sidebar. */
+.theme-glass .app-header {
+  background-color: var(--glass-panel);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-bottom-color: var(--glass-rim);
+  box-shadow:
+    inset 0 1px 0 var(--glass-specular),
+    0 1px 12px -8px var(--glass-shadow);
+}
+.theme-glass .sidebar-panel {
+  background-color: var(--glass-panel);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-right-color: var(--glass-rim);
+  box-shadow: 4px 0 24px -16px var(--glass-shadow);
+}
+
+/* Overlays — the strongest glass (they float over dimmed content). */
+.theme-glass [data-slot='dialog-content'],
+.theme-glass [data-slot='sheet-content'] {
+  background-color: var(--glass-overlay);
+  -webkit-backdrop-filter: blur(28px) saturate(var(--glass-saturate));
+  backdrop-filter: blur(28px) saturate(var(--glass-saturate));
+  border-color: var(--glass-rim);
+  box-shadow:
+    inset 0 1px 0 var(--glass-specular),
+    0 24px 64px -24px var(--glass-shadow);
+}
+.theme-glass [data-slot='dropdown-menu-content'] {
+  background-color: var(--glass-overlay);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-color: var(--glass-rim);
+  box-shadow:
+    inset 0 1px 0 var(--glass-specular),
+    0 12px 36px -14px var(--glass-shadow);
+}
+
+/* In-flow cards — frost WITHOUT backdrop-filter (dashboards mount dozens).
+   Matches the `Card` component AND the many raw `rounded-* border bg-card`
+   containers by shape, so the whole page frosts, not just one component.
+   Left opaque on purpose: sticky table heads / frozen columns, floating
+   `rounded-full` badges, `bg-card/80` bars and the header (own rule above).
+   Anything the selector misses simply stays opaque — fail-safe. */
+.theme-glass
+  :where(
+    [data-slot='card'],
+    .bg-card.border:is(.rounded-lg, .rounded-xl, .rounded-2xl)
+  ):not(.sticky, .absolute, .fixed) {
+  background-color: var(--glass-card);
+  border-color: var(--glass-rim);
+  box-shadow:
+    inset 0 1px 0 var(--glass-specular),
+    0 1px 2px rgba(20, 40, 80, 0.06),
+    0 12px 32px -18px var(--glass-shadow);
+}
+
+/* Paper must never inherit the aurora. */
+@media print {
+  .theme-glass body::before {
+    display: none;
+  }
 }
 
 /* Map CSS vars into Tailwind v4's @theme so utilities like

@@ -3,6 +3,7 @@ import {
   createRoute,
   createRouter,
   lazyRouteComponent,
+  redirect,
 } from '@tanstack/react-router'
 
 import { PortalLayout } from '@/components/portal-layout'
@@ -14,6 +15,7 @@ import {
   type DriveFilter,
   type InviteFilter,
 } from '@/lib/student-placements'
+import { isSettingsTab, type SettingsTab } from '@/lib/student-settings'
 
 // Every page is its own chunk, fetched on first navigation (or on link hover —
 // see `defaultPreload`). Only the layout and NotFound are static: they render
@@ -26,8 +28,7 @@ const ProfileGroup = lazyRouteComponent(() => import('@/pages/profile-group'))
 const ProfileUpdateRequest = lazyRouteComponent(
   () => import('@/pages/profile-update-request'),
 )
-const PrivacySettings = lazyRouteComponent(() => import('@/pages/privacy-settings'))
-const Devices = lazyRouteComponent(() => import('@/pages/devices'))
+const Settings = lazyRouteComponent(() => import('@/pages/settings'))
 const Timetable = lazyRouteComponent(() => import('@/pages/timetable'))
 const Attendance = lazyRouteComponent(() => import('@/pages/attendance'))
 const AttendanceSubject = lazyRouteComponent(
@@ -91,17 +92,44 @@ const profileGroupRoute = createRoute({
   component: ProfileGroup,
 })
 
-const privacyRoute = createRoute({
+// Account → Settings: Privacy / Display / Theme / Change password / Devices as
+// tabs of one page. `?tab=` picks the section; the page opens Privacy when it
+// is absent or unrecognised.
+const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: '/privacy',
-  component: PrivacySettings,
+  path: '/settings',
+  component: Settings,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: SettingsTab } => ({
+    tab: isSettingsTab(search.tab) ? search.tab : undefined,
+  }),
 })
 
-// Reached from the account dropdown (next to Privacy) — signed-in devices.
-const devicesRoute = createRoute({
+// Privacy and Devices used to be pages of their own; old bookmarks land on the
+// matching Settings tab. `replace` keeps Back from bouncing off the dead URL.
+const privacyRedirectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/privacy',
+  beforeLoad: () => {
+    throw redirect({
+      to: '/settings',
+      search: { tab: 'privacy' },
+      replace: true,
+    })
+  },
+})
+
+const devicesRedirectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/devices',
-  component: Devices,
+  beforeLoad: () => {
+    throw redirect({
+      to: '/settings',
+      search: { tab: 'devices' },
+      replace: true,
+    })
+  },
 })
 
 const timetableRoute = createRoute({
@@ -269,8 +297,9 @@ const routeTree = rootRoute.addChildren([
   profileRoute,
   profileUpdateRequestRoute,
   profileGroupRoute,
-  privacyRoute,
-  devicesRoute,
+  settingsRoute,
+  privacyRedirectRoute,
+  devicesRedirectRoute,
   timetableRoute,
   attendanceRoute,
   attendanceAllRoute,

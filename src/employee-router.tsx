@@ -471,7 +471,10 @@ const profileRoute = createRoute({
     // Anything unrecognised falls back to 'profile' — so every valid section
     // must be listed here or it silently redirects to the wrong tab.
     const section: EmployeeProfileSection =
-      raw === 'password' || raw === 'notifications' || raw === 'devices'
+      raw === 'theme' ||
+      raw === 'password' ||
+      raw === 'notifications' ||
+      raw === 'devices'
         ? raw
         : 'profile'
     return { section }

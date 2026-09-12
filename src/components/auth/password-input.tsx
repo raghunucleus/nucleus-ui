@@ -11,6 +11,11 @@ type Props = {
   onChange: (next: string) => void
   autoComplete: string
   autoFocus?: boolean
+  /**
+   * `lg` (the default) is the auth-form height; in-app settings forms pass
+   * `default` so the field lines up with every other `h-9` control.
+   */
+  inputSize?: 'default' | 'lg'
   /** Renders a "forgot password" link beside the label when supplied. */
   onForgot?: () => void
   /**
@@ -24,11 +29,12 @@ type Props = {
 }
 
 /**
- * Labelled password field with a show/hide toggle, shared by all three logins.
+ * Labelled password field with a show/hide toggle, shared by all three logins
+ * and the student Settings page.
  *
- * The toggle is `w-10` inside an `h-10` field: an overlay wider than the
- * control is tall reads as a mis-scaled control, which is what `w-11` in an
- * `h-9` input used to look like.
+ * The toggle is as wide as the field is tall (`w-10` in an `h-10` field, `w-9`
+ * in an `h-9` one): an overlay wider than the control is tall reads as a
+ * mis-scaled control, which is what `w-11` in an `h-9` input used to look like.
  */
 export function PasswordInput({
   id,
@@ -37,12 +43,14 @@ export function PasswordInput({
   onChange,
   autoComplete,
   autoFocus,
+  inputSize = 'lg',
   onForgot,
   forgotLabel = 'Forgot password?',
   showLabel = 'Show password',
   hideLabel = 'Hide password',
 }: Props) {
   const [shown, setShown] = useState(false)
+  const large = inputSize === 'lg'
 
   return (
     <div className="space-y-1.5">
@@ -61,19 +69,19 @@ export function PasswordInput({
       <div className="relative">
         <Input
           id={id}
-          inputSize="lg"
+          inputSize={inputSize}
           type={shown ? 'text' : 'password'}
           autoComplete={autoComplete}
           autoFocus={autoFocus}
           required
-          className="pr-10"
+          className={large ? 'pr-10' : 'pr-9'}
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
         <button
           type="button"
           onClick={() => setShown((v) => !v)}
-          className="absolute inset-y-0 right-0 grid w-10 place-items-center text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none"
+          className={`absolute inset-y-0 right-0 grid ${large ? 'w-10' : 'w-9'} place-items-center text-muted-foreground transition-colors hover:text-foreground focus-visible:text-foreground focus-visible:outline-none`}
           aria-label={shown ? hideLabel : showLabel}
         >
           {shown ? <EyeOff className="size-4" /> : <Eye className="size-4" />}

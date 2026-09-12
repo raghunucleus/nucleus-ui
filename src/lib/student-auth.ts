@@ -179,6 +179,22 @@ export function studentChangePassword(
   })
 }
 
+/**
+ * Voluntary change from Settings. Goes through `withAuth`, unlike the
+ * first-login variant above (which holds a token the store does not yet own):
+ * an expired access token is refreshed and retried silently, while a wrong
+ * current password — also a 401 — comes back with the server's message. The
+ * server signs out every other device and rotates this one's pair.
+ */
+export function studentChangeOwnPassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<AuthTokens> {
+  return withAuth((token) =>
+    studentChangePassword(token, currentPassword, newPassword),
+  )
+}
+
 export function studentForgotPassword(
   identifier: string,
 ): Promise<{ message: string }> {

@@ -1,9 +1,8 @@
 import { Link, Outlet } from '@tanstack/react-router'
 import {
   ArrowLeft,
-  Lock,
   LogOut,
-  MonitorSmartphone,
+  Settings,
   UserRound,
   type LucideIcon,
 } from 'lucide-react'
@@ -25,7 +24,6 @@ import { ModulesDrawer } from '@/components/modules-drawer'
 import { NotificationBell } from '@/components/notification-bell'
 import { NotificationNotifier } from '@/components/notification-notifier'
 import { PageHeader as SharedPageHeader } from '@/components/ui/page-header'
-import { ThemePresetMenuItems } from '@/components/theme-preset-menu'
 import { ThemePresetScope } from '@/components/theme-preset-scope'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { MODULE_GRADIENT, type ModuleColor } from '@/lib/modules'
@@ -56,13 +54,15 @@ export function PortalLayout() {
   }
 
   return (
-    <div className="min-h-svh bg-background text-foreground">
+    <div className="portal-shell min-h-svh bg-background text-foreground">
+      {/* `portal-shell` above and `app-header` below are hooks for the Glass
+          preset's chrome (index.css) — keep them when restyling the shell. */}
       {/* App-wide toasts, available on every signed-in page. */}
       <ChatNotifier />
       <NotificationNotifier />
       {/* Signed-in shell → the chosen preset theme may apply. */}
       <ThemePresetScope />
-      <header className="sticky top-0 z-10 border-b bg-card shadow-header">
+      <header className="app-header sticky top-0 z-10 border-b bg-card shadow-header">
         <div className="mx-auto grid h-12 max-w-5xl grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6">
           <Link to="/" className="flex w-fit items-center" aria-label="Nucleus home">
             <NucleusLogo />
@@ -94,18 +94,11 @@ export function PortalLayout() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/privacy">
-                    <Lock />
-                    Privacy
+                  <Link to="/settings">
+                    <Settings />
+                    Settings
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/devices">
-                    <MonitorSmartphone />
-                    Devices
-                  </Link>
-                </DropdownMenuItem>
-                <ThemePresetMenuItems />
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
@@ -144,6 +137,7 @@ export function PageHeader({
   backTo = '/',
   backLabel = 'Back to dashboard',
   actions,
+  tabs,
 }: {
   title: string
   /**
@@ -161,11 +155,15 @@ export function PageHeader({
   backLabel?: string
   /** Trailing controls, pushed to the far edge of the heading row. */
   actions?: React.ReactNode
+  /** A `<TabsBar className="border-b-0" …/>` — shares the title row on wide
+   * screens and drops to its own row below `lg`. */
+  tabs?: React.ReactNode
 }) {
   return (
     <SharedPageHeader
       title={title}
       actions={actions}
+      tabs={tabs}
       leading={
         <>
           <Link
