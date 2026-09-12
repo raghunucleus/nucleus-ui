@@ -1,6 +1,5 @@
 import { useParams, useSearch } from '@tanstack/react-router'
 import {
-  ArrowLeft,
   Ban,
   BarChart3,
   BellRing,
@@ -72,6 +71,7 @@ import {
 import { ChannelPicker } from '@/components/employee/channel-picker'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
 import { StudentSearchPanel } from '@/components/employee/student-search/student-search-panel'
+import { BackButton } from '@/components/ui/back-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -85,6 +85,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { PageHeader } from '@/components/ui/page-header'
 import { Pagination } from '@/components/ui/pagination'
 import {
   Table,
@@ -304,119 +305,121 @@ export default function EmployeeDriveDetailPage() {
       </div>
     )
   }
-  if (loading || !drive) {
-    return (
-      <div className="mx-auto max-w-4xl rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
-        {loadError ?? 'Loading…'}
-      </div>
-    )
-  }
-
   return (
     <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 pb-4">
-      <div className="shrink-0 space-y-3 pt-1">
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
+      <PageHeader
+        leading={
+          <BackButton
+            iconOnly
+            label="Back to drives"
             onClick={() => employeeNavigateTo(from ?? LIST_ROUTE)}
-          >
-            <ArrowLeft className="size-4" /> Back
-          </Button>
-          <CompanyLogo
-            name={drive.company.name}
-            logoUrl={drive.company.logo_url}
-            className="size-10 shrink-0"
           />
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-semibold tracking-tight">
-              {drive.drive_name}
-            </h1>
-            <p className="truncate text-sm text-muted-foreground">
-              {drive.company.name}
-            </p>
-            {drive.company.website ? (
-              <a
-                href={companyWebsiteHref(drive.company.website)}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="mt-0.5 inline-flex max-w-full items-center gap-1 text-xs text-icon-blue hover:underline"
-              >
-                <Globe className="size-3 shrink-0" />
-                <span className="truncate">
-                  {companyWebsiteLabel(drive.company.website)}
-                </span>
-              </a>
-            ) : null}
-          </div>
+        }
+        title={drive?.drive_name ?? 'Drive'}
+      />
 
-          <div className="flex items-center gap-2">
-            <Badge variant={driveStatusVariant(drive.status)}>
-              {DRIVE_STATUS_LABELS[drive.status]}
-            </Badge>
-            {canEdit && (
-              <NativeSelect
-                aria-label="Drive status"
-                value={drive.status}
-                disabled={savingStatus || drive.status === 'archived'}
-                onChange={(e) => onStatusChange(e.target.value as DriveStatus)}
-                className="w-44"
-              >
-                {/* Only the current status + its legal next states, so illegal
-                    moves are unreachable (the server also enforces this). */}
-                {driveStatusOptions(drive.status).map((s) => (
-                  <option key={s} value={s}>
-                    {DRIVE_STATUS_LABELS[s]}
-                  </option>
-                ))}
-              </NativeSelect>
-            )}
-            {canEdit && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  employeeNavigateTo(`${LIST_ROUTE}/${drive.id}/edit`)
-                }
-              >
-                <Pencil className="size-4" /> Edit drive
-              </Button>
-            )}
-          </div>
+      {loading || !drive ? (
+        <div className="mx-auto w-full max-w-4xl rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+          {loadError ?? 'Loading…'}
         </div>
+      ) : (
+        <>
+          <div className="shrink-0 space-y-3 pt-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <CompanyLogo
+                name={drive.company.name}
+                logoUrl={drive.company.logo_url}
+                className="size-8 shrink-0"
+              />
+              <span className="min-w-0 truncate text-sm font-medium">
+                {drive.company.name}
+              </span>
+              {drive.company.website ? (
+                <a
+                  href={companyWebsiteHref(drive.company.website)}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex min-w-0 items-center gap-1 text-xs text-icon-blue hover:underline"
+                >
+                  <Globe className="size-3 shrink-0" />
+                  <span className="truncate">
+                    {companyWebsiteLabel(drive.company.website)}
+                  </span>
+                </a>
+              ) : null}
 
-        <TabsBar tabs={TABS} value={tab} onChange={setTab} />
-      </div>
+              <div className="ml-auto flex items-center gap-2">
+                <Badge variant={driveStatusVariant(drive.status)}>
+                  {DRIVE_STATUS_LABELS[drive.status]}
+                </Badge>
+                {canEdit && (
+                  <NativeSelect
+                    aria-label="Drive status"
+                    value={drive.status}
+                    disabled={savingStatus || drive.status === 'archived'}
+                    onChange={(e) =>
+                      onStatusChange(e.target.value as DriveStatus)
+                    }
+                    className="w-44"
+                  >
+                    {/* Only the current status + its legal next states, so
+                        illegal moves are unreachable (the server also
+                        enforces this). */}
+                    {driveStatusOptions(drive.status).map((s) => (
+                      <option key={s} value={s}>
+                        {DRIVE_STATUS_LABELS[s]}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                )}
+                {canEdit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      employeeNavigateTo(`${LIST_ROUTE}/${drive.id}/edit`)
+                    }
+                  >
+                    <Pencil className="size-4" /> Edit drive
+                  </Button>
+                )}
+              </div>
+            </div>
 
-      <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto">
-        {tab === 'overview' && <OverviewTab drive={drive} />}
-        {tab === 'analytics' && <DriveAnalyticsTab driveId={drive.id} />}
-        {tab === 'eligibility' && (
-          <EligibilityTab
-            driveId={drive.id}
-            canEdit={canEdit}
-            onEligibilitySaved={() => setFilterSeedKey((k) => k + 1)}
-          />
-        )}
-        {filterVisited && (
-          <div className={tab === 'filter' ? 'h-full' : 'hidden'}>
-            <DriveFilterTab
-              key={filterSeedKey}
-              driveId={drive.id}
-              canEdit={canEdit}
-              onImported={() => setStudentsRefreshKey((k) => k + 1)}
-            />
+            <TabsBar tabs={TABS} value={tab} onChange={setTab} />
           </div>
-        )}
-        {tab === 'students' && (
-          <DriveStudentsTab
-            drive={drive}
-            canEdit={canEdit}
-            drivePublished={drive.status === 'published'}
-            refreshKey={studentsRefreshKey}
-          />
-        )}
-      </div>
+
+          <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto">
+            {tab === 'overview' && <OverviewTab drive={drive} />}
+            {tab === 'analytics' && <DriveAnalyticsTab driveId={drive.id} />}
+            {tab === 'eligibility' && (
+              <EligibilityTab
+                driveId={drive.id}
+                canEdit={canEdit}
+                onEligibilitySaved={() => setFilterSeedKey((k) => k + 1)}
+              />
+            )}
+            {filterVisited && (
+              <div className={tab === 'filter' ? 'h-full' : 'hidden'}>
+                <DriveFilterTab
+                  key={filterSeedKey}
+                  driveId={drive.id}
+                  canEdit={canEdit}
+                  onImported={() => setStudentsRefreshKey((k) => k + 1)}
+                />
+              </div>
+            )}
+            {tab === 'students' && (
+              <DriveStudentsTab
+                drive={drive}
+                canEdit={canEdit}
+                drivePublished={drive.status === 'published'}
+                refreshKey={studentsRefreshKey}
+              />
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }

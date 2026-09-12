@@ -33,8 +33,6 @@ export const en = {
   brand: { parentPortal: 'Parent portal' },
 
   a11y: {
-    expandMenu: 'Expand menu',
-    collapseMenu: 'Collapse menu',
     openAccount: 'Open account menu',
     parentHome: 'Parent home',
     expandSidebar: 'Expand sidebar',
@@ -119,7 +117,6 @@ export const en = {
     greetMorning: 'Good morning',
     greetAfternoon: 'Good afternoon',
     greetEvening: 'Good evening',
-    subtitle: "Here's how {{name}} is doing.",
     statAttendance: 'Attendance',
     statCgpa: 'CGPA',
     statBacklogs: 'Backlogs',
@@ -146,7 +143,6 @@ export const en = {
   },
 
   profile: {
-    subtitle: "Your account and the student you're viewing.",
     viewingStudent: 'Viewing student',
     noStudent: 'No student selected.',
     allLinked: 'All linked students',
@@ -205,7 +201,6 @@ export const en = {
 
   exam: {
     title: 'Exam results',
-    subtitleFallback: 'Academic results',
     cgpaLabel: 'Cumulative GPA',
     summary: '{{n}} semesters · {{credits}} credits',
     backlogs_one: '{{count}} active backlog',
@@ -235,8 +230,6 @@ export const en = {
 
   holidays: {
     title: 'Academic holidays',
-    subtitle:
-      'College holidays and no-class days. Upcoming first — switch to Past for earlier ones.',
     tabUpcoming: 'Upcoming',
     tabPast: 'Past',
     emptyUpcoming: 'No upcoming holidays. Check the Past tab for earlier breaks.',
@@ -251,7 +244,6 @@ export const en = {
   subject: {
     titleFallback: 'Subject attendance',
     backToAttendance: 'Back to attendance',
-    subtitle: '{{code}} · {{n}} sessions · {{absent}} absent',
     filterAll: 'All classes',
     filterAbsent: 'Only absent',
     showingAbsent: 'Showing {{n}} absent of {{total}} total',
@@ -291,7 +283,6 @@ export const en = {
     summaryOther: 'Other',
     filterAllSubjects: 'All subjects',
     allTitle: 'All classes',
-    allSubtitle: '{{count}} sessions · {{absent}} absent',
     allNoClassesYet: 'No classes recorded this semester yet.',
     allErrLoad: "Couldn't load the classes.",
   },

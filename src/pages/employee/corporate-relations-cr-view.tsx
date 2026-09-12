@@ -887,10 +887,7 @@ export default function EmployeeCrViewPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <PageHeader
-        title="CR View"
-        subtitle="The job roles you are accountable for, one passout year at a time."
-      />
+      <PageHeader title="CR View" />
 
       {!scopeLoaded ? (
         <div className="h-[70vh] animate-pulse rounded-xl bg-muted" />

@@ -246,7 +246,16 @@ export default function EmployeePlacementCoordinatorStudentsPage() {
       <PageHeader
         icon={UserCheck}
         title="Students"
-        subtitle="Placement readiness for the batches you verify."
+        tabs={
+          batches.length > 0 ? (
+            <TabsBar
+              tabs={TABS}
+              value={tab}
+              onChange={setTab}
+              className="border-b-0"
+            />
+          ) : undefined
+        }
         actions={
           batches.length > 0 && (
             <div className="min-w-64">
@@ -276,8 +285,6 @@ export default function EmployeePlacementCoordinatorStudentsPage() {
         </div>
       ) : (
         <>
-          <TabsBar tabs={TABS} value={tab} onChange={setTab} />
-
           {/* The search panel needs a height-bounded parent; the analytics tab
               scrolls on its own. Both are kept mounted-on-demand so switching
               tabs refetches rather than holding two result sets. */}

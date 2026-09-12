@@ -1,6 +1,5 @@
 import { useParams } from '@tanstack/react-router'
 import {
-  ArrowLeft,
   Briefcase,
   Building2,
   CalendarDays,
@@ -42,11 +41,13 @@ import {
   formatPlacementDateTime,
 } from '@/components/placement-invite'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
+import { BackButton } from '@/components/ui/back-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { RichTextView } from '@/components/ui/rich-text/rich-text-view'
 import { Input } from '@/components/ui/input'
+import { PageHeader } from '@/components/ui/page-header'
 import { Pagination } from '@/components/ui/pagination'
 import {
   Table,
@@ -158,64 +159,66 @@ export default function EmployeePlacementCoordinatorDriveDetailPage() {
       </div>
     )
   }
-  if (loading || !drive) {
-    return (
-      <div className="mx-auto max-w-4xl rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
-        {loadError ?? 'Loading…'}
-      </div>
-    )
-  }
-
   return (
     <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 pb-4">
-      <div className="shrink-0 space-y-3 pt-1">
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
+      <PageHeader
+        leading={
+          <BackButton
+            iconOnly
+            label="Back to drives"
             onClick={() => employeeNavigateTo(LIST_ROUTE)}
-          >
-            <ArrowLeft className="size-4" /> Back
-          </Button>
-          <CompanyLogo
-            name={drive.company.name}
-            logoUrl={drive.company.logo_url}
-            className="size-10 shrink-0"
           />
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-lg font-semibold tracking-tight">
-              {drive.drive_name}
-            </h1>
-            <p className="truncate text-sm text-muted-foreground">
-              {drive.company.name}
-            </p>
-            {drive.company.website ? (
-              <a
-                href={companyWebsiteHref(drive.company.website)}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="mt-0.5 inline-flex max-w-full items-center gap-1 text-xs text-icon-blue hover:underline"
+        }
+        title={drive?.drive_name ?? 'Drive'}
+      />
+
+      {loading || !drive ? (
+        <div className="mx-auto w-full max-w-4xl rounded-xl border bg-card p-8 text-center text-sm text-muted-foreground">
+          {loadError ?? 'Loading…'}
+        </div>
+      ) : (
+        <>
+          <div className="shrink-0 space-y-3 pt-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <CompanyLogo
+                name={drive.company.name}
+                logoUrl={drive.company.logo_url}
+                className="size-8 shrink-0"
+              />
+              <span className="min-w-0 truncate text-sm font-medium">
+                {drive.company.name}
+              </span>
+              {drive.company.website ? (
+                <a
+                  href={companyWebsiteHref(drive.company.website)}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex min-w-0 items-center gap-1 text-xs text-icon-blue hover:underline"
+                >
+                  <Globe className="size-3 shrink-0" />
+                  <span className="truncate">
+                    {companyWebsiteLabel(drive.company.website)}
+                  </span>
+                </a>
+              ) : null}
+
+              <Badge
+                variant={driveStatusVariant(drive.status)}
+                className="ml-auto"
               >
-                <Globe className="size-3 shrink-0" />
-                <span className="truncate">
-                  {companyWebsiteLabel(drive.company.website)}
-                </span>
-              </a>
-            ) : null}
+                {DRIVE_STATUS_LABELS[drive.status]}
+              </Badge>
+            </div>
+
+            <TabsBar tabs={TABS} value={tab} onChange={setTab} />
           </div>
 
-          <Badge variant={driveStatusVariant(drive.status)}>
-            {DRIVE_STATUS_LABELS[drive.status]}
-          </Badge>
-        </div>
-
-        <TabsBar tabs={TABS} value={tab} onChange={setTab} />
-      </div>
-
-      <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto">
-        {tab === 'overview' && <OverviewTab drive={drive} />}
-        {tab === 'students' && <StudentsTab driveId={drive.id} />}
-      </div>
+          <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto">
+            {tab === 'overview' && <OverviewTab drive={drive} />}
+            {tab === 'students' && <StudentsTab driveId={drive.id} />}
+          </div>
+        </>
+      )}
     </div>
   )
 }

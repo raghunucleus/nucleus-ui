@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { DatePicker } from '@/components/ui/date-picker'
+import { PageHeader } from '@/components/ui/page-header'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import { ApiError } from '@/lib/api'
 import {
@@ -78,30 +79,24 @@ export default function EmployeeAttendanceMarkPage() {
 
   return (
     <section className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <ClipboardCheck className="size-6 text-icon-emerald" />
-            Mark attendance
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Your classes on {formatHumanDate(date)}. Tap a session to mark
-            students.
-          </p>
-        </div>
-        <DateBar
-          date={date}
-          onPrev={() =>
-            setDate(toIsoDate(addDays(new Date(`${date}T00:00:00`), -1)))
-          }
-          onNext={() =>
-            setDate(toIsoDate(addDays(new Date(`${date}T00:00:00`), 1)))
-          }
-          onToday={() => setDate(toIsoDate(new Date()))}
-          onChange={setDate}
-          loading={loading}
-        />
-      </header>
+      <PageHeader
+        title="Mark attendance"
+        icon={ClipboardCheck}
+        actions={
+          <DateBar
+            date={date}
+            onPrev={() =>
+              setDate(toIsoDate(addDays(new Date(`${date}T00:00:00`), -1)))
+            }
+            onNext={() =>
+              setDate(toIsoDate(addDays(new Date(`${date}T00:00:00`), 1)))
+            }
+            onToday={() => setDate(toIsoDate(new Date()))}
+            onChange={setDate}
+            loading={loading}
+          />
+        }
+      />
 
       {error ? (
         <ErrorBanner message={error} onRetry={() => load(date)} />

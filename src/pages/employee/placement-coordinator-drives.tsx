@@ -324,11 +324,7 @@ export default function EmployeePlacementCoordinatorDrivesPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <PageHeader
-        icon={UserCheck}
-        title="Drives"
-        subtitle="Placement drives open to your programmes and passout years."
-      />
+      <PageHeader icon={UserCheck} title="Drives" />
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">

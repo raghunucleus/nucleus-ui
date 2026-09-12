@@ -79,11 +79,7 @@ export default function EmployeeDriveAttributesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <PageHeader
-        icon={SlidersHorizontal}
-        title="Drive Attributes"
-        subtitle="Configure the classifiers placement drives can be tagged with."
-      />
+      <PageHeader icon={SlidersHorizontal} title="Drive Attributes" />
 
       <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
         <nav className="flex gap-1 overflow-x-auto sm:flex-col sm:overflow-visible">

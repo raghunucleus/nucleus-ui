@@ -7,7 +7,6 @@ import {
   Home,
   LogOut,
   type LucideIcon,
-  Menu,
   PalmtreeIcon,
   PanelLeftClose,
   PanelLeftOpen,
@@ -29,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { HeaderSlotContext } from '@/hooks/use-header-slot'
 import { parentLogout } from '@/lib/parent-auth'
 import { parentNavigate } from '@/lib/parent-nav'
 import { cn } from '@/lib/utils'
@@ -114,6 +114,9 @@ export function ParentPortalLayout() {
   const switchChild = useParentAuthStore((s) => s.switchChild)
   const signOut = useParentAuthStore((s) => s.signOut)
   const [signingOut, setSigningOut] = useState(false)
+  // The header's title slot — each page's `PageHeader` portals its heading
+  // into it (see src/hooks/use-header-slot.ts).
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null)
 
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (typeof window === 'undefined') return false
@@ -145,6 +148,7 @@ export function ParentPortalLayout() {
   }
 
   return (
+    <HeaderSlotContext.Provider value={headerSlot}>
     <div className="flex h-svh bg-background text-foreground">
       {/* No <ThemePresetScope /> here: the parent portal always renders the
           brand look (light/dark only — no colour presets). */}
@@ -154,20 +158,17 @@ export function ParentPortalLayout() {
       />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-card px-4 shadow-header sm:px-6">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="-ml-2"
-            onClick={() => setCollapsed((c) => !c)}
-            aria-label={collapsed ? t('a11y.expandMenu') : t('a11y.collapseMenu')}
-            aria-expanded={!collapsed}
-            aria-controls="parent-sidebar"
-          >
-            <Menu />
-          </Button>
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-card px-4 shadow-header sm:gap-3 sm:px-6">
+          {/* Page title slot — the active page's `PageHeader` portals its back
+              link, icon and title here. The sidebar's collapse toggle lives in
+              the sidebar footer. */}
+          <div
+            ref={setHeaderSlot}
+            data-slot="header-title"
+            className="flex min-w-0 flex-1 items-center gap-2"
+          />
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5">
             {/* Child-context chip — only for guardians with more than one linked
                 student, since its purpose is switching between them. A single-
                 child guardian has nothing to switch to, so we hide it. */}
@@ -258,6 +259,7 @@ export function ParentPortalLayout() {
         </main>
       </div>
     </div>
+    </HeaderSlotContext.Provider>
   )
 }
 

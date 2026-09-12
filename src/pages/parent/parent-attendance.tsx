@@ -9,7 +9,6 @@ import {
   TriangleAlert,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { TFunction } from 'i18next'
 
 import { PageHeader } from '@/components/portal-layout'
 import { StateView } from '@/components/state-view'
@@ -56,11 +55,6 @@ function standingFor(pct: number): Standing {
 export default function ParentAttendance() {
   const { t } = useTranslation()
   const signOut = useParentAuthStore((s) => s.signOut)
-  const programmeName = useParentAuthStore(
-    (s) =>
-      (s.students.find((x) => x.id === s.selectedStudentId) ?? s.students[0])
-        ?.programme?.name ?? null,
-  )
   const [dashboard, setDashboard] = useState<DashboardResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -91,13 +85,10 @@ export default function ParentAttendance() {
     void load()
   }, [load])
 
-  const subtitle = subtitleFor(t, programmeName, dashboard)
-
   return (
     <>
       <PageHeader
         title={t('attendance.title')}
-        subtitle={subtitle}
         icon={ClipboardCheck}
         accent="emerald"
       />
@@ -124,19 +115,6 @@ export default function ParentAttendance() {
       )}
     </>
   )
-}
-
-function subtitleFor(
-  t: TFunction,
-  programmeName: string | null,
-  dashboard: DashboardResult | null,
-): string | undefined {
-  const parts: string[] = []
-  if (programmeName) parts.push(programmeName)
-  if (dashboard?.semester_number) {
-    parts.push(t('attendance.semester', { n: dashboard.semester_number }))
-  }
-  return parts.length > 0 ? parts.join(' · ') : undefined
 }
 
 function ContentLoaded({ data }: { data: DashboardResult }) {

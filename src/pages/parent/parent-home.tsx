@@ -120,20 +120,18 @@ export default function ParentHome() {
     void load()
   }, [load])
 
+  const greeting = `${t(greetingKey())}${guardian ? `, ${guardian.display_name.split(' ')[0]}` : ''}`
+
   return (
     <>
       <PageHeader
-        title={`${t(greetingKey())}${guardian ? `, ${guardian.display_name.split(' ')[0]}` : ''}`}
-        subtitle={
-          child
-            ? t('home.subtitle', { name: child.display_name.split(' ')[0] })
-            : undefined
-        }
+        title={t('nav.home')}
         icon={CalendarDays}
         accent="blue"
-        backTo="/"
-        backLabel={t('brand.parentPortal')}
+        backTo={null}
       />
+
+      <p className="text-base font-semibold tracking-tight">{greeting}</p>
 
       {child ? <IdentityCard child={child} data={data} /> : null}
 

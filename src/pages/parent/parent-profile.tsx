@@ -62,7 +62,6 @@ export default function ParentProfile() {
     <>
       <PageHeader
         title={t('nav.profile')}
-        subtitle={t('profile.subtitle')}
         icon={UserRound}
         accent="violet"
       />

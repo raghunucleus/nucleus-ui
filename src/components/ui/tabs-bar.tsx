@@ -44,9 +44,11 @@ function useOverflowFade(
  *
  * The strip scrolls horizontally when it does not fit (no visible scrollbar;
  * a trailing fade says "more to the right") instead of wrapping or shoving
- * its neighbours, so a header row that holds a title, six tabs and an actions
- * cluster can never overlap. Below `lg`, put the whole bar on its own row
- * (`PageHeader` does this for you).
+ * its neighbours, so a row that holds six tabs and an actions cluster can
+ * never overlap. Pass it to `PageHeader`'s `tabs`: in the employee and parent
+ * portals that makes it the first row of the page, flush at the content's
+ * left edge (the title lives in the app header); in the student portal it
+ * shares the title row and drops onto its own row below `lg`.
  *
  * - `actions` render at the trailing edge (`ml-auto`) — filters, pickers, a
  *   "Views" menu.

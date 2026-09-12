@@ -7,7 +7,6 @@ import {
   Lock,
   LockOpen,
   LogOut,
-  Menu,
   PanelLeftClose,
   Settings,
 } from 'lucide-react'
@@ -30,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ThemePresetScope } from '@/components/theme-preset-scope'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { HeaderSlotContext } from '@/hooks/use-header-slot'
 import { EmployeeAccessContext } from '@/hooks/use-screen-access'
 import { fetchEmployeeAccess, type EffectiveAccess } from '@/lib/employee-access'
 import {
@@ -80,6 +80,10 @@ export function EmployeePortalLayout() {
   const [accessError, setAccessError] = useState<string | null>(null)
   const [profile, setProfile] = useState<EmployeeProfile | null>(null)
   const [signingOut, setSigningOut] = useState(false)
+  // The header's title slot. `PageHeader` portals each page's heading into it
+  // (see src/hooks/use-header-slot.ts); a callback ref keeps it in state so the
+  // context re-renders consumers once the node exists.
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null)
 
   // Persisted sidebar preference. true → pinned open. false → auto-hide rail
   // that expands on hover (central-ui style). First visit: pinned open on
@@ -175,6 +179,7 @@ export function EmployeePortalLayout() {
 
   return (
     <EmployeeAccessContext.Provider value={access}>
+    <HeaderSlotContext.Provider value={headerSlot}>
       {/* `portal-shell` / `app-header` (and the sidebar's `sidebar-panel`) are
           hooks for the Glass preset's chrome (index.css) — keep them when
           restyling the shell. */}
@@ -198,25 +203,23 @@ export function EmployeePortalLayout() {
         />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="app-header flex h-12 shrink-0 items-center gap-3 border-b bg-card px-4 shadow-header sm:px-6">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="-ml-2"
-              onClick={() => setSidebarLocked((l) => !l)}
-              aria-label={sidebarLocked ? 'Auto-hide menu' : 'Pin menu open'}
-              aria-expanded={sidebarLocked}
-              aria-controls="employee-sidebar"
-            >
-              <Menu />
-            </Button>
+          <header className="app-header flex h-12 shrink-0 items-center gap-2 border-b bg-card px-4 shadow-header sm:gap-3 sm:px-6">
+            {/* Page title slot — the active page's `PageHeader` portals its
+                back control, icon and title here, so page tabs start flush at
+                the content's left edge. Sidebar pin/auto-hide lives in the
+                sidebar footer. */}
+            <div
+              ref={setHeaderSlot}
+              data-slot="header-title"
+              className="flex min-w-0 flex-1 items-center gap-2"
+            />
 
             <MenuSearchTrigger
-              className="ml-auto"
+              className="shrink-0"
               onOpen={() => setSearchOpen(true)}
             />
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-1.5">
               <Button
                 variant="outline"
                 size="icon"
@@ -310,6 +313,7 @@ export function EmployeePortalLayout() {
           </main>
         </div>
       </div>
+    </HeaderSlotContext.Provider>
     </EmployeeAccessContext.Provider>
   )
 }

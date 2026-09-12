@@ -55,26 +55,10 @@ export default function ParentAttendanceAll() {
     [t, i18n.language],
   )
 
-  const sessions = data?.sessions ?? []
-  const absentCount = sessions.filter(
-    (s) => s.attendance_status === 'absent',
-  ).length
-  const subtitle = data
-    ? [
-        data.semester.semester_number
-          ? t('attendance.semester', { n: data.semester.semester_number })
-          : null,
-        t('subject.allSubtitle', { count: sessions.length, absent: absentCount }),
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : undefined
-
   return (
     <>
       <PageHeader
         title={t('subject.allTitle')}
-        subtitle={subtitle}
         icon={ClipboardCheck}
         accent="emerald"
         backTo="/attendance"

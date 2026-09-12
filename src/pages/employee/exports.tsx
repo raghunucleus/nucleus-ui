@@ -122,7 +122,6 @@ export default function EmployeeExportsPage() {
     <div className="mx-auto max-w-3xl space-y-4">
       <PageHeader
         title="My exports"
-        subtitle="Files stay downloadable for 24 hours, then expire."
         actions={
           <Button variant="outline" size="sm" onClick={() => void load()}>
             <RefreshCw />

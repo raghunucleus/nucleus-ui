@@ -61,23 +61,10 @@ export default function ParentAttendanceSubject() {
     [t, i18n.language],
   )
 
-  const sessions = data?.sessions ?? []
-  const absentCount = sessions.filter(
-    (s) => s.attendance_status === 'absent',
-  ).length
-  const subtitle = data?.subject
-    ? t('subject.subtitle', {
-        code: data.subject.code,
-        n: sessions.length,
-        absent: absentCount,
-      })
-    : undefined
-
   return (
     <>
       <PageHeader
         title={data?.subject?.name ?? t('subject.titleFallback')}
-        subtitle={subtitle}
         icon={ClipboardCheck}
         accent="emerald"
         backTo="/attendance"

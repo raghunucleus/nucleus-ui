@@ -44,13 +44,7 @@ export default function EmployeeIdCardPage() {
     void load()
   }, [load])
 
-  const header = (
-    <PageHeader
-      icon={IdCardIcon}
-      title="ID Card"
-      subtitle="Your digital employee identity card."
-    />
-  )
+  const header = <PageHeader icon={IdCardIcon} title="ID Card" />
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">

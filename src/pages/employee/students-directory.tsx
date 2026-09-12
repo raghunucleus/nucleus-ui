@@ -41,11 +41,7 @@ export default function EmployeeStudentsDirectoryPage() {
 
   return (
     <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 pb-4">
-      <PageHeader
-        className="shrink-0"
-        title="Student directory"
-        subtitle="Search, filter and export students within your assigned scope."
-      />
+      <PageHeader title="Student directory" />
       <div className="min-h-0 flex-1">
         <StudentSearchPanel
           api={API}

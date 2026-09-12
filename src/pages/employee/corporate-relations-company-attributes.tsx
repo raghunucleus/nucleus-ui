@@ -62,11 +62,7 @@ export default function EmployeeCompanyAttributesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <PageHeader
-        icon={SlidersHorizontal}
-        title="Company Attributes"
-        subtitle="Configure the categories companies can be tagged with, the relationship types and current statuses CR View records against, and the passout years."
-      />
+      <PageHeader icon={SlidersHorizontal} title="Company Attributes" />
 
       <div className="grid gap-4 sm:grid-cols-[200px_1fr]">
         <nav className="flex gap-1 overflow-x-auto sm:flex-col sm:overflow-visible">

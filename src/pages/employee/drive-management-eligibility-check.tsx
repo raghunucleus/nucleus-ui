@@ -263,11 +263,7 @@ export default function EmployeeEligibilityCheckPage() {
 
   return (
     <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 pb-4">
-      <PageHeader
-        className="shrink-0"
-        title="Students & Eligibility"
-        subtitle="Filter the whole institution with the drive filter set — check who would qualify before creating a drive."
-      />
+      <PageHeader title="Students & Eligibility" />
       <div className="min-h-0 flex-1">
         <StudentSearchPanel
           api={API}

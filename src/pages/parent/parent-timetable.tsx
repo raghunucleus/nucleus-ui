@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   CalendarDays,
   ChevronLeft,
@@ -39,11 +39,6 @@ const ALL_DAYS = [1, 2, 3, 4, 5, 6, 7] as const
 export default function ParentTimetable() {
   const { t } = useTranslation()
   const signOut = useParentAuthStore((s) => s.signOut)
-  const programmeName = useParentAuthStore(
-    (s) =>
-      (s.students.find((x) => x.id === s.selectedStudentId) ?? s.students[0])
-        ?.programme?.name ?? null,
-  )
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()))
   const [selectedDay, setSelectedDay] = useState<number>(() => isoToday())
   const [cellsCache, setCellsCache] = useState<Map<string, WeekCell[]>>(
@@ -104,15 +99,6 @@ export default function ParentTimetable() {
     void load(weekStart, selectedDay)
   }, [cacheKey, load, weekStart, selectedDay])
 
-  const subtitle = useMemo(() => {
-    const parts: string[] = []
-    if (programmeName) parts.push(programmeName)
-    const start = toIsoDate(weekStart)
-    const end = toIsoDate(addDays(weekStart, 6))
-    parts.push(formatWeekRange(start, end))
-    return parts.join(' · ')
-  }, [programmeName, weekStart])
-
   const cachedCells = cellsCache.get(cacheKey)
   const todaysCells = cachedCells ?? []
   const dayLoading = loading && cachedCells === undefined
@@ -122,7 +108,6 @@ export default function ParentTimetable() {
     <>
       <PageHeader
         title={t('timetable.title')}
-        subtitle={subtitle}
         icon={CalendarDays}
         accent="blue"
       />

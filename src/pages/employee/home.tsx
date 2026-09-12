@@ -37,10 +37,7 @@ export default function EmployeeHome() {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Welcome"
-        subtitle="Pick a module to get started. Only the modules and screens your role grants are shown."
-      />
+      <PageHeader title="Home" />
 
       {!access ? (
         <div className="rounded-md border border-dashed bg-muted/20 px-6 py-12 text-center text-sm text-muted-foreground">

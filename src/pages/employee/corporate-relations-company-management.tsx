@@ -114,7 +114,6 @@ export default function EmployeeCompanyManagementPage() {
     <div className="mx-auto max-w-7xl space-y-5">
       <PageHeader
         title="Company Management"
-        subtitle="Manage the recruiting-company catalog."
         actions={
           actions.includes('create') && (
             <Button onClick={() => navigateTo(`${BASE_ROUTE}/new`)}>

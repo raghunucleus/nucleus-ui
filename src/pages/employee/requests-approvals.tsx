@@ -1,14 +1,6 @@
 import { useSearch } from '@tanstack/react-router'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  ArrowLeft,
-  Check,
-  CircleAlert,
-  Inbox,
-  RefreshCw,
-  Undo2,
-  X,
-} from 'lucide-react'
+import { Check, CircleAlert, Inbox, RefreshCw, Undo2, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { formatDate } from '@/components/corporate-relations/bits'
@@ -35,6 +27,7 @@ import {
   StatusChips,
   type StatusFilter,
 } from '@/components/requests/status-chips'
+import { BackButton } from '@/components/ui/back-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
@@ -180,10 +173,7 @@ function Approvals({ actions }: { actions: string[] }) {
 
   return (
     <div className="space-y-4">
-      <PageHeader
-        title="Approvals"
-        subtitle="Requests routed to you — from students of the batches you verify, the attendance groups you are in-charge of, and approvals assigned to you."
-      />
+      <PageHeader title="Approvals" />
 
       <StatusChips
         value={status}
@@ -389,57 +379,53 @@ function ApprovalDetail({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button size="sm" variant="outline" onClick={onBack}>
-            <ArrowLeft className="size-4" /> Back
-          </Button>
-          <div>
-            <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-              {typeLabel(catalog, row.request_type)}
-              <Badge variant={requestStatusVariant(row.status)}>
-                {REQUEST_STATUS_LABELS[row.status] ?? row.status}
-              </Badge>
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Submitted {formatDate(row.created_at)}
-            </p>
-          </div>
-        </div>
-        {decidable && (
-          <div className="flex flex-wrap items-center gap-2">
-            {canSendBack && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setSendingBack(true)}
-              >
-                <Undo2 className="size-4" /> Send back
-              </Button>
-            )}
-            {!renderer.perItem && canReject && (
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => setRejecting(true)}
-              >
-                <X className="size-4" /> Reject
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant={plan.kind === 'reject' ? 'destructive' : 'default'}
-              onClick={() => setConfirming(true)}
-            >
-              {plan.kind === 'reject' ? (
-                <X className="size-4" />
-              ) : (
-                <Check className="size-4" />
+      <PageHeader
+        leading={
+          <BackButton iconOnly label="Back to approvals" onClick={onBack} />
+        }
+        title={typeLabel(catalog, row.request_type)}
+        actions={
+          decidable && (
+            <>
+              {canSendBack && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setSendingBack(true)}
+                >
+                  <Undo2 className="size-4" /> Send back
+                </Button>
               )}
-              {planLabel}
-            </Button>
-          </div>
-        )}
+              {!renderer.perItem && canReject && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => setRejecting(true)}
+                >
+                  <X className="size-4" /> Reject
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant={plan.kind === 'reject' ? 'destructive' : 'default'}
+                onClick={() => setConfirming(true)}
+              >
+                {plan.kind === 'reject' ? (
+                  <X className="size-4" />
+                ) : (
+                  <Check className="size-4" />
+                )}
+                {planLabel}
+              </Button>
+            </>
+          )
+        }
+      />
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Badge variant={requestStatusVariant(row.status)}>
+          {REQUEST_STATUS_LABELS[row.status] ?? row.status}
+        </Badge>
+        <span>Submitted {formatDate(row.created_at)}</span>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[20rem_1fr] lg:items-start">

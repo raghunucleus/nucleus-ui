@@ -29,8 +29,6 @@ export const te: typeof en = {
   brand: { parentPortal: 'తల్లిదండ్రుల పోర్టల్' },
 
   a11y: {
-    expandMenu: 'మెను విస్తరించు',
-    collapseMenu: 'మెను కుదించు',
     openAccount: 'ఖాతా మెను తెరువు',
     parentHome: 'తల్లిదండ్రుల హోమ్',
     expandSidebar: 'సైడ్‌బార్ విస్తరించు',
@@ -115,7 +113,6 @@ export const te: typeof en = {
     greetMorning: 'శుభోదయం',
     greetAfternoon: 'శుభ మధ్యాహ్నం',
     greetEvening: 'శుభ సాయంత్రం',
-    subtitle: '{{name}} ఎలా ఉన్నారో ఇక్కడ చూడండి.',
     statAttendance: 'హాజరు',
     statCgpa: 'CGPA',
     statBacklogs: 'బ్యాక్‌లాగ్‌లు',
@@ -138,7 +135,6 @@ export const te: typeof en = {
   },
 
   profile: {
-    subtitle: 'మీ ఖాతా, మీరు చూస్తున్న విద్యార్థి.',
     viewingStudent: 'చూస్తున్న విద్యార్థి',
     noStudent: 'విద్యార్థి ఎంపిక కాలేదు.',
     allLinked: 'లింక్ చేయబడిన విద్యార్థులందరూ',
@@ -197,7 +193,6 @@ export const te: typeof en = {
 
   exam: {
     title: 'పరీక్ష ఫలితాలు',
-    subtitleFallback: 'విద్యా ఫలితాలు',
     cgpaLabel: 'సంచిత GPA',
     summary: '{{n}} సెమిస్టర్లు · {{credits}} క్రెడిట్లు',
     backlogs_one: '{{count}} యాక్టివ్ బ్యాక్‌లాగ్',
@@ -227,8 +222,6 @@ export const te: typeof en = {
 
   holidays: {
     title: 'విద్యా సెలవులు',
-    subtitle:
-      "కాలేజీ సెలవులు, తరగతులు లేని రోజులు. రాబోయేవి ముందు — పాతవాటికి 'గతం'కి మారండి.",
     tabUpcoming: 'రాబోయేవి',
     tabPast: 'గతం',
     emptyUpcoming: "రాబోయే సెలవులు లేవు. ముందటి విరామాలకు 'గతం' ట్యాబ్ చూడండి.",
@@ -243,7 +236,6 @@ export const te: typeof en = {
   subject: {
     titleFallback: 'సబ్జెక్టు హాజరు',
     backToAttendance: 'హాజరుకు తిరిగి',
-    subtitle: '{{code}} · {{n}} సెషన్లు · {{absent}} గైర్హాజరు',
     filterAll: 'అన్ని తరగతులు',
     filterAbsent: 'గైర్హాజరు మాత్రమే',
     showingAbsent: 'మొత్తం {{total}}లో {{n}} గైర్హాజరు చూపుతోంది',
@@ -283,7 +275,6 @@ export const te: typeof en = {
     summaryOther: 'ఇతర',
     filterAllSubjects: 'అన్ని సబ్జెక్టులు',
     allTitle: 'అన్ని తరగతులు',
-    allSubtitle: '{{count}} సెషన్లు · {{absent}} గైర్హాజరు',
     allNoClassesYet: 'ఈ సెమిస్టర్‌లో ఇంకా తరగతులు నమోదు కాలేదు.',
     allErrLoad: 'తరగతులు లోడ్ కాలేదు.',
   },

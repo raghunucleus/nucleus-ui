@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ArrowLeft,
   ChevronRight,
   CircleAlert,
   ClipboardList,
@@ -30,6 +29,7 @@ import {
   StatusChips,
   type StatusFilter,
 } from '@/components/requests/status-chips'
+import { BackButton } from '@/components/ui/back-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
@@ -89,12 +89,7 @@ export default function EmployeeRequestsMinePage() {
 
 /** Shown in every state of the list — loading and error included. */
 function PageHead() {
-  return (
-    <PageHeader
-      title="My Requests"
-      subtitle="Things you asked for and where they stand."
-    />
-  )
+  return <PageHeader title="My Requests" />
 }
 
 /**
@@ -370,18 +365,27 @@ function RequestDetail({
     }
   }
 
+  // The heading is rendered in every state so the back control never blinks
+  // out; the type label arrives with the detail, so the fallback is static.
+  const back = (
+    <BackButton iconOnly label="Back to my requests" onClick={onBack} />
+  )
+
   if (error) {
     return (
       <div className="space-y-4">
-        <Button size="sm" variant="outline" onClick={onBack}>
-          <ArrowLeft className="size-4" /> Back
-        </Button>
+        <PageHeader leading={back} title="Request" />
         <p className="text-sm text-destructive">{error}</p>
       </div>
     )
   }
   if (!detail) {
-    return <div className="h-64 animate-pulse rounded-xl bg-muted" />
+    return (
+      <div className="space-y-4">
+        <PageHeader leading={back} title="Request" />
+        <div className="h-64 animate-pulse rounded-xl bg-muted" />
+      </div>
+    )
   }
 
   const renderer = rendererFor(detail.request_type)
@@ -398,46 +402,45 @@ function RequestDetail({
     : canAddCompanies
       ? `/corporate-relations/job-roles?edit=${companyId}`
       : null
+  const canResubmit =
+    detail.status === 'sent_back' &&
+    detail.request_type === 'company_approval' &&
+    !!companyId &&
+    resubmitRoute !== null
+  const canWithdraw = isOpen(detail.status)
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Button size="sm" variant="outline" onClick={onBack}>
-            <ArrowLeft className="size-4" /> Back
-          </Button>
-          <div>
-            <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-              {typeLabel(catalog, detail.request_type)}
-              <Badge variant={requestStatusVariant(detail.status)}>
-                {REQUEST_STATUS_LABELS[detail.status] ?? detail.status}
-              </Badge>
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Submitted {formatDate(detail.created_at)}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {detail.status === 'sent_back' &&
-            detail.request_type === 'company_approval' &&
-            companyId &&
-            resubmitRoute && (
-              <Button size="sm" onClick={() => navigateTo(resubmitRoute)}>
-                <Pencil className="size-4" /> Edit and resubmit
-              </Button>
-            )}
-          {isOpen(detail.status) && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={busy}
-              onClick={() => void cancel()}
-            >
-              <X className="size-4" /> Withdraw
-            </Button>
-          )}
-        </div>
+      <PageHeader
+        leading={back}
+        title={typeLabel(catalog, detail.request_type)}
+        actions={
+          (canResubmit || canWithdraw) && (
+            <>
+              {canResubmit && resubmitRoute && (
+                <Button size="sm" onClick={() => navigateTo(resubmitRoute)}>
+                  <Pencil className="size-4" /> Edit and resubmit
+                </Button>
+              )}
+              {canWithdraw && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void cancel()}
+                >
+                  <X className="size-4" /> Withdraw
+                </Button>
+              )}
+            </>
+          )
+        }
+      />
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Badge variant={requestStatusVariant(detail.status)}>
+          {REQUEST_STATUS_LABELS[detail.status] ?? detail.status}
+        </Badge>
+        <span>Submitted {formatDate(detail.created_at)}</span>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[20rem_1fr] lg:items-start">

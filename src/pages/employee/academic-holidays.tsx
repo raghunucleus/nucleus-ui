@@ -70,11 +70,7 @@ export default function EmployeeAcademicHolidaysPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <PageHeader
-        icon={CalendarDays}
-        title="Holidays"
-        subtitle="Institution holidays and no-class days. Upcoming first — switch to Past for earlier ones."
-      />
+      <PageHeader icon={CalendarDays} title="Holidays" />
 
       <ScopeTabs
         value={scope}

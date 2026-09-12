@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PageHeader } from '@/components/ui/page-header'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -206,15 +207,7 @@ export default function EmployeeMarksUploadPage() {
 
   return (
     <section className="mx-auto max-w-xl space-y-4">
-      <header>
-        <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-          <Upload className="size-6 text-icon-blue" />
-          Upload marks
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Pick a programme and admission year to continue.
-        </p>
-      </header>
+      <PageHeader title="Upload marks" icon={Upload} />
 
       <Card>
         <CardContent className="space-y-5 pt-6">

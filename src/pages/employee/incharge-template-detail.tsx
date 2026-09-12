@@ -1,6 +1,5 @@
 import { useParams } from '@tanstack/react-router'
 import {
-  CalendarRange,
   CheckCircle2,
   CircleAlert,
   Clock,
@@ -30,7 +29,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { StickyHeader } from '@/components/ui/sticky-header'
+import { PageHeader } from '@/components/ui/page-header'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import { ApiError } from '@/lib/api'
 import {
@@ -217,12 +216,16 @@ export default function EmployeeInchargeTemplateDetailPage() {
 
   return (
     <section className="space-y-5">
-      <StickyHeader className="border-b pb-3">
-        <BackButton
-          label="Back to templates"
-          onClick={() => navigateTo('/timetable/incharge/templates')}
-        />
-      </StickyHeader>
+      <PageHeader
+        leading={
+          <BackButton
+            iconOnly
+            label="Back to templates"
+            onClick={() => navigateTo('/timetable/incharge/templates')}
+          />
+        }
+        title={data?.name ?? 'Template'}
+      />
 
       {error ? (
         <Card className="flex items-start gap-3 border-destructive/30 bg-destructive/10 p-4">
@@ -409,34 +412,28 @@ function HeaderCard({
   return (
     <Card className="p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <CalendarRange className="size-6 text-icon-blue" />
-            {data.name}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <GraduationCap className="size-3.5 text-icon-blue" />
-              {ps.programme?.display_name ?? ps.programme?.name ?? ''}
-              {ps.semester
-                ? ` · Semester ${ps.semester.sem_number}`
-                : ''}
-            </span>
-            {' · '}
-            <span className="inline-flex items-center gap-1.5">
-              <Users className="size-3.5 text-icon-cyan" />
-              {data.attendance_group.name}
-            </span>
-            {ps.admission_year ? (
-              <>
-                {' · '}
-                <span className="text-foreground">
-                  Batch {ps.admission_year.display_year}
-                </span>
-              </>
-            ) : null}
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-1.5">
+            <GraduationCap className="size-3.5 text-icon-blue" />
+            {ps.programme?.display_name ?? ps.programme?.name ?? ''}
+            {ps.semester
+              ? ` · Semester ${ps.semester.sem_number}`
+              : ''}
+          </span>
+          {' · '}
+          <span className="inline-flex items-center gap-1.5">
+            <Users className="size-3.5 text-icon-cyan" />
+            {data.attendance_group.name}
+          </span>
+          {ps.admission_year ? (
+            <>
+              {' · '}
+              <span className="text-foreground">
+                Batch {ps.admission_year.display_year}
+              </span>
+            </>
+          ) : null}
+        </p>
         <div className="flex flex-wrap gap-2">
           {data.is_default ? (
             <Badge variant="success">

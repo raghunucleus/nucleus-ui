@@ -49,6 +49,7 @@ import {
 import { DatePicker } from '@/components/ui/date-picker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PageHeader } from '@/components/ui/page-header'
 import {
   Sheet,
   SheetContent,
@@ -253,22 +254,12 @@ export default function EmployeeInchargeSchedulePage() {
 
   return (
     <section className="space-y-5">
-      <header className="space-y-1">
-        <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-          <CalendarRange className="size-6 text-icon-blue" />
-          Schedule management
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Pick a group and a week — publish sessions, cancel a class, or
-          assign an alternate teacher. Template configuration lives on the
-          Timetable Management screen.
+      <PageHeader title="Schedule management" icon={CalendarRange} />
+      {!canEdit && !canPublish ? (
+        <p className="text-xs text-warning">
+          View-only — editing and publishing are disabled on your role.
         </p>
-        {!canEdit && !canPublish ? (
-          <p className="text-xs text-warning">
-            View-only — editing and publishing are disabled on your role.
-          </p>
-        ) : null}
-      </header>
+      ) : null}
 
       {/* Group picker */}
       {groupsError ? (

@@ -175,9 +175,6 @@ export default function EmployeeNotificationsPage() {
     <div className="space-y-4">
       <PageHeader
         title="Notifications"
-        subtitle={
-          unreadCount > 0 ? `${unreadCount} unread` : 'You are all caught up'
-        }
         actions={
           unreadCount > 0 ? (
             <Button variant="outline" size="sm" onClick={() => void markAll()}>
@@ -187,17 +184,22 @@ export default function EmployeeNotificationsPage() {
           ) : null
         }
       />
-      <div className="inline-flex rounded-lg border bg-card p-0.5">
-        <FilterTab
-          label="All"
-          active={filter === 'all'}
-          onClick={() => setFilter('all')}
-        />
-        <FilterTab
-          label="Unread"
-          active={filter === 'unread'}
-          onClick={() => setFilter('unread')}
-        />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-lg border bg-card p-0.5">
+          <FilterTab
+            label="All"
+            active={filter === 'all'}
+            onClick={() => setFilter('all')}
+          />
+          <FilterTab
+            label="Unread"
+            active={filter === 'unread'}
+            onClick={() => setFilter('unread')}
+          />
+        </div>
+        {unreadCount > 0 ? (
+          <p className="text-xs text-muted-foreground">{unreadCount} unread</p>
+        ) : null}
       </div>
     </div>
   )

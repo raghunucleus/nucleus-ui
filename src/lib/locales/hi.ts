@@ -29,8 +29,6 @@ export const hi: typeof en = {
   brand: { parentPortal: 'अभिभावक पोर्टल' },
 
   a11y: {
-    expandMenu: 'मेन्यू बड़ा करें',
-    collapseMenu: 'मेन्यू छोटा करें',
     openAccount: 'खाता मेन्यू खोलें',
     parentHome: 'अभिभावक होम',
     expandSidebar: 'साइडबार बड़ा करें',
@@ -115,7 +113,6 @@ export const hi: typeof en = {
     greetMorning: 'सुप्रभात',
     greetAfternoon: 'नमस्कार',
     greetEvening: 'शुभ संध्या',
-    subtitle: '{{name}} की प्रगति यहाँ देखें।',
     statAttendance: 'उपस्थिति',
     statCgpa: 'CGPA',
     statBacklogs: 'बैकलॉग',
@@ -138,7 +135,6 @@ export const hi: typeof en = {
   },
 
   profile: {
-    subtitle: 'आपका खाता और जिस छात्र को आप देख रहे हैं।',
     viewingStudent: 'देखा जा रहा छात्र',
     noStudent: 'कोई छात्र चयनित नहीं।',
     allLinked: 'सभी संबद्ध छात्र',
@@ -197,7 +193,6 @@ export const hi: typeof en = {
 
   exam: {
     title: 'परीक्षा परिणाम',
-    subtitleFallback: 'शैक्षणिक परिणाम',
     cgpaLabel: 'संचयी GPA',
     summary: '{{n}} सेमेस्टर · {{credits}} क्रेडिट',
     backlogs_one: '{{count}} सक्रिय बैकलॉग',
@@ -227,8 +222,6 @@ export const hi: typeof en = {
 
   holidays: {
     title: 'शैक्षणिक छुट्टियाँ',
-    subtitle:
-      "कॉलेज की छुट्टियाँ और बिना-कक्षा दिन। आगामी पहले — पुराने के लिए 'पिछले' पर जाएँ।",
     tabUpcoming: 'आगामी',
     tabPast: 'पिछले',
     emptyUpcoming: "कोई आगामी छुट्टी नहीं। पहले के अवकाश 'पिछले' टैब में देखें।",
@@ -243,7 +236,6 @@ export const hi: typeof en = {
   subject: {
     titleFallback: 'विषय उपस्थिति',
     backToAttendance: 'उपस्थिति पर वापस',
-    subtitle: '{{code}} · {{n}} सत्र · {{absent}} अनुपस्थित',
     filterAll: 'सभी कक्षाएँ',
     filterAbsent: 'केवल अनुपस्थित',
     showingAbsent: '{{total}} में से {{n}} अनुपस्थित दिखा रहे हैं',
@@ -283,7 +275,6 @@ export const hi: typeof en = {
     summaryOther: 'अन्य',
     filterAllSubjects: 'सभी विषय',
     allTitle: 'सभी कक्षाएँ',
-    allSubtitle: '{{count}} सत्र · {{absent}} अनुपस्थित',
     allNoClassesYet: 'इस सेमेस्टर में अभी कोई कक्षा दर्ज नहीं।',
     allErrLoad: 'कक्षाएँ लोड नहीं हो सकीं।',
   },

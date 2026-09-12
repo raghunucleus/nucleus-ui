@@ -1,9 +1,10 @@
 import { useParams } from '@tanstack/react-router'
-import { ArrowLeft, Info, Loader2 } from 'lucide-react'
+import { Info, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
+import { BackButton } from '@/components/ui/back-button'
 import { PageHeader } from '@/components/ui/page-header'
 import { CompanyForm } from '@/components/corporate-relations/company-form'
 import { useScreenAccess } from '@/hooks/use-screen-access'
@@ -140,23 +141,14 @@ export default function EmployeeCompanyFormPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       <PageHeader
-        sticky
         leading={
-          <button
-            type="button"
+          <BackButton
+            iconOnly
+            label="Back to companies"
             onClick={() => navigateTo(LIST_ROUTE)}
-            className="flex size-8 items-center justify-center rounded-md border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            aria-label="Back to companies"
-          >
-            <ArrowLeft className="size-4" />
-          </button>
+          />
         }
         title={isEdit ? 'Edit company' : 'New company'}
-        subtitle={
-          isEdit
-            ? (company?.name ?? 'Update the company record.')
-            : 'Add a company to the catalog.'
-        }
       />
 
       {loading || !access ? (
@@ -169,6 +161,9 @@ export default function EmployeeCompanyFormPage() {
         </p>
       ) : (
         <>
+          {isEdit && company?.name ? (
+            <p className="text-sm text-muted-foreground">{company.name}</p>
+          ) : null}
           <Banner company={company} />
           <CompanyForm
             company={company}

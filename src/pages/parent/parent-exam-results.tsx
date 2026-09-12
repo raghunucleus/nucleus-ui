@@ -75,10 +75,6 @@ export default function ParentExamResults() {
     void load()
   }, [load])
 
-  const subtitle = data?.context.programme
-    ? `${data.context.programme}${data.context.admission_year ? ` · ${data.context.admission_year}` : ''}`
-    : t('exam.subtitleFallback')
-
   if (loading) return <ResultsSkeleton />
   if (error) return <ErrorState message={error} onRetry={() => void load()} />
   if (!data) return null
@@ -89,7 +85,6 @@ export default function ParentExamResults() {
     <>
       <PageHeader
         title={t('exam.title')}
-        subtitle={subtitle}
         icon={Award}
         accent="amber"
       />

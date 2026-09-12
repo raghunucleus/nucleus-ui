@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { DatePicker } from '@/components/ui/date-picker'
+import { PageHeader } from '@/components/ui/page-header'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import {
   addDays,
@@ -121,68 +122,61 @@ export default function EmployeeAttendanceHistoryPage() {
 
   return (
     <section className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <History className="size-6 text-icon-emerald" />
-            Attendance history
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Your marked classes — review only. Use{' '}
-            <span className="font-medium text-foreground">Mark attendance</span>{' '}
-            to amend.
-          </p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Earlier range"
-            onClick={() => shiftWindow(-1)}
-          >
-            <ChevronLeft />
-          </Button>
-          <div className="flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1.5">
-            <CalendarRange className="size-4 shrink-0 text-muted-foreground" />
-            <DatePicker
-              value={from}
-              hideIcon
-              onChange={(next) => {
-                const start = next || initial.from
-                setFrom(start)
-                // Keep the range valid: a start after the current end drags
-                // the end forward with it.
-                if (start > to) setTo(start)
-              }}
-              aria-label="Range start date"
-            />
-            <span className="text-xs text-muted-foreground">→</span>
-            <DatePicker
-              value={to}
-              hideIcon
-              onChange={(next) => {
-                const end = next || initial.to
-                setTo(end)
-                // …and an end before the current start drags the start back.
-                if (end < from) setFrom(end)
-              }}
-              aria-label="Range end date"
-            />
+      <PageHeader
+        title="Attendance history"
+        icon={History}
+        actions={
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Earlier range"
+              onClick={() => shiftWindow(-1)}
+            >
+              <ChevronLeft />
+            </Button>
+            <div className="flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1.5">
+              <CalendarRange className="size-4 shrink-0 text-muted-foreground" />
+              <DatePicker
+                value={from}
+                hideIcon
+                onChange={(next) => {
+                  const start = next || initial.from
+                  setFrom(start)
+                  // Keep the range valid: a start after the current end drags
+                  // the end forward with it.
+                  if (start > to) setTo(start)
+                }}
+                aria-label="Range start date"
+              />
+              <span className="text-xs text-muted-foreground">→</span>
+              <DatePicker
+                value={to}
+                hideIcon
+                onChange={(next) => {
+                  const end = next || initial.to
+                  setTo(end)
+                  // …and an end before the current start drags the start back.
+                  if (end < from) setFrom(end)
+                }}
+                aria-label="Range end date"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Later range"
+              onClick={() => shiftWindow(1)}
+              disabled={atToday}
+            >
+              <ChevronRight />
+            </Button>
+            <Button variant="outline" size="sm" onClick={thisWeek}>
+              This week
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Later range"
-            onClick={() => shiftWindow(1)}
-            disabled={atToday}
-          >
-            <ChevronRight />
-          </Button>
-          <Button variant="outline" size="sm" onClick={thisWeek}>
-            This week
-          </Button>
-        </div>
-      </header>
+        }
+      />
 
       {error ? <ErrorBanner message={error} onRetry={() => load(from, to)} /> : null}
 

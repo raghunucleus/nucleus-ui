@@ -1,5 +1,5 @@
 import { useParams } from '@tanstack/react-router'
-import { ArrowLeft, Paperclip, Plus, Trash2, Upload, X } from 'lucide-react'
+import { Paperclip, Plus, Trash2, Upload, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -20,6 +20,7 @@ import {
   type ScopedDraft,
 } from '@/components/drive-management/scoped-fields'
 import { NoAccessEmptyState } from '@/components/employee/empty-states'
+import { BackButton } from '@/components/ui/back-button'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -464,13 +465,11 @@ export default function EmployeeDriveFormPage() {
     <div className="mx-auto max-w-4xl space-y-5 pb-16">
       <PageHeader
         leading={
-          <Button
-            variant="ghost"
-            size="sm"
+          <BackButton
+            iconOnly
+            label="Back to drives"
             onClick={() => employeeNavigateTo(LIST_ROUTE)}
-          >
-            <ArrowLeft className="size-4" /> Back
-          </Button>
+          />
         }
         title={isEdit ? 'Edit drive' : 'New drive'}
       />

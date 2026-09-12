@@ -26,6 +26,7 @@ import { NotificationNotifier } from '@/components/notification-notifier'
 import { PageHeader as SharedPageHeader } from '@/components/ui/page-header'
 import { ThemePresetScope } from '@/components/theme-preset-scope'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { useHeaderSlot } from '@/hooks/use-header-slot'
 import { MODULE_GRADIENT, type ModuleColor } from '@/lib/modules'
 import { studentLogout } from '@/lib/student-auth'
 import { cn } from '@/lib/utils'
@@ -127,8 +128,13 @@ export function PortalLayout() {
 /**
  * Compact page heading for the student / parent feature pages — the shared
  * `PageHeader` with a back link to the dashboard and an optional module icon
- * badge in its leading slot. Kept deliberately short to preserve vertical
- * space for the actual page content.
+ * in its leading slot.
+ *
+ * In the parent portal the shell's app header owns a title slot, so the shared
+ * component portals the back link, a muted glyph and the title up there and
+ * the page starts straight with its content. The student portal has no slot:
+ * the heading renders inline with the gradient module badge, kept deliberately
+ * short to preserve vertical space.
  */
 export function PageHeader({
   title,
@@ -145,20 +151,48 @@ export function PageHeader({
    * Still accepted so existing call sites need no edit.
    */
   subtitle?: string
-  /** Optional decorative icon, rendered as a colored gradient badge. */
+  /** Optional decorative icon: a colored gradient badge inline, a muted glyph
+   * in the app header. */
   icon?: LucideIcon
   /** Accent hue for the icon badge — usually the page's module color. */
   accent?: ModuleColor
-  /** Where the back link points. Defaults to the dashboard. */
-  backTo?: string
+  /** Where the back link points. Defaults to the dashboard; `null` renders no
+   * back link (the dashboard itself). */
+  backTo?: string | null
   /** Override label for the back link. */
   backLabel?: string
   /** Trailing controls, pushed to the far edge of the heading row. */
   actions?: React.ReactNode
-  /** A `<TabsBar className="border-b-0" …/>` — shares the title row on wide
-   * screens and drops to its own row below `lg`. */
+  /** A `<TabsBar className="border-b-0" …/>` — the first row of the page in
+   * the parent portal; shares the title row inline in the student portal. */
   tabs?: React.ReactNode
 }) {
+  const inHeader = useHeaderSlot() !== null
+
+  const back =
+    backTo === null ? null : (
+      <Link
+        to={backTo}
+        aria-label={backLabel}
+        title={backLabel}
+        className="inline-grid size-8 shrink-0 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" />
+      </Link>
+    )
+
+  if (inHeader) {
+    return (
+      <SharedPageHeader
+        title={title}
+        icon={Icon}
+        actions={actions}
+        tabs={tabs}
+        leading={back}
+      />
+    )
+  }
+
   return (
     <SharedPageHeader
       title={title}
@@ -166,14 +200,7 @@ export function PageHeader({
       tabs={tabs}
       leading={
         <>
-          <Link
-            to={backTo}
-            aria-label={backLabel}
-            title={backLabel}
-            className="inline-grid size-8 shrink-0 place-items-center rounded-lg border text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" />
-          </Link>
+          {back}
           {Icon && accent ? (
             <div
               className={cn(

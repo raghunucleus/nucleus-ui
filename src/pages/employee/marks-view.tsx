@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PageHeader } from '@/components/ui/page-header'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { TabsBar, type TabDef } from '@/components/ui/tabs-bar'
 import {
   fetchBatchResults,
   fetchStudentByRoll,
@@ -50,6 +52,12 @@ const SCREEN_KEY = 'examinations.marks.view'
 const PAGE_SIZE = 10
 
 type ViewMode = 'programme' | 'student'
+
+/** Whole programme batch vs. a single student by ID. */
+const MODE_TABS: TabDef[] = [
+  { key: 'student', label: 'Student ID' },
+  { key: 'programme', label: 'Programme' },
+]
 
 interface Programme {
   id: number
@@ -262,50 +270,19 @@ export default function EmployeeMarksViewPage() {
 
   return (
     <section className="mx-auto max-w-5xl space-y-4">
-      <header>
-        <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-          <GraduationCap className="size-6 text-icon-blue" />
-          Student marks
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Browse a whole programme batch, or look up a single student by their
-          student ID.
-        </p>
-      </header>
-
-      {/* Underline tabs: whole programme batch vs. a single student by ID. */}
-      <div
-        role="tablist"
-        aria-label="Student marks view"
-        className="flex gap-4 border-b"
-      >
-        {(
-          [
-            ['student', 'Student ID'],
-            ['programme', 'Programme'],
-          ] as const
-        ).map(([value, label]) => {
-          const selected = mode === value
-          return (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              onClick={() => setMode(value)}
-              className={cn(
-                '-mb-px border-b-2 px-1 pb-2.5 text-sm font-medium transition-colors',
-                'focus-visible:outline-none',
-                selected
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
-              )}
-            >
-              {label}
-            </button>
-          )
-        })}
-      </div>
+      <PageHeader
+        title="Student marks"
+        icon={GraduationCap}
+        tabs={
+          <TabsBar
+            tabs={MODE_TABS}
+            value={mode}
+            onChange={(key) => setMode(key as ViewMode)}
+            aria-label="Student marks view"
+            className="border-b-0"
+          />
+        }
+      />
 
       {mode === 'student' ? (
         <IndividualLookup />

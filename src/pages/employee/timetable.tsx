@@ -19,6 +19,7 @@ import { NoClassesIllustration } from '@/components/no-classes-illustration'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { PageHeader } from '@/components/ui/page-header'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import { ApiError } from '@/lib/api'
 import {
@@ -146,17 +147,7 @@ export default function EmployeeTimetablePage() {
 
   return (
     <section className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <CalendarDays className="size-6 text-icon-blue" />
-            My timetable
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Your classes this week. Tap a card to mark attendance.
-          </p>
-        </div>
-      </header>
+      <PageHeader title="My timetable" icon={CalendarDays} />
 
       <WeekNav
         weekStart={weekStart}

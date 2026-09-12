@@ -3,7 +3,6 @@ import {
   CalendarOff,
   CheckCircle2,
   CircleAlert,
-  ClipboardCheck,
   Loader2,
   RefreshCw,
   Search,
@@ -18,7 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { StickyHeader } from '@/components/ui/sticky-header'
+import { PageHeader } from '@/components/ui/page-header'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import { ApiError } from '@/lib/api'
 import {
@@ -181,12 +180,16 @@ export default function EmployeeAttendanceMarkSessionPage() {
     // the bottom of <main> when the roster is short. Without this the bar
     // floats wherever the content ends.
     <section className="flex min-h-full flex-col gap-4">
-      <StickyHeader className="border-b pb-3">
-        <BackButton
-          label="Back to today's classes"
-          onClick={() => navigateTo('/attendance/mark')}
-        />
-      </StickyHeader>
+      <PageHeader
+        leading={
+          <BackButton
+            iconOnly
+            label="Back to today's classes"
+            onClick={() => navigateTo('/attendance/mark')}
+          />
+        }
+        title={isAmending ? 'Amend attendance' : 'Mark attendance'}
+      />
 
       {error ? (
         <Card className="flex items-start gap-3 border-destructive/30 bg-destructive/10 p-4">
@@ -229,7 +232,6 @@ export default function EmployeeAttendanceMarkSessionPage() {
         <>
           <HeaderCard
             data={data}
-            isAmending={!!isAmending}
             canUpdate={canUpdate}
             onMarkAll={markAll}
           />
@@ -312,37 +314,28 @@ export default function EmployeeAttendanceMarkSessionPage() {
 
 function HeaderCard({
   data,
-  isAmending,
   canUpdate,
   onMarkAll,
 }: {
   data: TeacherRosterResult
-  isAmending: boolean
   canUpdate: boolean
   onMarkAll: (status: Extract<MarkChoice, 'present' | 'absent'>) => void
 }) {
-  const title = isAmending ? 'Amend attendance' : 'Mark attendance'
   const onLeaveCount = data.students.filter((s) => s.on_leave).length
   return (
     <Card className="p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <ClipboardCheck className="size-6 text-icon-emerald" />
-            {title}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Session #{data.session_id}
-            {data.attendance_marked_at
-              ? ` · marked ${new Date(data.attendance_marked_at).toLocaleString('en-IN', {
-                  day: '2-digit',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}`
-              : ''}
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Session #{data.session_id}
+          {data.attendance_marked_at
+            ? ` · marked ${new Date(data.attendance_marked_at).toLocaleString('en-IN', {
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}`
+            : ''}
+        </p>
         <Badge
           variant={
             data.status === 'completed'

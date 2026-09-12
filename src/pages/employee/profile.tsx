@@ -19,6 +19,7 @@ import { ThemePanel } from '@/components/settings/theme-panel'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { PageHeader } from '@/components/ui/page-header'
 import { Switch } from '@/components/ui/switch'
 import { ApiError } from '@/lib/api'
 import {
@@ -98,15 +99,7 @@ export default function EmployeeProfilePage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4 py-2">
-      <div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <User className="size-4" /> Account
-        </div>
-        <h1 className="mt-2 text-xl font-semibold tracking-tight">Profile</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage your account and security preferences.
-        </p>
-      </div>
+      <PageHeader title="Profile" />
 
       <div className="grid gap-4 lg:grid-cols-[16rem_1fr]">
         <SideNav activeKey={section} />

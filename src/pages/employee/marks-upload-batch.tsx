@@ -19,6 +19,7 @@ import {
   NoAccessEmptyState,
   NoScopeEmptyState,
 } from '@/components/employee/empty-states'
+import { BackButton } from '@/components/ui/back-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
@@ -427,26 +428,22 @@ export default function EmployeeMarksUploadBatchPage() {
   return (
     <section className="space-y-4">
       <PageHeader
-        sticky
         leading={
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Back to batches"
+          <BackButton
+            iconOnly
+            label="Back to marks upload"
             onClick={() => navigateTo('/marks/upload')}
-          >
-            <ArrowLeft />
-          </Button>
+          />
         }
         title="Upload marks"
-        subtitle={
-          batch === undefined
-            ? 'Loading batch…'
-            : batch === null
-              ? 'This batch is not available to you.'
-              : batch.label
-        }
       />
+      <p className="text-sm text-muted-foreground">
+        {batch === undefined
+          ? 'Loading batch…'
+          : batch === null
+            ? 'This batch is not available to you.'
+            : batch.label}
+      </p>
 
       {batch === null ? (
         <div className="rounded-md border border-dashed bg-muted/20 px-6 py-12 text-center">

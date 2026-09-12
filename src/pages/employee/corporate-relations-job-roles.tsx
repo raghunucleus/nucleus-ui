@@ -399,7 +399,6 @@ export default function EmployeeJobRolesPage() {
     <div className="mx-auto max-w-7xl space-y-5">
       <PageHeader
         title="Roles or Designations"
-        subtitle="The job roles you are accountable for, company by company."
         actions={
           canCreate && (
             <Button onClick={() => void openSheet(null)}>

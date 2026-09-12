@@ -200,50 +200,15 @@ export default function EmployeeAttendanceAnalyticsPage() {
           z-30, not the primitive's z-10: `Table`'s wrapper is `relative` with
           `z-index: auto` and so creates no stacking context, which leaves the
           sticky theads (z-10) and pinned corner cells (z-20) inside it
-          competing here in the root stacking context.
-
-          The offsets are the portal `<main>` workaround documented on the
-          company form: `main` is the scroll container and has `py-6`/`px-4`, so
-          a plain `top-0` pins to its CONTENT box and leaves a 24px band above
-          the header for rows to scroll through. `-top-6` pins flush under the
-          app bar, `-mt-6`+`pt-6` restores the resting position, and the
-          negative insets let the opaque background span the gutter. */}
+          competing here in the root stacking context. */}
       <PageHeader
         sticky
         title="Attendance Analytics"
-        actions={
-          group &&
-          (groups !== null && groups.length > 1 ? (
-            <Button
-              size="sm"
-              variant="outline"
-              className="max-w-full"
-              onClick={() => setPickerOpen(true)}
-              aria-label={`Attendance group: ${group.name} ${group.code}. Change group.`}
-            >
-              <Users className="size-4" />
-              <span className="truncate font-medium">{group.name}</span>
-              <span className="text-muted-foreground">{group.code}</span>
-              <span className="hidden text-muted-foreground md:inline">
-                · {groupMeta}
-              </span>
-              <ChevronsUpDown className="size-4 opacity-50" />
-            </Button>
-          ) : (
-            <p className="text-sm">
-              <span className="font-medium">{group.name}</span>
-              <span className="ml-1 text-muted-foreground">{group.code}</span>
-              <span className="ml-1 text-xs text-muted-foreground">
-                · {groupMeta}
-              </span>
-            </p>
-          ))
-        }
-      >
-        {groups !== null &&
+        tabs={
+          groups !== null &&
           groups.length > 0 &&
           group &&
-          group.programme_semesters.length > 0 && (
+          group.programme_semesters.length > 0 ? (
             <TabsBar
               tabs={TABS}
               value={tab}
@@ -283,8 +248,37 @@ export default function EmployeeAttendanceAnalyticsPage() {
                 </>
               }
             />
-          )}
-      </PageHeader>
+          ) : undefined
+        }
+        actions={
+          group &&
+          (groups !== null && groups.length > 1 ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="max-w-full"
+              onClick={() => setPickerOpen(true)}
+              aria-label={`Attendance group: ${group.name} ${group.code}. Change group.`}
+            >
+              <Users className="size-4" />
+              <span className="truncate font-medium">{group.name}</span>
+              <span className="text-muted-foreground">{group.code}</span>
+              <span className="hidden text-muted-foreground md:inline">
+                · {groupMeta}
+              </span>
+              <ChevronsUpDown className="size-4 opacity-50" />
+            </Button>
+          ) : (
+            <p className="text-sm">
+              <span className="font-medium">{group.name}</span>
+              <span className="ml-1 text-muted-foreground">{group.code}</span>
+              <span className="ml-1 text-xs text-muted-foreground">
+                · {groupMeta}
+              </span>
+            </p>
+          ))
+        }
+      />
 
       {loadError && <EmptyNote>{loadError}</EmptyNote>}
 

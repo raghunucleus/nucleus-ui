@@ -30,6 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { PageHeader } from '@/components/ui/page-header'
 import { useScreenAccess } from '@/hooks/use-screen-access'
 import { ApiError } from '@/lib/api'
 import {
@@ -279,23 +280,12 @@ export default function EmployeeInchargeTemplatesPage() {
 
   return (
     <section className="space-y-5">
-
-      <header className="space-y-1">
-        <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-          <LayoutTemplate className="size-6 text-icon-blue" />
-          Timetable management
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Pick a group, then manage its timetable templates — bell schedule,
-          courses, and the weekly grid. Publishing weeks and cancelling
-          classes lives on the Schedule Management screen.
+      <PageHeader title="Timetable management" icon={LayoutTemplate} />
+      {!canEdit ? (
+        <p className="text-xs text-warning">
+          View-only — editing is disabled on your role.
         </p>
-        {!canEdit ? (
-          <p className="text-xs text-warning">
-            View-only — editing is disabled on your role.
-          </p>
-        ) : null}
-      </header>
+      ) : null}
 
       {/* Group picker */}
       {groupsError ? (

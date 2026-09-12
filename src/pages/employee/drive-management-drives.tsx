@@ -328,7 +328,6 @@ export default function EmployeeDrivesPage() {
       <PageHeader
         icon={CalendarDays}
         title="Drives"
-        subtitle="Create and manage placement drives."
         actions={
           actions.includes('create') && (
             <Button onClick={() => employeeNavigateTo(`${LIST_ROUTE}/new`)}>

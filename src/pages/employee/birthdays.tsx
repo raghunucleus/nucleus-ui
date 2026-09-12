@@ -103,13 +103,7 @@ export default function EmployeeBirthdaysPage() {
     [roster, q],
   )
 
-  const header = (
-    <PageHeader
-      icon={Cake}
-      title="Birthdays"
-      subtitle="Birthdays of colleagues in your department."
-    />
-  )
+  const header = <PageHeader icon={Cake} title="Birthdays" />
 
   if (error && !people) {
     return (

@@ -71,7 +71,6 @@ export default function ParentHolidays() {
     <>
       <PageHeader
         title={t('holidays.title')}
-        subtitle={t('holidays.subtitle')}
         icon={PalmtreeIcon}
         accent="rose"
       />

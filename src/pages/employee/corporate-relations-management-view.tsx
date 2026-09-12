@@ -808,11 +808,64 @@ export default function EmployeeManagementViewPage() {
     )
   }
 
+  // The tabs and the two controls that drive BOTH of them — the year and the
+  // filters — belong to the loaded, non-empty state only, the same branch the
+  // panels below render in.
+  const readyScope =
+    scopeLoaded && !scopeError && scope && scope.years.length > 0 ? scope : null
+
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      {/* No subtitle: the screen is dense and the tab row below already says
-          what the year and the two views are. */}
-      <PageHeader title="Management View" />
+      <PageHeader
+        title="Management View"
+        tabs={
+          readyScope ? (
+            <TabsBar
+              tabs={TABS}
+              value={tab}
+              onChange={(k) => setTab(k as PanelTab)}
+              className="border-b-0"
+            />
+          ) : undefined
+        }
+        actions={
+          readyScope ? (
+            <>
+              {/* The value reads as its own label ("2026-2027"), so the
+                  visible caption is dropped for height — named for screen
+                  readers instead. */}
+              <label htmlFor="mv-year" className="sr-only">
+                Passout year
+              </label>
+              <Combobox
+                id="mv-year"
+                className="w-40"
+                value={yearId}
+                options={readyScope.years.map((y) => ({
+                  value: y.id,
+                  label: y.display_year,
+                }))}
+                onChange={changeYear}
+                placeholder="Passout year…"
+                searchPlaceholder="Search years…"
+              />
+              <Button
+                size="sm"
+                variant={activeFilterCount > 0 ? 'default' : 'outline'}
+                onClick={() => setFiltersOpen(true)}
+              >
+                <SlidersHorizontal className="size-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </Button>
+            </>
+          ) : undefined
+        }
+      />
 
       {!scopeLoaded ? (
         <div className="h-[70vh] animate-pulse rounded-xl bg-muted" />
@@ -830,74 +883,27 @@ export default function EmployeeManagementViewPage() {
         </div>
       ) : (
         <>
-          {/* One row: the tabs, and the two controls that drive BOTH of them —
-              the year and the filters. The divider lives on this wrapper so it
-              spans the full width instead of underlining only the tabs. The
-              applied chips sit below it, visible from the charts as well as the
-              list. */}
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b">
-              <TabsBar
-                tabs={TABS}
-                value={tab}
-                onChange={(k) => setTab(k as PanelTab)}
-                className="border-b-0"
-              />
-              <div className="flex items-center gap-2 pb-1.5">
-                {/* The value reads as its own label ("2026-2027"), so the
-                    visible caption is dropped for height — named for screen
-                    readers instead. */}
-                <label htmlFor="mv-year" className="sr-only">
-                  Passout year
-                </label>
-                <Combobox
-                  id="mv-year"
-                  className="w-40"
-                  value={yearId}
-                  options={scope.years.map((y) => ({
-                    value: y.id,
-                    label: y.display_year,
-                  }))}
-                  onChange={changeYear}
-                  placeholder="Passout year…"
-                  searchPlaceholder="Search years…"
-                />
-                <Button
-                  size="sm"
-                  variant={activeFilterCount > 0 ? 'default' : 'outline'}
-                  onClick={() => setFiltersOpen(true)}
-                >
-                  <SlidersHorizontal className="size-4" />
-                  Filters
-                  {activeFilterCount > 0 && (
-                    <Badge variant="secondary" className="ml-1">
-                      {activeFilterCount}
-                    </Badge>
-                  )}
-                </Button>
+          {/* The applied chips sit right under the header's tab row, visible
+              from the charts as well as the list. */}
+          {appliedChips.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              <span className="text-xs font-medium text-muted-foreground">
+                Filters · {activeFilterCount}
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {appliedChips.map((chip) => (
+                  <AppliedFilterChip key={chip.id} {...chip} />
+                ))}
               </div>
+              <button
+                type="button"
+                onClick={() => changeFilters(EMPTY_CR_VIEW_FILTERS)}
+                className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <X className="size-3" /> Clear all
+              </button>
             </div>
-
-            {appliedChips.length > 0 && (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Filters · {activeFilterCount}
-                </span>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {appliedChips.map((chip) => (
-                    <AppliedFilterChip key={chip.id} {...chip} />
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => changeFilters(EMPTY_CR_VIEW_FILTERS)}
-                  className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  <X className="size-3" /> Clear all
-                </button>
-              </div>
-            )}
-          </div>
+          )}
 
           {loading && !rows ? (
             <div className="flex min-h-[62vh] items-center justify-center py-16 text-muted-foreground">
