@@ -148,8 +148,8 @@ export function ModulesDrawer() {
         className="inset-0 flex h-svh w-full flex-col gap-0 bg-background/40 backdrop-blur-2xl backdrop-saturate-150"
       >
         {/* Pinned header — title and search stay in place while the grid scrolls. */}
-        <div className="shrink-0 border-b border-border/60 px-4 pt-12 pb-5 sm:pt-14">
-          <div className="mx-auto w-full max-w-4xl space-y-5">
+        <div className="shrink-0 border-b border-border/60 px-4 pt-5 pb-4 sm:pt-6">
+          <div className="mx-auto w-full max-w-4xl space-y-4">
             <SheetHeader className="items-center gap-1 p-0 text-center">
               <SheetTitle className="text-xl">All modules</SheetTitle>
               <SheetDescription>
@@ -177,7 +177,7 @@ export function ModulesDrawer() {
         {/* Scrollable module grid. */}
         <div
           onClick={handleBackdropClick}
-          className="min-h-0 flex-1 overflow-y-auto px-4 py-7"
+          className="min-h-0 flex-1 overflow-y-auto px-4 py-5"
         >
           {results.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">

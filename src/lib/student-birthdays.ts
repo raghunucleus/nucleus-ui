@@ -1,4 +1,5 @@
 import { apiFetch } from './api'
+import { fetchWholeCohort } from './birthday-months'
 import { withAuth } from './student-auth'
 import type { ModuleColor } from './modules'
 
@@ -51,29 +52,13 @@ export function studentBirthdays(
   )
 }
 
-/** A calendar-month bucket of upcoming birthdays, in chronological order. */
-export interface BirthdayMonth {
-  /** e.g. "June 2026" — unambiguous when the list wraps into next year. */
-  label: string
-  people: BirthdayPerson[]
-}
-
 /**
- * Group people by the month of their next birthday, preserving the incoming
- * (days_until) order so months come out chronologically from now forward.
+ * The whole class group in one go. A section is at most a few hundred people,
+ * so the birthdays screen holds all of them and does its month browsing and
+ * searching locally instead of paging.
  */
-export function groupByMonth(people: BirthdayPerson[]): BirthdayMonth[] {
-  const months: BirthdayMonth[] = []
-  for (const person of people) {
-    const d = new Date(`${person.date}T00:00:00`)
-    const label = Number.isNaN(d.getTime())
-      ? 'Later'
-      : d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
-    const bucket = months.find((m) => m.label === label)
-    if (bucket) bucket.people.push(person)
-    else months.push({ label, people: [person] })
-  }
-  return months
+export function fetchAllStudentBirthdays(): Promise<BirthdayPerson[]> {
+  return fetchWholeCohort((params) => studentBirthdays(params))
 }
 
 const AVATAR_COLORS: ModuleColor[] = [
